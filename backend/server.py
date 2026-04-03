@@ -866,19 +866,23 @@ async def startup_event():
         })
     
     # Clean up duplicates and seed initial data
-    # First, remove all existing services and workers to start fresh
-    existing_services = await db.services.count_documents({})
-    existing_workers = await db.workers.count_documents({})
+    # Only seed if no ACTIVE workers exist
+    existing_services = await db.services.count_documents({"active": True})
+    existing_workers = await db.workers.count_documents({"active": True})
     
-    if existing_services > 3 or existing_workers > 1:
-        # Duplicates detected, clean up
+    # Only clean up if there are more than 5 services or more than 3 workers (duplicates)
+    total_services = await db.services.count_documents({})
+    total_workers = await db.workers.count_documents({})
+    
+    if total_services > 10 or total_workers > 5:
+        # Clear duplicates detected
         logger.info("Cleaning up duplicate services and workers...")
         await db.services.delete_many({})
         await db.workers.delete_many({})
         existing_services = 0
         existing_workers = 0
     
-    # Seed services if none exist
+    # Seed services if no active ones exist
     if existing_services == 0:
         logger.info("Seeding initial services...")
         default_services = [
