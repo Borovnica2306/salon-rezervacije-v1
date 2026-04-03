@@ -8,7 +8,7 @@ import { Input } from "../components/ui/input";
 import { 
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
-  Plus, Edit2, Trash2, DollarSign
+  Plus, Edit2, Trash2, DollarSign, Shield
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -18,8 +18,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "../components/ui/dialog";
 import { Switch } from "../components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 
 const AdminDashboard = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -34,6 +43,7 @@ const AdminDashboard = () => {
 
   const navItems = [
     { path: "/admin", label: "Rezervacije", icon: Calendar },
+    { path: "/admin/blacklist", label: "Crna Lista", icon: Shield },
     { path: "/admin/employees", label: "Radnici", icon: Users },
     { path: "/admin/services", label: "Usluge", icon: Scissors },
     { path: "/admin/settings", label: "Podešavanja", icon: Settings },
@@ -126,6 +136,7 @@ const AdminDashboard = () => {
         <main className="flex-1 lg:ml-64 p-4 lg:p-8">
           <Routes>
             <Route index element={<ReservationsPage />} />
+            <Route path="blacklist" element={<BlacklistPage />} />
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="services" element={<ServicesPage />} />
             <Route path="settings" element={<SettingsPage />} />
@@ -254,7 +265,7 @@ const ReservationsPage = () => {
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* Reservations Table */}
       {loading ? (
         <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div>
       ) : reservations.length === 0 ? (
@@ -263,109 +274,113 @@ const ReservationsPage = () => {
           <p className="text-[#9CA3AF]">Nema rezervacija za ovaj datum</p>
         </div>
       ) : (
-        <div className="space-y-4 stagger-children">
-          {reservations.map((res) => {
-            const isBlacklisted = blacklist.includes(res.client_phone);
-            return (
-              <div
-                key={res.id}
-                className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-5 hover:border-[#C5A880]/30 transition-colors"
-                data-testid={`reservation-${res.id}`}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="text-lg font-semibold text-[#C5A880]">
-                        {res.time} - {res.end_time}
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-[#C5A880]/20 text-[#C5A880]">
-                        {res.total_duration} min
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <p className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-[#9CA3AF]" />
-                        <span className="font-medium">{res.client_name}</span>
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-[#9CA3AF]" />
-                        {res.client_phone}
-                        {isBlacklisted && (
-                          <span className="text-red-400 text-xs">(Blokiran)</span>
+        <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[#2A2A2D] hover:bg-transparent">
+                  <TableHead className="text-[#9CA3AF]">Vreme</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Ime</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Telefon</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Usluge</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Radnik</TableHead>
+                  <TableHead className="text-[#9CA3AF] text-right">Cena</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Avans</TableHead>
+                  <TableHead className="text-[#9CA3AF] text-right">Akcije</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reservations.map((res) => {
+                  const isBlacklisted = blacklist.includes(res.client_phone);
+                  return (
+                    <TableRow key={res.id} className="border-[#2A2A2D]" data-testid={`reservation-${res.id}`}>
+                      <TableCell>
+                        <div className="font-semibold text-[#C5A880]">
+                          {res.time} - {res.end_time}
+                        </div>
+                        <div className="text-xs text-[#9CA3AF]">{res.total_duration} min</div>
+                      </TableCell>
+                      <TableCell className="font-medium">{res.client_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {res.client_phone}
+                          {isBlacklisted && (
+                            <Ban className="w-3 h-3 text-red-400" title="Blokiran" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[150px] truncate" title={res.service_names.join(", ")}>
+                          {res.service_names.join(", ")}
+                        </div>
+                      </TableCell>
+                      <TableCell>{res.worker_name}</TableCell>
+                      <TableCell className="text-right font-semibold text-[#C5A880]">
+                        {res.total_price.toLocaleString()} RSD
+                      </TableCell>
+                      <TableCell>
+                        {res.advance_required && !res.advance_released ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleReleaseAdvance(res.id)}
+                            className="bg-green-600/20 text-green-400 hover:bg-green-600/30 h-8 text-xs"
+                            data-testid={`release-advance-${res.id}`}
+                          >
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            Oslobodi
+                          </Button>
+                        ) : res.advance_released ? (
+                          <span className="px-2 py-1 rounded-full text-xs bg-green-600/20 text-green-400">
+                            <Check className="w-3 h-3 inline mr-1" />
+                            OK
+                          </span>
+                        ) : (
+                          <span className="text-[#9CA3AF] text-xs">-</span>
                         )}
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <Scissors className="w-4 h-4 text-[#9CA3AF]" />
-                        {res.service_names.join(", ")}
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-[#9CA3AF]" />
-                        {res.worker_name}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg font-semibold text-[#C5A880]">
-                      {res.total_price.toLocaleString()} RSD
-                    </span>
-
-                    {res.advance_required && !res.advance_released ? (
-                      <Button
-                        size="sm"
-                        onClick={() => handleReleaseAdvance(res.id)}
-                        className="bg-green-600/20 text-green-400 hover:bg-green-600/30"
-                        data-testid={`release-advance-${res.id}`}
-                      >
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        Oslobodi Avans
-                      </Button>
-                    ) : res.advance_released ? (
-                      <span className="px-3 py-1 rounded-full text-xs bg-green-600/20 text-green-400">
-                        <Check className="w-3 h-3 inline mr-1" />
-                        Avans oslobođen
-                      </span>
-                    ) : null}
-
-                    {!isBlacklisted ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleBlacklist(res.client_phone)}
-                        className="border-red-400/30 text-red-400 hover:bg-red-400/10"
-                        data-testid={`blacklist-${res.id}`}
-                      >
-                        <Ban className="w-4 h-4 mr-1" />
-                        Blokiraj
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRemoveFromBlacklist(res.client_phone)}
-                        className="border-green-400/30 text-green-400 hover:bg-green-400/10"
-                        data-testid={`unblock-${res.id}`}
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Odblokiraj
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCancel(res.id)}
-                      className="border-[#2A2A2D] text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400"
-                      data-testid={`cancel-${res.id}`}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Otkaži
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {!isBlacklisted ? (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleBlacklist(res.client_phone)}
+                              className="h-8 w-8 text-red-400 hover:bg-red-400/10"
+                              title="Blokiraj broj"
+                              data-testid={`blacklist-${res.id}`}
+                            >
+                              <Ban className="w-4 h-4" />
+                            </Button>
+                          ) : (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveFromBlacklist(res.client_phone)}
+                              className="h-8 w-8 text-green-400 hover:bg-green-400/10"
+                              title="Odblokiraj broj"
+                              data-testid={`unblock-${res.id}`}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleCancel(res.id)}
+                            className="h-8 w-8 text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400"
+                            title="Otkaži rezervaciju"
+                            data-testid={`cancel-${res.id}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>
@@ -1056,6 +1071,147 @@ const SettingsPage = () => {
           {saving ? "Čuvanje..." : "Sačuvaj Podešavanja"}
         </Button>
       </div>
+    </div>
+  );
+};
+
+// Blacklist Page
+const BlacklistPage = () => {
+  const [blacklist, setBlacklist] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newPhone, setNewPhone] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  const token = localStorage.getItem("access_token");
+  const headers = { Authorization: `Bearer ${token}` };
+
+  useEffect(() => {
+    fetchBlacklist();
+  }, []);
+
+  const fetchBlacklist = async () => {
+    try {
+      const response = await axios.get(`${API}/blacklist`, { headers });
+      setBlacklist(response.data);
+    } catch (error) {
+      toast.error("Greška pri učitavanju crne liste");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToBlacklist = async () => {
+    if (!newPhone.trim()) {
+      toast.error("Unesite broj telefona");
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      await axios.post(`${API}/blacklist?phone=${encodeURIComponent(newPhone)}`, {}, { headers });
+      toast.success("Broj dodat na crnu listu");
+      setNewPhone("");
+      fetchBlacklist();
+    } catch (error) {
+      toast.error("Greška pri dodavanju na crnu listu");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleRemoveFromBlacklist = async (phone) => {
+    try {
+      await axios.delete(`${API}/blacklist/${encodeURIComponent(phone)}`, { headers });
+      toast.success("Broj uklonjen sa crne liste");
+      fetchBlacklist();
+    } catch (error) {
+      toast.error("Greška pri uklanjanju sa crne liste");
+    }
+  };
+
+  return (
+    <div className="animate-fade-in">
+      <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-6">Crna Lista</h2>
+      
+      <p className="text-[#9CA3AF] mb-6">
+        Blokirani brojevi telefona ne mogu praviti nove rezervacije u salonu.
+      </p>
+
+      {/* Add new phone */}
+      <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-6 mb-6">
+        <h3 className="font-medium mb-4">Dodaj broj na crnu listu</h3>
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
+            <Input
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              placeholder="+381 6X XXX XXXX"
+              className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880]"
+              data-testid="blacklist-phone-input"
+              onKeyDown={(e) => e.key === "Enter" && handleAddToBlacklist()}
+            />
+          </div>
+          <Button
+            onClick={handleAddToBlacklist}
+            disabled={isAdding}
+            className="bg-red-500 hover:bg-red-600 text-white"
+            data-testid="add-to-blacklist-btn"
+          >
+            <Ban className="w-4 h-4 mr-2" />
+            Blokiraj
+          </Button>
+        </div>
+      </div>
+
+      {/* Blacklist table */}
+      {loading ? (
+        <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div>
+      ) : blacklist.length === 0 ? (
+        <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]">
+          <Shield className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" />
+          <p className="text-[#9CA3AF]">Nema blokiranih brojeva</p>
+        </div>
+      ) : (
+        <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-[#2A2A2D] hover:bg-transparent">
+                <TableHead className="text-[#9CA3AF]">Broj telefona</TableHead>
+                <TableHead className="text-[#9CA3AF]">Datum blokiranja</TableHead>
+                <TableHead className="text-[#9CA3AF] text-right">Akcija</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {blacklist.map((item, index) => (
+                <TableRow key={index} className="border-[#2A2A2D]" data-testid={`blacklist-row-${index}`}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Ban className="w-4 h-4 text-red-400" />
+                      {item.phone}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-[#9CA3AF]">
+                    {item.created_at ? format(new Date(item.created_at), "d. MMM yyyy HH:mm", { locale: sr }) : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRemoveFromBlacklist(item.phone)}
+                      className="border-green-400/30 text-green-400 hover:bg-green-400/10"
+                      data-testid={`unblock-${index}`}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Odblokiraj
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };

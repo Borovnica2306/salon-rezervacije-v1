@@ -681,6 +681,81 @@ async def remove_from_blacklist(phone: str, user: dict = Depends(get_current_use
     await db.blacklisted_phones.delete_one({"phone": phone})
     return {"message": "Phone removed from blacklist"}
 
+# ================== CLIENT RESERVATIONS (by phone) ==================
+
+class ClientReservationsRequest(BaseModel):
+    phone: str
+
+@api_router.post("/my-reservations")
+async def get_client_reservations(request: ClientReservationsRequest):
+    """Get all future reservations for a phone number"""
+    phone = normalize_phone(request.phone.strip())
+    
+    # Get current date
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Find all future reservations for this phone
+    reservations = await db.reservations.find({
+        "client_phone": phone,
+        "date": {"$gte": today},
+        "status": {"$ne": "cancelled"}
+    }).sort([("date", 1), ("time", 1)]).to_list(100)
+    
+    result = []
+    for r in reservations:
+        result.append({
+            "id": str(r["_id"]),
+            "services": r.get("service_names", []),
+            "worker_name": r.get("worker_name", ""),
+            "date": r["date"],
+            "time": r["time"],
+            "end_time": r.get("end_time", ""),
+            "total_duration": r.get("total_duration", 0),
+            "total_price": r.get("total_price", 0),
+            "status": r["status"],
+            "can_cancel": can_client_cancel(r["date"], r["time"])
+        })
+    
+    return result
+
+def can_client_cancel(date_str: str, time_str: str) -> bool:
+    """Check if client can cancel (at least 24h before appointment)"""
+    try:
+        appointment_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        appointment_dt = appointment_dt.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        hours_until = (appointment_dt - now).total_seconds() / 3600
+        return hours_until >= 24
+    except:
+        return False
+
+@api_router.put("/my-reservations/{reservation_id}/cancel")
+async def client_cancel_reservation(reservation_id: str, request: ClientReservationsRequest):
+    """Client cancels their own reservation (must be 24h+ before)"""
+    phone = normalize_phone(request.phone.strip())
+    
+    # Find reservation
+    reservation = await db.reservations.find_one({
+        "_id": ObjectId(reservation_id),
+        "client_phone": phone,
+        "status": {"$ne": "cancelled"}
+    })
+    
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Rezervacija nije pronađena ili ne pripada ovom broju telefona.")
+    
+    # Check if can cancel (24h rule)
+    if not can_client_cancel(reservation["date"], reservation["time"]):
+        raise HTTPException(status_code=400, detail="Otkazivanje nije moguće manje od 24h pre termina.")
+    
+    # Cancel reservation
+    await db.reservations.update_one(
+        {"_id": ObjectId(reservation_id)},
+        {"$set": {"status": "cancelled", "cancelled_by": "client", "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Rezervacija je uspešno otkazana."}
+
 # ================== SETTINGS ENDPOINTS ==================
 
 @api_router.get("/settings", response_model=SettingsResponse)

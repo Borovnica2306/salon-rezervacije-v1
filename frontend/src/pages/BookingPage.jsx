@@ -2,11 +2,18 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
 import { sr } from "date-fns/locale";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../components/ui/dialog";
 
 const BookingPage = () => {
   const [step, setStep] = useState(1);
@@ -16,7 +23,7 @@ const BookingPage = () => {
   
   // Booking state
   const [selectedServices, setSelectedServices] = useState([]);
-  const [selectedWorker, setSelectedWorker] = useState(null); // null = "Anyone"
+  const [selectedWorker, setSelectedWorker] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [availableSlots, setAvailableSlots] = useState({ slots: [], workers: {} });
@@ -25,6 +32,13 @@ const BookingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
+
+  // My Reservations state
+  const [showMyReservations, setShowMyReservations] = useState(false);
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [myReservations, setMyReservations] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Calculate totals
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
@@ -83,7 +97,6 @@ const BookingPage = () => {
   };
 
   const handleWorkerSelect = (worker) => {
-    // Direct selection - clicking on a worker selects them, clicking "Anyone" sets null
     setSelectedWorker(worker);
     setSelectedTime(null);
   };
@@ -126,6 +139,48 @@ const BookingPage = () => {
     setClientPhone("");
     setBookingComplete(false);
     setBookingDetails(null);
+  };
+
+  // My Reservations functions
+  const searchMyReservations = async () => {
+    if (!lookupPhone.trim()) {
+      toast.error("Unesite broj telefona");
+      return;
+    }
+
+    setIsSearching(true);
+    setHasSearched(true);
+    try {
+      const response = await axios.post(`${API}/my-reservations`, {
+        phone: lookupPhone,
+      });
+      setMyReservations(response.data);
+    } catch (error) {
+      toast.error("Greška pri pretraživanju");
+      setMyReservations([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const cancelMyReservation = async (reservationId) => {
+    try {
+      await axios.put(`${API}/my-reservations/${reservationId}/cancel`, {
+        phone: lookupPhone,
+      });
+      toast.success("Rezervacija je uspešno otkazana");
+      searchMyReservations();
+    } catch (error) {
+      const message = error.response?.data?.detail || "Greška pri otkazivanju";
+      toast.error(message);
+    }
+  };
+
+  const closeMyReservations = () => {
+    setShowMyReservations(false);
+    setLookupPhone("");
+    setMyReservations([]);
+    setHasSearched(false);
   };
 
   // Generate next 14 days
@@ -216,15 +271,111 @@ const BookingPage = () => {
           <h1 className="font-['Cormorant_Garamond'] text-2xl font-light tracking-tight">
             {settings?.salon_name || "Beauty Salon"}
           </h1>
-          <a 
-            href="/admin/login" 
-            className="text-[#9CA3AF] text-sm hover:text-[#C5A880] transition-colors"
-            data-testid="admin-link"
+          <button
+            onClick={() => setShowMyReservations(true)}
+            className="text-[#9CA3AF] text-sm hover:text-[#C5A880] transition-colors flex items-center gap-1"
+            data-testid="my-reservations-btn"
           >
-            Admin
-          </a>
+            <Calendar className="w-4 h-4" />
+            Moje rezervacije
+          </button>
         </div>
       </header>
+
+      {/* My Reservations Dialog */}
+      <Dialog open={showMyReservations} onOpenChange={closeMyReservations}>
+        <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">Moje Rezervacije</DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Unesite vaš broj telefona da pronađete vaše rezervacije
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+                <Input
+                  value={lookupPhone}
+                  onChange={(e) => setLookupPhone(e.target.value)}
+                  placeholder="+381 6X XXX XXXX"
+                  className="pl-10 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880]"
+                  data-testid="lookup-phone-input"
+                  onKeyDown={(e) => e.key === "Enter" && searchMyReservations()}
+                />
+              </div>
+              <Button
+                onClick={searchMyReservations}
+                disabled={isSearching}
+                className="bg-[#C5A880] hover:bg-[#B89970] text-black"
+                data-testid="search-reservations-btn"
+              >
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {isSearching && (
+              <div className="text-center py-8 text-[#9CA3AF]">
+                Pretraživanje...
+              </div>
+            )}
+
+            {!isSearching && hasSearched && myReservations.length === 0 && (
+              <div className="text-center py-8 text-[#9CA3AF]">
+                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Nema pronađenih rezervacija za ovaj broj</p>
+              </div>
+            )}
+
+            {!isSearching && myReservations.length > 0 && (
+              <div className="space-y-3">
+                {myReservations.map((res) => (
+                  <div
+                    key={res.id}
+                    className="bg-[#0A0A0B] rounded-xl border border-[#2A2A2D] p-4"
+                    data-testid={`my-reservation-${res.id}`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-[#C5A880] font-medium">
+                          {res.date} u {res.time}
+                        </p>
+                        <p className="text-sm text-[#9CA3AF]">
+                          {res.services.join(", ")}
+                        </p>
+                        <p className="text-sm text-[#9CA3AF]">
+                          Radnik: {res.worker_name}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-[#C5A880]">
+                        {res.total_price.toLocaleString()} RSD
+                      </span>
+                    </div>
+                    
+                    {res.can_cancel ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => cancelMyReservation(res.id)}
+                        className="w-full border-red-400/30 text-red-400 hover:bg-red-400/10"
+                        data-testid={`cancel-my-reservation-${res.id}`}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Otkaži rezervaciju
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-[#9CA3AF] text-center">
+                        Otkazivanje nije moguće manje od 24h pre termina
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Progress Steps */}
       <div className="max-w-lg mx-auto px-4 py-6">
@@ -342,7 +493,6 @@ const BookingPage = () => {
               </button>
 
               {workers.map((worker) => {
-                // Check if worker can do all selected services
                 const canDoAllServices = selectedServices.every(s =>
                   worker.services.includes(s.id)
                 );
@@ -585,8 +735,17 @@ const BookingPage = () => {
         </div>
       </div>
 
-      {/* Spacer for bottom bar */}
-      <div className="h-32" />
+      {/* Footer with admin link */}
+      <div className="h-40" /> {/* Spacer for bottom bar */}
+      <footer className="fixed bottom-20 left-0 right-0 text-center pb-2">
+        <a 
+          href="/admin" 
+          className="text-[#2A2A2D] text-xs hover:text-[#9CA3AF] transition-colors"
+          data-testid="admin-link-footer"
+        >
+          ·
+        </a>
+      </footer>
     </div>
   );
 };
