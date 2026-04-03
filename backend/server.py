@@ -486,13 +486,20 @@ async def get_available_slots(services: List[str], worker_id: Optional[str], dat
 async def get_slots(request: AvailableSlotsRequest):
     return await get_available_slots(request.services, request.worker_id, request.date)
 
+def normalize_phone(phone: str) -> str:
+    """Normalize phone number by removing all non-digit characters"""
+    # Remove all non-digit characters
+    normalized = ''.join(c for c in phone if c.isdigit())
+    return normalized
+
 @api_router.post("/reservations", response_model=ReservationResponse)
 async def create_reservation(reservation: ReservationCreate):
-    phone = reservation.client_phone.strip()
+    phone = normalize_phone(reservation.client_phone.strip())
     
     # Check if phone is blacklisted
     blacklisted = await db.blacklisted_phones.find_one({"phone": phone})
     if blacklisted:
+        logger.info(f"Blocked phone attempted to book: {phone}")
         raise HTTPException(status_code=403, detail="Ovaj broj telefona je blokiran za rezervacije.")
     
     # Check daily limit (max 3 per phone per day)
@@ -501,6 +508,7 @@ async def create_reservation(reservation: ReservationCreate):
         "date": reservation.date,
         "status": {"$ne": "cancelled"}
     })
+    logger.info(f"Phone {phone} has {today_count} reservations for date {reservation.date}")
     if today_count >= 3:
         raise HTTPException(status_code=400, detail="Maksimalno 3 rezervacije dnevno po broju telefona.")
     
@@ -646,7 +654,7 @@ async def add_to_blacklist(phone: str, user: dict = Depends(get_current_user)):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    phone = phone.strip()
+    phone = normalize_phone(phone.strip())
     existing = await db.blacklisted_phones.find_one({"phone": phone})
     if existing:
         return {"message": "Phone already blacklisted"}
@@ -655,12 +663,15 @@ async def add_to_blacklist(phone: str, user: dict = Depends(get_current_user)):
         "phone": phone,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
+    logger.info(f"Phone added to blacklist: {phone}")
     return {"message": "Phone added to blacklist"}
 
 @api_router.delete("/blacklist/{phone}")
 async def remove_from_blacklist(phone: str, user: dict = Depends(get_current_user)):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
+    
+    phone = normalize_phone(phone)
     
     await db.blacklisted_phones.delete_one({"phone": phone})
     return {"message": "Phone removed from blacklist"}
