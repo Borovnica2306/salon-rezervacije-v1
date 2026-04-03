@@ -83,7 +83,8 @@ const BookingPage = () => {
   };
 
   const handleWorkerSelect = (worker) => {
-    setSelectedWorker(prev => prev?.id === worker?.id ? null : worker);
+    // Direct selection - clicking on a worker selects them, clicking "Anyone" sets null
+    setSelectedWorker(worker);
     setSelectedTime(null);
   };
 
