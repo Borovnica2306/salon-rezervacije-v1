@@ -13,6 +13,10 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 1. **Klijent** - Želi brzo da zakaže termin bez registracije
 2. **Vlasnik/Admin** - Upravlja salonom, radnicima, uslugama i rezervacijama
 
+## Admin Kredencijali
+- **Email:** admin@salon.com
+- **Password:** Admin123!
+
 ## Core Requirements
 - [x] Multi-step booking wizard (4 koraka)
 - [x] Izbor usluga sa automatskim sabiranjem trajanja
@@ -22,11 +26,13 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - [x] Admin JWT autentifikacija
 - [x] CRUD za usluge (naziv, kategorija, trajanje, cena)
 - [x] CRUD za radnike (ime, radno vreme, pauze, slobodni dani)
-- [x] Pregled rezervacija po datumu
+- [x] Pregled rezervacija po datumu (tabela)
 - [x] Oslobađanje avansa
-- [x] Blacklist telefona
+- [x] Blacklist telefona (zasebna stranica)
 - [x] Limit 3 rezervacije dnevno po telefonu
 - [x] Podešavanja salona (ime, radno vreme)
+- [x] "Moje rezervacije" za klijente (pretraga po telefonu)
+- [x] Klijent može sam otkazati termin (24h+ ranije)
 - [x] Automatsko seeding početnih podataka
 
 ## What's Been Implemented (April 3, 2026)
@@ -42,7 +48,8 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - Available slots calculation sa kontinuiranim blokom trajanja
 - Blacklist management (`/api/blacklist`)
 - Settings (`/api/settings`)
-- Phone normalization za konzistentno poređenje
+- **NEW:** Client reservations (`/api/my-reservations`)
+- **NEW:** Client cancellation with 24h rule
 
 ### Seeded Data
 **Usluge:**
@@ -59,19 +66,15 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - Tamna elegantna tema (Cormorant Garamond + Outfit fonts)
 - Mobile-first responsive dizajn
 - 4-step booking wizard
+- **NEW:** "Moje rezervacije" modal za klijente
+- **NEW:** Admin link uklonjen iz headera (diskretni footer link)
 - Admin login stranica
-- Admin dashboard sa navigacijom
-
-## BugFix Log (April 3, 2026)
-- Ispravljeni duplikati usluga i radnika
-- Popravljena logika kalendara za slobodne termine
-- Selekcija radnika sada direktno selektuje (bez toggle)
-- Dodato auto-seeding početnih podataka
-- Phone normalization za blacklist i limite
-
-## Admin Credentials
-- Email: admin@salon.com
-- Password: Admin123!
+- Admin dashboard sa navigacijom:
+  - Rezervacije (TABELA sa kolonama)
+  - **NEW:** Crna Lista (zasebna stranica)
+  - Radnici (CRUD)
+  - Usluge (CRUD)
+  - Podešavanja
 
 ## API Endpoints
 - `POST /api/auth/login` - Admin login
@@ -83,6 +86,8 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - `GET /api/reservations` - List reservations (admin)
 - `POST /api/reservations/available-slots` - Get available slots
 - `PUT /api/reservations/{id}/release-advance` - Release advance
-- `PUT /api/reservations/{id}/cancel` - Cancel reservation
+- `PUT /api/reservations/{id}/cancel` - Cancel reservation (admin)
 - `GET/POST/DELETE /api/blacklist` - Blacklist management
 - `GET/PUT /api/settings` - Salon settings
+- **NEW:** `POST /api/my-reservations` - Client's reservations by phone
+- **NEW:** `PUT /api/my-reservations/{id}/cancel` - Client cancels (24h rule)
