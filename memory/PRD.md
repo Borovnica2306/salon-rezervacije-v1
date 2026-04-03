@@ -27,56 +27,47 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - [x] Blacklist telefona
 - [x] Limit 3 rezervacije dnevno po telefonu
 - [x] Podešavanja salona (ime, radno vreme)
+- [x] Automatsko seeding početnih podataka
 
 ## What's Been Implemented (April 3, 2026)
 
 ### Backend (FastAPI + MongoDB)
 - JWT autentifikacija sa httpOnly cookies
 - Admin seeding na startup
+- Auto-seeding 5 usluga i 1 radnika (Ana)
+- Duplikat detekcija i čišćenje
 - Services CRUD (`/api/services`)
 - Workers CRUD (`/api/workers`)
 - Reservations (`/api/reservations`)
-- Available slots calculation (`/api/reservations/available-slots`)
+- Available slots calculation sa kontinuiranim blokom trajanja
 - Blacklist management (`/api/blacklist`)
 - Settings (`/api/settings`)
 - Phone normalization za konzistentno poređenje
+
+### Seeded Data
+**Usluge:**
+1. Šišanje - 30 min - 2,000 RSD (hair)
+2. Farbanje kose - 90 min - 5,000 RSD (hair)
+3. Manikir - 45 min - 2,500 RSD (nails)
+4. Pedikir - 60 min - 3,000 RSD (nails)
+5. Relax masaža - 60 min - 4,000 RSD (massage)
+
+**Radnik:**
+- Ana - 09:00-21:00, pauza 13:00-14:00, slobodna nedelja
 
 ### Frontend (React + Tailwind + Shadcn)
 - Tamna elegantna tema (Cormorant Garamond + Outfit fonts)
 - Mobile-first responsive dizajn
 - 4-step booking wizard
 - Admin login stranica
-- Admin dashboard sa navigacijom:
-  - Rezervacije (timeline po datumu)
-  - Radnici (CRUD)
-  - Usluge (CRUD)
-  - Podešavanja
+- Admin dashboard sa navigacijom
 
-## Prioritized Backlog
-
-### P0 (Critical) - DONE
-- [x] Booking flow
-- [x] Admin auth
-- [x] Services/Workers CRUD
-- [x] Blacklist
-- [x] Daily limit
-
-### P1 (High)
-- [ ] SMS/Email notifikacije
-- [ ] Automatski podsjetnik 24h prije termina
-- [ ] Detaljniji pregled statistike
-
-### P2 (Nice to Have)
-- [ ] Multiple admin accounts
-- [ ] Worker self-service portal
-- [ ] Customer history po telefonu
-- [ ] Export rezervacija (CSV)
-- [ ] Online payment integration (Stripe)
-
-## Tech Stack
-- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Sonner (toasts)
-- **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt
-- **Database**: MongoDB
+## BugFix Log (April 3, 2026)
+- Ispravljeni duplikati usluga i radnika
+- Popravljena logika kalendara za slobodne termine
+- Selekcija radnika sada direktno selektuje (bez toggle)
+- Dodato auto-seeding početnih podataka
+- Phone normalization za blacklist i limite
 
 ## Admin Credentials
 - Email: admin@salon.com
