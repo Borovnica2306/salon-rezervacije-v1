@@ -1,0 +1,77 @@
+{
+  "theme": "dark",
+  "archetype": "5 (Jewel & Luxury)",
+  "emotional_tone": "Elegant, Premium, Trustworthy, Exclusive",
+  "colors": {
+    "background": "#0A0A0B",
+    "foreground": "#FFFFFF",
+    "primary": "#C5A880",
+    "primary_foreground": "#000000",
+    "surface": "#141416",
+    "surface_hover": "#1C1C1F",
+    "border": "#2A2A2D",
+    "muted_text": "#9CA3AF",
+    "success": "#34D399",
+    "danger": "#F87171"
+  },
+  "typography": {
+    "headings": {
+      "family": "Cormorant Garamond, serif",
+      "weight": "300, 400, 600",
+      "style": "tracking-tight"
+    },
+    "body": {
+      "family": "Outfit, sans-serif",
+      "weight": "300, 400, 500"
+    },
+    "overlines": {
+      "style": "uppercase tracking-[0.2em] text-xs font-semibold text-[#C5A880]"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing, Mobile-First",
+    "containers": "p-6 or p-8 internal padding for cards",
+    "borders": "1px solid #2A2A2D for cards and inputs, no heavy drop shadows",
+    "radii": "rounded-lg (8px) or rounded-2xl (16px) maximum for subtle softness, avoiding pill shapes",
+    "client_app_layout": "Vertical scroll, stacked cards, sticky bottom bar for booking summary (price/duration sum).",
+    "admin_layout": "Bento grid for dashboard overview, compact tables for lists."
+  },
+  "components": {
+    "buttons": "Flat design, primary color #C5A880 with black text. Hover state slightly lighter. Use Framer Motion for tap scale (0.98).",
+    "inputs": "Shadcn input customized: bg-[#141416], border-[#2A2A2D], focus:ring-[#C5A880], text-white.",
+    "cards": "Cardless or 1px border. bg-[#141416]. Hover: border-[#C5A880]/50 transition-colors.",
+    "bottom_sheet": "For mobile confirmation/summary, use a drawer/bottom sheet with glassmorphism backdrop-blur-xl bg-black/60 border-t border-white/10.",
+    "calendar": "Custom horizontal scroll for dates on mobile, bento grid of time slots."
+  },
+  "motion_and_interactions": {
+    "page_transitions": "Fade in and slight slide up (y: 10 -> 0) using Framer Motion.",
+    "list_stagger": "Stagger children for service list appearance.",
+    "active_state": "Selected services/slots get a soft #C5A880 glow or 1px solid #C5A880 border with subtle bg tint."
+  },
+  "assets": {
+    "icons": "@phosphor-icons/react (Thin or Light weight for elegant feel)",
+    "images": {
+      "hero_background": "https://images.pexels.com/photos/13068357/pexels-photo-13068357.jpeg",
+      "category_hair": "https://images.pexels.com/photos/973403/pexels-photo-973403.jpeg",
+      "category_massage": "https://images.pexels.com/photos/6187839/pexels-photo-6187839.jpeg",
+      "category_nails": "https://images.unsplash.com/photo-1658492055212-e1acbccfca5a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwzfHxuYWlsJTIwc2Fsb24lMjBlbGVnYW50JTIwZGFya3xlbnwwfHx8fDE3NzUyMDc3ODR8MA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "technical_requirements": {
+    "testing": "All interactive elements MUST have data-testid attributes (kebab-case, role-based).",
+    "state_management": "Client app must track selected_services, total_duration, total_price, selected_worker ('anyone' by default), selected_datetime.",
+    "admin_features": "Timeline view, Employee CRUD (hours, breaks), Service CRUD, Advance Payment toggle per booking, Phone Blacklist button."
+  },
+  "instructions_to_main_agent": [
+    "Initialize Tailwind config with the provided color palette, matching Shadcn UI structure.",
+    "Implement the font links for Cormorant Garamond and Outfit in index.html/layout.",
+    "Build a mobile-first wizard for the client booking flow. Step 1: Services (sum duration), Step 2: Worker (or Anyone), Step 3: Date/Time (based on duration), Step 4: Details (Name/Phone) & Confirm.",
+    "Implement the Admin Dashboard using a Bento Grid approach for today's timeline.",
+    "Ensure 'Advance payment' feature is a boolean flag on the reservation model, toggleable by admin.",
+    "Implement 'Blacklist' by adding a 'blacklisted_phones' table/collection, checked during booking creation.",
+    "Implement daily limit: Count reservations by phone number for the given date, reject if >= 3.",
+    "Use Phosphor icons with `weight=\"light\"` for an elegant look.",
+    "DO NOT use Inter font. Use Outfit for sans-serif.",
+    "Apply data-testid to all buttons, list items, inputs, and form submissions."
+  ]
+}
