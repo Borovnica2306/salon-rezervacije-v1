@@ -267,20 +267,30 @@ const BookingPage = () => {
     <div className="min-h-screen bg-[#0A0A0B]">
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-[#2A2A2D]">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="font-['Cormorant_Garamond'] text-2xl font-light tracking-tight">
-            {settings?.salon_name || "Beauty Salon"}
-          </h1>
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+          <span className="text-[#9CA3AF] text-xs">Beauty Studio Bor</span>
           <button
             onClick={() => setShowMyReservations(true)}
-            className="text-[#9CA3AF] text-sm hover:text-[#C5A880] transition-colors flex items-center gap-1"
+            className="text-[#9CA3AF] text-xs hover:text-[#C5A880] transition-colors flex items-center gap-1"
             data-testid="my-reservations-btn"
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3 h-3" />
             Moje rezervacije
           </button>
         </div>
       </header>
+
+      {/* Hero Section - only on step 1 */}
+      {step === 1 && (
+        <div className="max-w-lg mx-auto px-4 pt-8 pb-4 text-center animate-fade-in">
+          <h1 className="font-['Cormorant_Garamond'] text-4xl sm:text-5xl font-light tracking-tight mb-3">
+            Beauty Studio Bor
+          </h1>
+          <p className="text-[#9CA3AF] text-base">
+            Izaberite usluge za početak
+          </p>
+        </div>
+      )}
 
       {/* My Reservations Dialog */}
       <Dialog open={showMyReservations} onOpenChange={closeMyReservations}>
@@ -378,8 +388,8 @@ const BookingPage = () => {
       </Dialog>
 
       {/* Progress Steps */}
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="flex items-center justify-between mb-6">
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex items-center">
               <div
@@ -405,11 +415,6 @@ const BookingPage = () => {
         {/* Step 1: Services */}
         {step === 1 && (
           <div className="animate-fade-in">
-            <div className="mb-6">
-              <p className="overline mb-2">Korak 1</p>
-              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Usluge</h2>
-            </div>
-
             <div className="space-y-6 stagger-children">
               {Object.entries(servicesByCategory).map(([category, categoryServices]) => (
                 <div key={category}>
@@ -732,20 +737,22 @@ const BookingPage = () => {
               </Button>
             )}
           </div>
+          
+          {/* Footer inside bottom bar */}
+          <div className="text-center pt-3 border-t border-[#2A2A2D] mt-3">
+            <a 
+              href="/admin" 
+              className="text-[#3A3A3D] text-xs hover:text-[#9CA3AF] transition-colors"
+              data-testid="admin-link-footer"
+            >
+              Admin Login
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Footer with admin link */}
-      <div className="h-40" /> {/* Spacer for bottom bar */}
-      <footer className="fixed bottom-20 left-0 right-0 text-center pb-2">
-        <a 
-          href="/admin" 
-          className="text-[#2A2A2D] text-xs hover:text-[#9CA3AF] transition-colors"
-          data-testid="admin-link-footer"
-        >
-          ·
-        </a>
-      </footer>
+      {/* Spacer for bottom bar */}
+      <div className="h-44" />
     </div>
   );
 };

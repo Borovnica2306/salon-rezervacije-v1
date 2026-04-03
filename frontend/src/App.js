@@ -1,15 +1,25 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, lazy, Suspense } from "react";
 import axios from "axios";
 
-// Pages
-import BookingPage from "./pages/BookingPage";
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
+// Lazy load pages for faster initial load
+const BookingPage = lazy(() => import("./pages/BookingPage"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
+
+// Loading component
+const PageLoader = () => (
+  <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-8 h-8 border-2 border-[#C5A880] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <p className="text-[#9CA3AF] text-sm">Učitavanje...</p>
+    </div>
+  </div>
+);
 
 // Auth Context
 const AuthContext = createContext(null);
@@ -106,18 +116,20 @@ function App() {
           }}
         />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<BookingPage />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<BookingPage />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route
+                path="/admin/*"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </div>
     </AuthProvider>
