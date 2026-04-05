@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -14,6 +14,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 const PHONE_PREFIX = "+381";
 
@@ -25,10 +32,11 @@ const BookingPage = () => {
   
   // Booking state
   const [selectedServices, setSelectedServices] = useState([]);
-  const [selectedWorker, setSelectedWorker] = useState(null);
+  // Map of serviceId -> workerId
+  const [serviceWorkerMap, setServiceWorkerMap] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
-  const [availableSlots, setAvailableSlots] = useState({ slots: [], workers: {} });
+  const [availableSlots, setAvailableSlots] = useState([]);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState(PHONE_PREFIX);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,18 +50,11 @@ const BookingPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Phone input handler - ensures +381 prefix and only digits
+  // Phone input handler
   const handlePhoneChange = (value, setter) => {
-    // Remove all non-digit characters except +
     let cleaned = value.replace(/[^\d+]/g, '');
-    
-    // Ensure it starts with +381
     if (!cleaned.startsWith('+381')) {
-      // If user typed something that doesn't start with +381
-      // Extract only digits after any prefix
       const digitsOnly = cleaned.replace(/\D/g, '');
-      
-      // Remove leading 0 if present (normalize 064 -> 64)
       let normalizedDigits = digitsOnly;
       if (normalizedDigits.startsWith('381')) {
         normalizedDigits = normalizedDigits.substring(3);
@@ -61,42 +62,46 @@ const BookingPage = () => {
       if (normalizedDigits.startsWith('0')) {
         normalizedDigits = normalizedDigits.substring(1);
       }
-      
       cleaned = PHONE_PREFIX + normalizedDigits;
     } else {
-      // Already has +381, just ensure digits after
       const afterPrefix = cleaned.substring(4).replace(/\D/g, '');
-      // Remove leading 0 if someone pastes +38106...
       const normalizedAfter = afterPrefix.startsWith('0') ? afterPrefix.substring(1) : afterPrefix;
       cleaned = PHONE_PREFIX + normalizedAfter;
     }
-    
-    // Limit total length (E.164 max is 15 digits, +381 + 9 digits = 13 chars)
     if (cleaned.length > 13) {
       cleaned = cleaned.substring(0, 13);
     }
-    
     setter(cleaned);
   };
 
-  // Get clean E.164 format for backend
-  const getE164Phone = (phone) => {
-    return phone; // Already in E.164 format
-  };
+  const getE164Phone = (phone) => phone;
 
   // Calculate totals
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
+
+  // Check if all services have workers assigned
+  const allServicesHaveWorkers = useMemo(() => {
+    return selectedServices.length > 0 && 
+           selectedServices.every(s => serviceWorkerMap[s.id]);
+  }, [selectedServices, serviceWorkerMap]);
+
+  // Get workers who can perform a specific service
+  const getWorkersForService = (serviceId) => {
+    return workers.filter(w => w.services.includes(serviceId));
+  };
 
   useEffect(() => {
     fetchData();
   }, []);
 
   useEffect(() => {
-    if (selectedServices.length > 0 && selectedDate) {
+    if (allServicesHaveWorkers && selectedDate) {
       fetchAvailableSlots();
+    } else {
+      setAvailableSlots([]);
     }
-  }, [selectedServices, selectedWorker, selectedDate]);
+  }, [serviceWorkerMap, selectedDate, allServicesHaveWorkers]);
 
   const fetchData = async () => {
     try {
@@ -114,18 +119,22 @@ const BookingPage = () => {
   };
 
   const fetchAvailableSlots = async () => {
-    if (!selectedDate || selectedServices.length === 0) return;
+    if (!selectedDate || !allServicesHaveWorkers) return;
     
     try {
+      const pairs = selectedServices.map(s => ({
+        service_id: s.id,
+        worker_id: serviceWorkerMap[s.id]
+      }));
+      
       const response = await axios.post(`${API}/reservations/available-slots`, {
-        services: selectedServices.map(s => s.id),
-        worker_id: selectedWorker?.id || null,
+        service_worker_pairs: pairs,
         date: format(selectedDate, "yyyy-MM-dd"),
       });
-      setAvailableSlots(response.data);
+      setAvailableSlots(response.data.slots || []);
     } catch (error) {
       console.error("Error fetching slots:", error);
-      setAvailableSlots({ slots: [], workers: {} });
+      setAvailableSlots([]);
     }
   };
 
@@ -133,6 +142,12 @@ const BookingPage = () => {
     setSelectedServices(prev => {
       const exists = prev.find(s => s.id === service.id);
       if (exists) {
+        // Remove service and its worker assignment
+        setServiceWorkerMap(map => {
+          const newMap = { ...map };
+          delete newMap[service.id];
+          return newMap;
+        });
         return prev.filter(s => s.id !== service.id);
       }
       return [...prev, service];
@@ -140,8 +155,11 @@ const BookingPage = () => {
     setSelectedTime(null);
   };
 
-  const handleWorkerSelect = (worker) => {
-    setSelectedWorker(worker);
+  const handleWorkerSelect = (serviceId, workerId) => {
+    setServiceWorkerMap(prev => ({
+      ...prev,
+      [serviceId]: workerId
+    }));
     setSelectedTime(null);
   };
 
@@ -153,9 +171,13 @@ const BookingPage = () => {
 
     setIsSubmitting(true);
     try {
+      const pairs = selectedServices.map(s => ({
+        service_id: s.id,
+        worker_id: serviceWorkerMap[s.id]
+      }));
+      
       const response = await axios.post(`${API}/reservations`, {
-        services: selectedServices.map(s => s.id),
-        worker_id: selectedWorker?.id || null,
+        service_worker_pairs: pairs,
         date: format(selectedDate, "yyyy-MM-dd"),
         time: selectedTime,
         client_name: clientName,
@@ -176,7 +198,7 @@ const BookingPage = () => {
   const resetBooking = () => {
     setStep(1);
     setSelectedServices([]);
-    setSelectedWorker(null);
+    setServiceWorkerMap({});
     setSelectedDate(null);
     setSelectedTime(null);
     setClientName("");
@@ -249,6 +271,12 @@ const BookingPage = () => {
     nails: "https://images.unsplash.com/photo-1658492055212-e1acbccfca5a?w=400",
   };
 
+  // Get worker names for summary
+  const getWorkerName = (workerId) => {
+    const worker = workers.find(w => w.id === workerId);
+    return worker?.name || "";
+  };
+
   if (bookingComplete && bookingDetails) {
     return (
       <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-4">
@@ -268,21 +296,27 @@ const BookingPage = () => {
               <span className="text-[#9CA3AF]">Vreme:</span>
               <span className="font-medium">{bookingDetails.time} - {bookingDetails.end_time}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[#9CA3AF]">Radnik:</span>
-              <span className="font-medium">{bookingDetails.worker_name}</span>
+            
+            {/* Show each service with its worker */}
+            <div className="border-t border-[#2A2A2D] pt-3">
+              <span className="text-[#9CA3AF] text-sm">Usluge i radnici:</span>
+              <div className="mt-2 space-y-2">
+                {bookingDetails.service_worker_pairs?.map((pair, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span>{pair.service_name}</span>
+                    <span className="text-[#C5A880]">{pair.worker_name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[#9CA3AF]">Usluge:</span>
-              <span className="font-medium text-right">{bookingDetails.service_names.join(", ")}</span>
-            </div>
+            
             <div className="flex justify-between">
               <span className="text-[#9CA3AF]">Trajanje:</span>
               <span className="font-medium">{bookingDetails.total_duration} min</span>
             </div>
             <div className="border-t border-[#2A2A2D] pt-4 flex justify-between">
               <span className="text-[#9CA3AF]">Ukupno:</span>
-              <span className="font-semibold text-[#C5A880] text-lg">{bookingDetails.total_price.toLocaleString()} RSD</span>
+              <span className="font-semibold text-[#C5A880] text-lg">{bookingDetails.total_price?.toLocaleString()} RSD</span>
             </div>
           </div>
 
@@ -396,14 +430,11 @@ const BookingPage = () => {
                           {res.date} u {res.time}
                         </p>
                         <p className="text-sm text-[#9CA3AF]">
-                          {res.services.join(", ")}
-                        </p>
-                        <p className="text-sm text-[#9CA3AF]">
-                          Radnik: {res.worker_name}
+                          {res.services?.join(", ")}
                         </p>
                       </div>
                       <span className="font-semibold text-[#C5A880]">
-                        {res.total_price.toLocaleString()} RSD
+                        {res.total_price?.toLocaleString()} RSD
                       </span>
                     </div>
                     
@@ -472,13 +503,17 @@ const BookingPage = () => {
                   <div className="space-y-2">
                     {categoryServices.map((service) => {
                       const isSelected = selectedServices.find(s => s.id === service.id);
+                      const availableWorkers = getWorkersForService(service.id);
                       return (
                         <button
                           key={service.id}
                           onClick={() => handleServiceToggle(service)}
+                          disabled={availableWorkers.length === 0}
                           className={`w-full p-4 rounded-xl border text-left transition-all ${
                             isSelected
                               ? "border-[#C5A880] bg-[#C5A880]/10"
+                              : availableWorkers.length === 0
+                              ? "border-[#2A2A2D] bg-[#141416] opacity-50 cursor-not-allowed"
                               : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
                           }`}
                           data-testid={`service-${service.id}`}
@@ -489,6 +524,9 @@ const BookingPage = () => {
                               <p className="text-sm text-[#9CA3AF] mt-1">
                                 <Clock className="w-3 h-3 inline mr-1" />
                                 {service.duration} min
+                                {availableWorkers.length === 0 && (
+                                  <span className="ml-2 text-red-400">• Nema radnika</span>
+                                )}
                               </p>
                             </div>
                             <div className="text-right">
@@ -508,76 +546,68 @@ const BookingPage = () => {
           </div>
         )}
 
-        {/* Step 2: Worker Selection */}
+        {/* Step 2: Worker Selection PER SERVICE */}
         {step === 2 && (
           <div className="animate-fade-in">
             <div className="mb-6">
               <p className="overline mb-2">Korak 2</p>
-              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Radnika</h2>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Radnike</h2>
+              <p className="text-[#9CA3AF] text-sm mt-2">Izaberite radnika za svaku uslugu</p>
             </div>
 
-            <div className="space-y-3 stagger-children">
-              {/* Anyone option */}
-              <button
-                onClick={() => handleWorkerSelect(null)}
-                className={`w-full p-4 rounded-xl border text-left transition-all ${
-                  selectedWorker === null
-                    ? "border-[#C5A880] bg-[#C5A880]/10"
-                    : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
-                }`}
-                data-testid="worker-anyone"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-[#2A2A2D] flex items-center justify-center">
-                    <User className="w-6 h-6 text-[#9CA3AF]" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Bilo Ko</p>
-                    <p className="text-sm text-[#9CA3AF]">Prvi slobodan radnik</p>
-                  </div>
-                  {selectedWorker === null && (
-                    <Check className="w-5 h-5 text-[#C5A880] ml-auto" />
-                  )}
-                </div>
-              </button>
-
-              {workers.map((worker) => {
-                const canDoAllServices = selectedServices.every(s =>
-                  worker.services.includes(s.id)
-                );
+            <div className="space-y-4 stagger-children">
+              {selectedServices.map((service) => {
+                const availableWorkers = getWorkersForService(service.id);
+                const selectedWorkerId = serviceWorkerMap[service.id];
                 
                 return (
-                  <button
-                    key={worker.id}
-                    onClick={() => canDoAllServices && handleWorkerSelect(worker)}
-                    disabled={!canDoAllServices}
-                    className={`w-full p-4 rounded-xl border text-left transition-all ${
-                      selectedWorker?.id === worker.id
-                        ? "border-[#C5A880] bg-[#C5A880]/10"
-                        : canDoAllServices
-                        ? "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
-                        : "border-[#2A2A2D] bg-[#141416] opacity-50 cursor-not-allowed"
-                    }`}
-                    data-testid={`worker-${worker.id}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#C5A880] to-[#8B7355] flex items-center justify-center text-black font-semibold">
-                        {worker.name.charAt(0)}
-                      </div>
+                  <div key={service.id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-medium">{worker.name}</p>
-                        <p className="text-sm text-[#9CA3AF]">
-                          {worker.work_start} - {worker.work_end}
+                        <p className="font-medium">{service.name}</p>
+                        <p className="text-xs text-[#9CA3AF]">
+                          {service.duration} min • {service.price.toLocaleString()} RSD
                         </p>
                       </div>
-                      {selectedWorker?.id === worker.id && (
-                        <Check className="w-5 h-5 text-[#C5A880] ml-auto" />
+                      {selectedWorkerId && (
+                        <Check className="w-5 h-5 text-[#C5A880]" />
                       )}
                     </div>
-                  </button>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableWorkers.map((worker) => (
+                        <button
+                          key={worker.id}
+                          onClick={() => handleWorkerSelect(service.id, worker.id)}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            selectedWorkerId === worker.id
+                              ? "border-[#C5A880] bg-[#C5A880]/10"
+                              : "border-[#2A2A2D] bg-[#0A0A0B] hover:border-[#C5A880]/50"
+                          }`}
+                          data-testid={`worker-${service.id}-${worker.id}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C5A880] to-[#8B7355] flex items-center justify-center text-black font-semibold text-sm">
+                              {worker.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">{worker.name}</p>
+                              <p className="text-xs text-[#9CA3AF]">{worker.work_start}-{worker.work_end}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
             </div>
+
+            {!allServicesHaveWorkers && (
+              <p className="text-center text-[#9CA3AF] text-sm mt-4">
+                Izaberite radnika za svaku uslugu da biste nastavili
+              </p>
+            )}
           </div>
         )}
 
@@ -626,9 +656,9 @@ const BookingPage = () => {
             {selectedDate && (
               <div className="animate-fade-in">
                 <p className="text-sm text-[#9CA3AF] mb-3">Dostupni termini</p>
-                {availableSlots.slots.length > 0 ? (
+                {availableSlots.length > 0 ? (
                   <div className="grid grid-cols-4 gap-2">
-                    {availableSlots.slots.map((time) => {
+                    {availableSlots.map((time) => {
                       const isSelected = selectedTime === time;
                       return (
                         <button
@@ -646,6 +676,7 @@ const BookingPage = () => {
                   <div className="text-center py-8 text-[#9CA3AF]">
                     <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>Nema dostupnih termina za ovaj datum</p>
+                    <p className="text-xs mt-1">Proverite da li su svi radnici dostupni</p>
                   </div>
                 )}
               </div>
@@ -696,15 +727,17 @@ const BookingPage = () => {
             <div className="mt-8 bg-[#141416] rounded-xl border border-[#2A2A2D] p-6">
               <h3 className="font-medium mb-4">Pregled Rezervacije</h3>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-[#9CA3AF]">Usluge:</span>
-                  <span className="text-right">{selectedServices.map(s => s.name).join(", ")}</span>
+                {/* Services with workers */}
+                <div className="space-y-2">
+                  {selectedServices.map(s => (
+                    <div key={s.id} className="flex justify-between">
+                      <span className="text-[#9CA3AF]">{s.name}:</span>
+                      <span className="text-[#C5A880]">{getWorkerName(serviceWorkerMap[s.id])}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#9CA3AF]">Radnik:</span>
-                  <span>{selectedWorker?.name || "Bilo ko"}</span>
-                </div>
-                <div className="flex justify-between">
+                
+                <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
                   <span className="text-[#9CA3AF]">Datum:</span>
                   <span>{selectedDate && format(selectedDate, "d. MMMM yyyy", { locale: sr })}</span>
                 </div>
@@ -763,6 +796,7 @@ const BookingPage = () => {
                 onClick={() => setStep(step + 1)}
                 disabled={
                   (step === 1 && selectedServices.length === 0) ||
+                  (step === 2 && !allServicesHaveWorkers) ||
                   (step === 3 && !selectedTime)
                 }
                 className="flex-1 h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-50"
@@ -774,7 +808,7 @@ const BookingPage = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !clientName.trim() || !clientPhone.trim()}
+                disabled={isSubmitting || !clientName.trim() || clientPhone.length < 12}
                 className="flex-1 h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-50"
                 data-testid="confirm-booking-btn"
               >

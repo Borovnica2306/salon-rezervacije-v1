@@ -148,9 +148,12 @@ class WorkerResponse(BaseModel):
     days_off: List[int]
     active: bool
 
+class ServiceWorkerPair(BaseModel):
+    service_id: str
+    worker_id: str
+
 class ReservationCreate(BaseModel):
-    services: List[str]  # service IDs
-    worker_id: Optional[str] = None  # None = "Anyone"
+    service_worker_pairs: List[ServiceWorkerPair]  # Array of {service_id, worker_id}
     date: str  # "2024-01-15"
     time: str  # "10:00"
     client_name: str
@@ -160,8 +163,7 @@ class ReservationResponse(BaseModel):
     id: str
     services: List[str]
     service_names: List[str]
-    worker_id: str
-    worker_name: str
+    service_worker_pairs: List[dict]  # [{service_id, service_name, worker_id, worker_name}]
     date: str
     time: str
     end_time: str
@@ -173,6 +175,9 @@ class ReservationResponse(BaseModel):
     advance_required: bool
     advance_released: bool
     created_at: str
+    # Legacy fields for backwards compatibility
+    worker_id: Optional[str] = None
+    worker_name: Optional[str] = None
 
 class SettingsUpdate(BaseModel):
     salon_name: Optional[str] = None
@@ -187,8 +192,7 @@ class SettingsResponse(BaseModel):
     advance_instructions: str
 
 class AvailableSlotsRequest(BaseModel):
-    services: List[str]
-    worker_id: Optional[str] = None
+    service_worker_pairs: List[ServiceWorkerPair]  # Array of {service_id, worker_id}
     date: str
 
 # ================== AUTH ENDPOINTS ==================
@@ -383,42 +387,43 @@ def minutes_to_time(minutes: int) -> str:
     m = minutes % 60
     return f"{h:02d}:{m:02d}"
 
-async def get_available_slots(services: List[str], worker_id: Optional[str], date: str) -> dict:
-    """Get available time slots for given services and optional worker on a date."""
+async def get_available_slots_multi(service_worker_pairs: List[dict], date: str) -> dict:
+    """Get available time slots for multiple service/worker pairs."""
     
-    # Calculate total duration
-    service_docs = await db.services.find({"_id": {"$in": [ObjectId(s) for s in services]}, "active": True}).to_list(100)
+    if not service_worker_pairs:
+        return {"slots": []}
+    
+    # Get all unique worker IDs
+    worker_ids = list(set(p["worker_id"] for p in service_worker_pairs))
+    
+    # Get service durations
+    service_ids = [p["service_id"] for p in service_worker_pairs]
+    service_docs = await db.services.find({"_id": {"$in": [ObjectId(s) for s in service_ids]}, "active": True}).to_list(100)
     if not service_docs:
-        return {"slots": [], "workers": {}}
+        return {"slots": []}
     
-    total_duration = sum(s["duration"] for s in service_docs)
-    service_ids_set = set(services)
+    # Build service_id -> duration map
+    service_duration = {str(s["_id"]): s["duration"] for s in service_docs}
     
-    # Get workers that can perform ALL selected services
-    all_workers = await db.workers.find({"active": True}).to_list(100)
+    # Calculate total duration for all services
+    total_duration = sum(service_duration.get(p["service_id"], 0) for p in service_worker_pairs)
+    
+    # Get workers
+    workers = await db.workers.find({"_id": {"$in": [ObjectId(w) for w in worker_ids]}, "active": True}).to_list(100)
+    worker_map = {str(w["_id"]): w for w in workers}
     
     # Parse date for day of week check
     date_obj = datetime.strptime(date, "%Y-%m-%d")
-    day_of_week = date_obj.weekday()  # 0=Monday, 6=Sunday
-    # Convert to our format: 0=Sunday, 1=Monday, etc.
+    day_of_week = date_obj.weekday()
     day_num = (day_of_week + 1) % 7
     
-    eligible_workers = []
-    for w in all_workers:
-        worker_services = set(w.get("services", []))
-        
-        # Check if worker can do ALL selected services
-        can_do_services = service_ids_set.issubset(worker_services)
-        is_working_day = day_num not in w.get("days_off", [])
-        matches_filter = (worker_id is None or str(w["_id"]) == worker_id)
-        
-        if can_do_services and is_working_day and matches_filter:
-            eligible_workers.append(w)
+    # Check all workers are working on this day
+    for wid in worker_ids:
+        w = worker_map.get(wid)
+        if not w or day_num in w.get("days_off", []):
+            return {"slots": []}
     
-    if not eligible_workers:
-        return {"slots": [], "workers": {}}
-    
-    # Get settings for work hours
+    # Get settings
     settings = await db.settings.find_one({"type": "salon"})
     default_start = settings.get("work_start", "09:00") if settings else "09:00"
     default_end = settings.get("work_end", "21:00") if settings else "21:00"
@@ -429,67 +434,86 @@ async def get_available_slots(services: List[str], worker_id: Optional[str], dat
         "status": {"$ne": "cancelled"}
     }).to_list(1000)
     
-    # Build worker -> blocked time ranges
+    # Build worker -> blocked time ranges from existing reservations
     worker_blocked = {}
     for r in reservations:
-        wid = r["worker_id"]
-        start = time_to_minutes(r["time"])
-        end = time_to_minutes(r["end_time"])
-        if wid not in worker_blocked:
-            worker_blocked[wid] = []
-        worker_blocked[wid].append((start, end))
+        # Handle both old format (single worker_id) and new format (service_worker_pairs)
+        if "service_worker_pairs" in r:
+            for pair in r.get("service_worker_pairs", []):
+                wid = pair.get("worker_id")
+                if wid:
+                    start = time_to_minutes(r["time"])
+                    end = time_to_minutes(r["end_time"])
+                    if wid not in worker_blocked:
+                        worker_blocked[wid] = []
+                    worker_blocked[wid].append((start, end))
+        else:
+            # Legacy format
+            wid = r.get("worker_id")
+            if wid:
+                start = time_to_minutes(r["time"])
+                end = time_to_minutes(r["end_time"])
+                if wid not in worker_blocked:
+                    worker_blocked[wid] = []
+                worker_blocked[wid].append((start, end))
     
-    # Calculate available slots per worker
-    result = {"slots": set(), "workers": {}}
+    # Find common work hours across all workers
+    min_start = 0
+    max_end = 24 * 60
     
-    for w in eligible_workers:
-        wid = str(w["_id"])
-        work_start = time_to_minutes(w.get("work_start", default_start))
-        work_end = time_to_minutes(w.get("work_end", default_end))
-        break_start = time_to_minutes(w["break_start"]) if w.get("break_start") else None
-        break_end = time_to_minutes(w["break_end"]) if w.get("break_end") else None
+    for wid in worker_ids:
+        w = worker_map.get(wid)
+        if w:
+            work_start = time_to_minutes(w.get("work_start", default_start))
+            work_end = time_to_minutes(w.get("work_end", default_end))
+            min_start = max(min_start, work_start)
+            max_end = min(max_end, work_end)
+    
+    # Generate slots
+    slots = []
+    current = min_start
+    
+    while current + total_duration <= max_end:
+        slot_end = current + total_duration
+        slot_valid = True
         
-        blocked = worker_blocked.get(wid, [])
-        
-        # Generate 15-minute slots
-        current = work_start
-        worker_slots = []
-        
-        while current + total_duration <= work_end:
-            slot_end = current + total_duration
+        # Check each worker's availability
+        for wid in worker_ids:
+            w = worker_map.get(wid)
+            if not w:
+                slot_valid = False
+                break
             
-            # Check if slot overlaps with break
+            # Check break time
+            break_start = time_to_minutes(w["break_start"]) if w.get("break_start") else None
+            break_end = time_to_minutes(w["break_end"]) if w.get("break_end") else None
+            
             if break_start and break_end:
                 if not (slot_end <= break_start or current >= break_end):
-                    current += 15
-                    continue
-            
-            # Check if slot overlaps with existing reservations
-            overlap = False
-            for bs, be in blocked:
-                if not (slot_end <= bs or current >= be):
-                    overlap = True
+                    slot_valid = False
                     break
             
-            if not overlap:
-                slot_time = minutes_to_time(current)
-                result["slots"].add(slot_time)
-                worker_slots.append(slot_time)
+            # Check existing reservations
+            blocked = worker_blocked.get(wid, [])
+            for bs, be in blocked:
+                if not (slot_end <= bs or current >= be):
+                    slot_valid = False
+                    break
             
-            current += 15
+            if not slot_valid:
+                break
         
-        if worker_slots:
-            result["workers"][wid] = {
-                "name": w["name"],
-                "slots": worker_slots
-            }
+        if slot_valid:
+            slots.append(minutes_to_time(current))
+        
+        current += 15
     
-    result["slots"] = sorted(list(result["slots"]))
-    return result
+    return {"slots": slots}
 
 @api_router.post("/reservations/available-slots")
 async def get_slots(request: AvailableSlotsRequest):
-    return await get_available_slots(request.services, request.worker_id, request.date)
+    pairs = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in request.service_worker_pairs]
+    return await get_available_slots_multi(pairs, request.date)
 
 def normalize_phone(phone: str) -> str:
     """Normalize phone number by removing all non-digit characters"""
@@ -517,50 +541,72 @@ async def create_reservation(reservation: ReservationCreate):
     if today_count >= 3:
         raise HTTPException(status_code=400, detail="Maksimalno 3 rezervacije dnevno po broju telefona.")
     
+    # Get all service IDs from pairs
+    service_ids = [p.service_id for p in reservation.service_worker_pairs]
+    worker_ids = [p.worker_id for p in reservation.service_worker_pairs]
+    
     # Get services and calculate totals
     service_docs = await db.services.find({
-        "_id": {"$in": [ObjectId(s) for s in reservation.services]},
+        "_id": {"$in": [ObjectId(s) for s in service_ids]},
         "active": True
     }).to_list(100)
     
-    if not service_docs:
-        raise HTTPException(status_code=400, detail="Izabrane usluge nisu dostupne.")
+    if len(service_docs) != len(service_ids):
+        raise HTTPException(status_code=400, detail="Neke izabrane usluge nisu dostupne.")
+    
+    service_map = {str(s["_id"]): s for s in service_docs}
     
     total_duration = sum(s["duration"] for s in service_docs)
     total_price = sum(s["price"] for s in service_docs)
-    service_names = [s["name"] for s in service_docs]
     
-    # Determine worker
-    worker_id = reservation.worker_id
-    if not worker_id:
-        # "Anyone" - find an available worker
-        available = await get_available_slots(reservation.services, None, reservation.date)
-        for wid, wdata in available.get("workers", {}).items():
-            if reservation.time in wdata.get("slots", []):
-                worker_id = wid
-                break
+    # Get workers
+    workers = await db.workers.find({
+        "_id": {"$in": [ObjectId(w) for w in worker_ids]},
+        "active": True
+    }).to_list(100)
     
-    if not worker_id:
-        raise HTTPException(status_code=400, detail="Nema dostupnih radnika za izabrani termin.")
+    if len(workers) != len(set(worker_ids)):
+        raise HTTPException(status_code=400, detail="Neki izabrani radnici nisu dostupni.")
+    
+    worker_map = {str(w["_id"]): w for w in workers}
+    
+    # Build service_worker_pairs with names
+    service_worker_pairs = []
+    service_names = []
+    for p in reservation.service_worker_pairs:
+        srv = service_map.get(p.service_id)
+        wrk = worker_map.get(p.worker_id)
+        if srv and wrk:
+            service_worker_pairs.append({
+                "service_id": p.service_id,
+                "service_name": srv["name"],
+                "worker_id": p.worker_id,
+                "worker_name": wrk["name"],
+                "duration": srv["duration"],
+                "price": srv["price"]
+            })
+            service_names.append(srv["name"])
     
     # Verify slot is still available
-    available = await get_available_slots(reservation.services, worker_id, reservation.date)
+    pairs_dict = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in reservation.service_worker_pairs]
+    available = await get_available_slots_multi(pairs_dict, reservation.date)
     if reservation.time not in available.get("slots", []):
         raise HTTPException(status_code=400, detail="Izabrani termin više nije dostupan.")
-    
-    # Get worker name
-    worker = await db.workers.find_one({"_id": ObjectId(worker_id)})
-    worker_name = worker["name"] if worker else "Unknown"
     
     # Calculate end time
     start_minutes = time_to_minutes(reservation.time)
     end_time = minutes_to_time(start_minutes + total_duration)
     
+    # Get first worker for legacy compatibility
+    first_worker_id = worker_ids[0] if worker_ids else None
+    first_worker = worker_map.get(first_worker_id, {})
+    
     doc = {
-        "services": reservation.services,
+        "services": service_ids,
         "service_names": service_names,
-        "worker_id": worker_id,
-        "worker_name": worker_name,
+        "service_worker_pairs": service_worker_pairs,
+        "worker_id": first_worker_id,  # Legacy
+        "worker_name": first_worker.get("name", ""),  # Legacy
         "date": reservation.date,
         "time": reservation.time,
         "end_time": end_time,
@@ -576,7 +622,25 @@ async def create_reservation(reservation: ReservationCreate):
     
     result = await db.reservations.insert_one(doc)
     
-    return ReservationResponse(id=str(result.inserted_id), **{k: v for k, v in doc.items() if k != "_id"})
+    return ReservationResponse(
+        id=str(result.inserted_id),
+        services=service_ids,
+        service_names=service_names,
+        service_worker_pairs=service_worker_pairs,
+        worker_id=first_worker_id,
+        worker_name=first_worker.get("name", ""),
+        date=reservation.date,
+        time=reservation.time,
+        end_time=end_time,
+        total_duration=total_duration,
+        total_price=total_price,
+        client_name=reservation.client_name,
+        client_phone=phone,
+        status="confirmed",
+        advance_required=True,
+        advance_released=False,
+        created_at=doc["created_at"]
+    )
 
 @api_router.get("/reservations", response_model=List[ReservationResponse])
 async def get_reservations(
@@ -598,9 +662,10 @@ async def get_reservations(
     return [
         ReservationResponse(
             id=str(r["_id"]),
-            services=r["services"],
+            services=r.get("services", []),
             service_names=r.get("service_names", []),
-            worker_id=r["worker_id"],
+            service_worker_pairs=r.get("service_worker_pairs", []),
+            worker_id=r.get("worker_id"),
             worker_name=r.get("worker_name", ""),
             date=r["date"],
             time=r["time"],
