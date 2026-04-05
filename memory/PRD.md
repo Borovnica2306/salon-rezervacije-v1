@@ -20,7 +20,7 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 ## Core Requirements
 - [x] Multi-step booking wizard (4 koraka)
 - [x] Izbor usluga sa automatskim sabiranjem trajanja
-- [x] Izbor radnika ili "Bilo ko"
+- [x] Izbor radnika po usluzi (split-booking)
 - [x] Kalendar sa slobodnim terminima
 - [x] Potvrda rezervacije bez registracije
 - [x] Admin JWT autentifikacija
@@ -34,47 +34,43 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - [x] "Moje rezervacije" za klijente (pretraga po telefonu)
 - [x] Klijent može sam otkazati termin (24h+ ranije)
 - [x] Automatsko seeding početnih podataka
+- [x] Split-booking: sekvencijalna dostupnost sa max 15-min gap između usluga
+- [x] Per-worker conflict detection sa worker_time_blocks
+- [x] Admin tabela prikazuje sve parove usluga-radnik
 
-## What's Been Implemented (April 3, 2026)
+## What's Been Implemented
 
 ### Backend (FastAPI + MongoDB)
 - JWT autentifikacija sa httpOnly cookies
 - Admin seeding na startup
-- Auto-seeding 5 usluga i 1 radnika (Ana)
-- Duplikat detekcija i čišćenje
+- Auto-seeding usluga i radnika
 - Services CRUD (`/api/services`)
 - Workers CRUD (`/api/workers`)
 - Reservations (`/api/reservations`)
-- Available slots calculation sa kontinuiranim blokom trajanja
+- **Split-booking**: Sequential availability calculation with max 15-min gap
+- **Per-worker blocking**: `worker_time_blocks` stored per reservation
+- **Gap fix**: Gap only applies BETWEEN services (not before first service)
 - Blacklist management (`/api/blacklist`)
 - Settings (`/api/settings`)
-- **NEW:** Client reservations (`/api/my-reservations`)
-- **NEW:** Client cancellation with 24h rule
-
-### Seeded Data
-**Usluge:**
-1. Šišanje - 30 min - 2,000 RSD (hair)
-2. Farbanje kose - 90 min - 5,000 RSD (hair)
-3. Manikir - 45 min - 2,500 RSD (nails)
-4. Pedikir - 60 min - 3,000 RSD (nails)
-5. Relax masaža - 60 min - 4,000 RSD (massage)
-
-**Radnik:**
-- Ana - 09:00-21:00, pauza 13:00-14:00, slobodna nedelja
+- Client reservations (`/api/my-reservations`)
+- Client cancellation with 24h rule
 
 ### Frontend (React + Tailwind + Shadcn)
 - Tamna elegantna tema (Cormorant Garamond + Outfit fonts)
 - Mobile-first responsive dizajn
-- 4-step booking wizard
-- **NEW:** "Moje rezervacije" modal za klijente
-- **NEW:** Admin link uklonjen iz headera (diskretni footer link)
+- 4-step booking wizard with per-service worker selection
+- "Moje rezervacije" modal za klijente
 - Admin login stranica
-- Admin dashboard sa navigacijom:
-  - Rezervacije (TABELA sa kolonama)
-  - **NEW:** Crna Lista (zasebna stranica)
+- Admin dashboard:
+  - Rezervacije tabela sa **split-booking prikazom** (usluga: radnik za svaki par)
+  - Crna Lista (zasebna stranica)
   - Radnici (CRUD)
   - Usluge (CRUD)
   - Podešavanja
+
+### Seeded Data
+**Usluge:** Šišanje, Farbanje kose, Manikir, Pedikir, Relax masaža, + user-added
+**Radnici:** Milena (nails), Suzana (hair), Slobodan (massage)
 
 ## API Endpoints
 - `POST /api/auth/login` - Admin login
@@ -82,12 +78,16 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - `GET /api/auth/me` - Current user
 - `GET/POST/PUT/DELETE /api/services` - Services CRUD
 - `GET/POST/PUT/DELETE /api/workers` - Workers CRUD
-- `POST /api/reservations` - Create reservation
+- `POST /api/reservations` - Create reservation (with worker_time_blocks)
 - `GET /api/reservations` - List reservations (admin)
-- `POST /api/reservations/available-slots` - Get available slots
+- `POST /api/reservations/available-slots` - Get available slots (sequential logic)
 - `PUT /api/reservations/{id}/release-advance` - Release advance
 - `PUT /api/reservations/{id}/cancel` - Cancel reservation (admin)
 - `GET/POST/DELETE /api/blacklist` - Blacklist management
 - `GET/PUT /api/settings` - Salon settings
-- **NEW:** `POST /api/my-reservations` - Client's reservations by phone
-- **NEW:** `PUT /api/my-reservations/{id}/cancel` - Client cancels (24h rule)
+- `POST /api/my-reservations` - Client's reservations by phone
+- `PUT /api/my-reservations/{id}/cancel` - Client cancels (24h rule)
+
+## Backlog
+- P2: SMS/Email notifikacije za potvrde i podsetnike
+- P3: Refaktorisanje server.py u manje module
