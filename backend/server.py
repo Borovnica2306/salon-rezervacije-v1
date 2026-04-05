@@ -164,6 +164,7 @@ class ReservationResponse(BaseModel):
     services: List[str]
     service_names: List[str]
     service_worker_pairs: List[dict]  # [{service_id, service_name, worker_id, worker_name}]
+    worker_time_blocks: List[dict] = []  # [{worker_id, service_id, start_time, end_time}]
     date: str
     time: str
     end_time: str
@@ -388,13 +389,14 @@ def minutes_to_time(minutes: int) -> str:
     return f"{h:02d}:{m:02d}"
 
 async def get_available_slots_multi(service_worker_pairs: List[dict], date: str) -> dict:
-    """Get available time slots for multiple service/worker pairs."""
+    """
+    Get available time slots for SEQUENTIAL service/worker pairs.
+    Each worker must be available for their service in sequence.
+    Maximum gap allowed between services: 15 minutes.
+    """
     
     if not service_worker_pairs:
         return {"slots": []}
-    
-    # Get all unique worker IDs
-    worker_ids = list(set(p["worker_id"] for p in service_worker_pairs))
     
     # Get service durations
     service_ids = [p["service_id"] for p in service_worker_pairs]
@@ -405,10 +407,8 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     # Build service_id -> duration map
     service_duration = {str(s["_id"]): s["duration"] for s in service_docs}
     
-    # Calculate total duration for all services
-    total_duration = sum(service_duration.get(p["service_id"], 0) for p in service_worker_pairs)
-    
-    # Get workers
+    # Get unique workers
+    worker_ids = list(set(p["worker_id"] for p in service_worker_pairs))
     workers = await db.workers.find({"_id": {"$in": [ObjectId(w) for w in worker_ids]}, "active": True}).to_list(100)
     worker_map = {str(w["_id"]): w for w in workers}
     
@@ -435,10 +435,21 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     }).to_list(1000)
     
     # Build worker -> blocked time ranges from existing reservations
+    # Now we store individual blocks per worker from worker_time_blocks
     worker_blocked = {}
     for r in reservations:
-        # Handle both old format (single worker_id) and new format (service_worker_pairs)
-        if "service_worker_pairs" in r:
+        if "worker_time_blocks" in r:
+            # New format with individual worker blocks
+            for block in r.get("worker_time_blocks", []):
+                wid = block.get("worker_id")
+                if wid:
+                    start = time_to_minutes(block["start_time"])
+                    end = time_to_minutes(block["end_time"])
+                    if wid not in worker_blocked:
+                        worker_blocked[wid] = []
+                    worker_blocked[wid].append((start, end))
+        elif "service_worker_pairs" in r:
+            # Legacy format - block entire reservation time for all workers
             for pair in r.get("service_worker_pairs", []):
                 wid = pair.get("worker_id")
                 if wid:
@@ -448,7 +459,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
                         worker_blocked[wid] = []
                     worker_blocked[wid].append((start, end))
         else:
-            # Legacy format
+            # Very old format
             wid = r.get("worker_id")
             if wid:
                 start = time_to_minutes(r["time"])
@@ -469,46 +480,114 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
             min_start = max(min_start, work_start)
             max_end = min(max_end, work_end)
     
+    # Calculate total duration of all services
+    total_duration = sum(service_duration.get(p["service_id"], 0) for p in service_worker_pairs)
+    
+    # Maximum gap between services
+    MAX_GAP = 15
+    
+    def is_worker_available(wid: str, start: int, end: int) -> bool:
+        """Check if a worker is available during a time range."""
+        w = worker_map.get(wid)
+        if not w:
+            return False
+        
+        # Check break time
+        break_start = time_to_minutes(w["break_start"]) if w.get("break_start") else None
+        break_end = time_to_minutes(w["break_end"]) if w.get("break_end") else None
+        
+        if break_start and break_end:
+            if not (end <= break_start or start >= break_end):
+                return False
+        
+        # Check existing reservations
+        blocked = worker_blocked.get(wid, [])
+        for bs, be in blocked:
+            if not (end <= bs or start >= be):
+                return False
+        
+        return True
+    
+    def check_sequential_availability(start_time: int) -> tuple:
+        """
+        Check if all services can be done sequentially starting at start_time.
+        Returns (is_valid, total_end_time, time_blocks)
+        """
+        current_time = start_time
+        time_blocks = []
+        
+        for idx, pair in enumerate(service_worker_pairs):
+            wid = pair["worker_id"]
+            duration = service_duration.get(pair["service_id"], 0)
+            
+            # Gap only allowed BETWEEN services (not before the first one)
+            max_allowed_gap = MAX_GAP if idx > 0 else 0
+            
+            # Try to find a slot for this worker starting from current_time
+            found = False
+            for gap in range(0, max_allowed_gap + 1, 5):  # Check 0, 5, 10, 15 min gaps
+                check_start = current_time + gap
+                check_end = check_start + duration
+                
+                # Make sure we don't exceed work hours
+                if check_end > max_end:
+                    break
+                
+                if is_worker_available(wid, check_start, check_end):
+                    time_blocks.append({
+                        "worker_id": wid,
+                        "service_id": pair["service_id"],
+                        "start_time": check_start,
+                        "end_time": check_end,
+                        "gap": gap
+                    })
+                    current_time = check_end
+                    found = True
+                    break
+            
+            if not found:
+                return (False, 0, [])
+        
+        return (True, current_time, time_blocks)
+    
     # Generate slots
     slots = []
+    slot_details = {}
     current = min_start
     
     while current + total_duration <= max_end:
-        slot_end = current + total_duration
-        slot_valid = True
+        is_valid, end_time, time_blocks = check_sequential_availability(current)
         
-        # Check each worker's availability
-        for wid in worker_ids:
-            w = worker_map.get(wid)
-            if not w:
-                slot_valid = False
-                break
+        if is_valid:
+            slot_time = minutes_to_time(current)
+            slots.append(slot_time)
             
-            # Check break time
-            break_start = time_to_minutes(w["break_start"]) if w.get("break_start") else None
-            break_end = time_to_minutes(w["break_end"]) if w.get("break_end") else None
+            # Calculate actual total duration including gaps
+            actual_duration = end_time - current
+            total_gap = actual_duration - total_duration
             
-            if break_start and break_end:
-                if not (slot_end <= break_start or current >= break_end):
-                    slot_valid = False
-                    break
-            
-            # Check existing reservations
-            blocked = worker_blocked.get(wid, [])
-            for bs, be in blocked:
-                if not (slot_end <= bs or current >= be):
-                    slot_valid = False
-                    break
-            
-            if not slot_valid:
-                break
-        
-        if slot_valid:
-            slots.append(minutes_to_time(current))
+            slot_details[slot_time] = {
+                "end_time": minutes_to_time(end_time),
+                "total_duration": actual_duration,
+                "service_duration": total_duration,
+                "gap_minutes": total_gap,
+                "time_blocks": [
+                    {
+                        "worker_id": b["worker_id"],
+                        "service_id": b["service_id"],
+                        "start_time": minutes_to_time(b["start_time"]),
+                        "end_time": minutes_to_time(b["end_time"]),
+                        "gap": b["gap"]
+                    } for b in time_blocks
+                ]
+            }
         
         current += 15
     
-    return {"slots": slots}
+    return {
+        "slots": slots,
+        "slot_details": slot_details
+    }
 
 @api_router.post("/reservations/available-slots")
 async def get_slots(request: AvailableSlotsRequest):
@@ -587,15 +666,25 @@ async def create_reservation(reservation: ReservationCreate):
             })
             service_names.append(srv["name"])
     
-    # Verify slot is still available
+    # Verify slot is still available and get slot details
     pairs_dict = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in reservation.service_worker_pairs]
     available = await get_available_slots_multi(pairs_dict, reservation.date)
     if reservation.time not in available.get("slots", []):
         raise HTTPException(status_code=400, detail="Izabrani termin više nije dostupan.")
     
-    # Calculate end time
-    start_minutes = time_to_minutes(reservation.time)
-    end_time = minutes_to_time(start_minutes + total_duration)
+    # Get detailed slot info for accurate end_time and worker_time_blocks
+    slot_detail = available.get("slot_details", {}).get(reservation.time, {})
+    
+    # Calculate end time from slot details (includes gaps) or fallback
+    if slot_detail:
+        end_time = slot_detail["end_time"]
+        actual_duration = slot_detail["total_duration"]
+        worker_time_blocks = slot_detail.get("time_blocks", [])
+    else:
+        start_minutes = time_to_minutes(reservation.time)
+        end_time = minutes_to_time(start_minutes + total_duration)
+        actual_duration = total_duration
+        worker_time_blocks = []
     
     # Get first worker for legacy compatibility
     first_worker_id = worker_ids[0] if worker_ids else None
@@ -605,12 +694,13 @@ async def create_reservation(reservation: ReservationCreate):
         "services": service_ids,
         "service_names": service_names,
         "service_worker_pairs": service_worker_pairs,
+        "worker_time_blocks": worker_time_blocks,
         "worker_id": first_worker_id,  # Legacy
         "worker_name": first_worker.get("name", ""),  # Legacy
         "date": reservation.date,
         "time": reservation.time,
         "end_time": end_time,
-        "total_duration": total_duration,
+        "total_duration": actual_duration,
         "total_price": total_price,
         "client_name": reservation.client_name,
         "client_phone": phone,
@@ -627,12 +717,13 @@ async def create_reservation(reservation: ReservationCreate):
         services=service_ids,
         service_names=service_names,
         service_worker_pairs=service_worker_pairs,
+        worker_time_blocks=worker_time_blocks,
         worker_id=first_worker_id,
         worker_name=first_worker.get("name", ""),
         date=reservation.date,
         time=reservation.time,
         end_time=end_time,
-        total_duration=total_duration,
+        total_duration=actual_duration,
         total_price=total_price,
         client_name=reservation.client_name,
         client_phone=phone,
@@ -665,6 +756,7 @@ async def get_reservations(
             services=r.get("services", []),
             service_names=r.get("service_names", []),
             service_worker_pairs=r.get("service_worker_pairs", []),
+            worker_time_blocks=r.get("worker_time_blocks", []),
             worker_id=r.get("worker_id"),
             worker_name=r.get("worker_name", ""),
             date=r["date"],

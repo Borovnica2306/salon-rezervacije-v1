@@ -283,7 +283,7 @@ const ReservationsPage = () => {
                   <TableHead className="text-[#9CA3AF]">Ime</TableHead>
                   <TableHead className="text-[#9CA3AF]">Telefon</TableHead>
                   <TableHead className="text-[#9CA3AF]">Usluge</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Radnik</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Radnici</TableHead>
                   <TableHead className="text-[#9CA3AF] text-right">Cena</TableHead>
                   <TableHead className="text-[#9CA3AF]">Avans</TableHead>
                   <TableHead className="text-[#9CA3AF] text-right">Akcije</TableHead>
@@ -314,7 +314,22 @@ const ReservationsPage = () => {
                           {res.service_names.join(", ")}
                         </div>
                       </TableCell>
-                      <TableCell>{res.worker_name}</TableCell>
+                      <TableCell>
+                        <div className="max-w-[200px]">
+                          {res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
+                            <div className="space-y-1">
+                              {res.service_worker_pairs.map((pair, idx) => (
+                                <div key={idx} className="text-xs">
+                                  <span className="text-[#9CA3AF]">{pair.service_name}:</span>{" "}
+                                  <span className="text-[#C5A880] font-medium">{pair.worker_name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span>{res.worker_name || "-"}</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-semibold text-[#C5A880]">
                         {res.total_price.toLocaleString()} RSD
                       </TableCell>
