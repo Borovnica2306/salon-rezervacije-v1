@@ -15,6 +15,8 @@ import {
   DialogDescription,
 } from "../components/ui/dialog";
 
+const PHONE_PREFIX = "+381";
+
 const BookingPage = () => {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -28,17 +30,59 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [availableSlots, setAvailableSlots] = useState({ slots: [], workers: {} });
   const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
+  const [clientPhone, setClientPhone] = useState(PHONE_PREFIX);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // My Reservations state
   const [showMyReservations, setShowMyReservations] = useState(false);
-  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupPhone, setLookupPhone] = useState(PHONE_PREFIX);
   const [myReservations, setMyReservations] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Phone input handler - ensures +381 prefix and only digits
+  const handlePhoneChange = (value, setter) => {
+    // Remove all non-digit characters except +
+    let cleaned = value.replace(/[^\d+]/g, '');
+    
+    // Ensure it starts with +381
+    if (!cleaned.startsWith('+381')) {
+      // If user typed something that doesn't start with +381
+      // Extract only digits after any prefix
+      const digitsOnly = cleaned.replace(/\D/g, '');
+      
+      // Remove leading 0 if present (normalize 064 -> 64)
+      let normalizedDigits = digitsOnly;
+      if (normalizedDigits.startsWith('381')) {
+        normalizedDigits = normalizedDigits.substring(3);
+      }
+      if (normalizedDigits.startsWith('0')) {
+        normalizedDigits = normalizedDigits.substring(1);
+      }
+      
+      cleaned = PHONE_PREFIX + normalizedDigits;
+    } else {
+      // Already has +381, just ensure digits after
+      const afterPrefix = cleaned.substring(4).replace(/\D/g, '');
+      // Remove leading 0 if someone pastes +38106...
+      const normalizedAfter = afterPrefix.startsWith('0') ? afterPrefix.substring(1) : afterPrefix;
+      cleaned = PHONE_PREFIX + normalizedAfter;
+    }
+    
+    // Limit total length (E.164 max is 15 digits, +381 + 9 digits = 13 chars)
+    if (cleaned.length > 13) {
+      cleaned = cleaned.substring(0, 13);
+    }
+    
+    setter(cleaned);
+  };
+
+  // Get clean E.164 format for backend
+  const getE164Phone = (phone) => {
+    return phone; // Already in E.164 format
+  };
 
   // Calculate totals
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
@@ -102,8 +146,8 @@ const BookingPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!clientName.trim() || !clientPhone.trim()) {
-      toast.error("Molimo unesite ime i broj telefona");
+    if (!clientName.trim() || clientPhone.length < 12) {
+      toast.error("Molimo unesite ime i validan broj telefona");
       return;
     }
 
@@ -115,7 +159,7 @@ const BookingPage = () => {
         date: format(selectedDate, "yyyy-MM-dd"),
         time: selectedTime,
         client_name: clientName,
-        client_phone: clientPhone,
+        client_phone: getE164Phone(clientPhone),
       });
       
       setBookingDetails(response.data);
@@ -136,15 +180,15 @@ const BookingPage = () => {
     setSelectedDate(null);
     setSelectedTime(null);
     setClientName("");
-    setClientPhone("");
+    setClientPhone(PHONE_PREFIX);
     setBookingComplete(false);
     setBookingDetails(null);
   };
 
   // My Reservations functions
   const searchMyReservations = async () => {
-    if (!lookupPhone.trim()) {
-      toast.error("Unesite broj telefona");
+    if (lookupPhone.length < 12) {
+      toast.error("Unesite validan broj telefona");
       return;
     }
 
@@ -152,7 +196,7 @@ const BookingPage = () => {
     setHasSearched(true);
     try {
       const response = await axios.post(`${API}/my-reservations`, {
-        phone: lookupPhone,
+        phone: getE164Phone(lookupPhone),
       });
       setMyReservations(response.data);
     } catch (error) {
@@ -178,7 +222,7 @@ const BookingPage = () => {
 
   const closeMyReservations = () => {
     setShowMyReservations(false);
-    setLookupPhone("");
+    setLookupPhone(PHONE_PREFIX);
     setMyReservations([]);
     setHasSearched(false);
   };
@@ -308,9 +352,9 @@ const BookingPage = () => {
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
                 <Input
                   value={lookupPhone}
-                  onChange={(e) => setLookupPhone(e.target.value)}
-                  placeholder="+381 6X XXX XXXX"
-                  className="pl-10 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880]"
+                  onChange={(e) => handlePhoneChange(e.target.value, setLookupPhone)}
+                  placeholder="+381641234567"
+                  className="pl-10 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] font-mono"
                   data-testid="lookup-phone-input"
                   onKeyDown={(e) => e.key === "Enter" && searchMyReservations()}
                 />
@@ -638,12 +682,13 @@ const BookingPage = () => {
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
                   <Input
                     value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    placeholder="+381 6X XXX XXXX"
-                    className="pl-12 bg-[#141416] border-[#2A2A2D] focus:border-[#C5A880] h-14"
+                    onChange={(e) => handlePhoneChange(e.target.value, setClientPhone)}
+                    placeholder="+381641234567"
+                    className="pl-12 bg-[#141416] border-[#2A2A2D] focus:border-[#C5A880] h-14 font-mono tracking-wide"
                     data-testid="client-phone-input"
                   />
                 </div>
+                <p className="text-xs text-[#9CA3AF] mt-1">Format: +381 i zatim broj bez nule</p>
               </div>
             </div>
 
