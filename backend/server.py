@@ -15,6 +15,8 @@ import jwt
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+import string
+import random
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -161,10 +163,11 @@ class ReservationCreate(BaseModel):
 
 class ReservationResponse(BaseModel):
     id: str
+    booking_id: str = ""  # Short unique ID like #A1B2
     services: List[str]
     service_names: List[str]
-    service_worker_pairs: List[dict]  # [{service_id, service_name, worker_id, worker_name}]
-    worker_time_blocks: List[dict] = []  # [{worker_id, service_id, start_time, end_time}]
+    service_worker_pairs: List[dict]
+    worker_time_blocks: List[dict] = []
     date: str
     time: str
     end_time: str
@@ -173,6 +176,7 @@ class ReservationResponse(BaseModel):
     client_name: str
     client_phone: str
     status: str
+    payment_status: str = "pending"  # pending | paid
     advance_required: bool
     advance_released: bool
     created_at: str
@@ -185,12 +189,16 @@ class SettingsUpdate(BaseModel):
     work_start: Optional[str] = None
     work_end: Optional[str] = None
     advance_instructions: Optional[str] = None
+    bank_account: Optional[str] = None
+    payment_recipient: Optional[str] = None
 
 class SettingsResponse(BaseModel):
     salon_name: str
     work_start: str
     work_end: str
     advance_instructions: str
+    bank_account: str = ""
+    payment_recipient: str = ""
 
 class AvailableSlotsRequest(BaseModel):
     service_worker_pairs: List[ServiceWorkerPair]  # Array of {service_id, worker_id}
@@ -620,9 +628,18 @@ async def get_slots(request: AvailableSlotsRequest):
 
 def normalize_phone(phone: str) -> str:
     """Normalize phone number by removing all non-digit characters"""
-    # Remove all non-digit characters
     normalized = ''.join(c for c in phone if c.isdigit())
     return normalized
+
+async def generate_booking_id() -> str:
+    """Generate a short unique booking ID like A1B2"""
+    chars = string.ascii_uppercase + string.digits
+    for _ in range(20):
+        bid = ''.join(random.choices(chars, k=4))
+        exists = await db.reservations.find_one({"booking_id": bid})
+        if not exists:
+            return bid
+    return ''.join(random.choices(chars, k=6))
 
 @api_router.post("/reservations", response_model=ReservationResponse)
 async def create_reservation(reservation: ReservationCreate):
@@ -714,7 +731,11 @@ async def create_reservation(reservation: ReservationCreate):
     first_worker_id = worker_ids[0] if worker_ids else None
     first_worker = worker_map.get(first_worker_id, {})
     
+    # Generate short booking ID
+    booking_id = await generate_booking_id()
+    
     doc = {
+        "booking_id": booking_id,
         "services": service_ids,
         "service_names": service_names,
         "service_worker_pairs": service_worker_pairs,
@@ -729,6 +750,7 @@ async def create_reservation(reservation: ReservationCreate):
         "client_name": reservation.client_name,
         "client_phone": phone,
         "status": "confirmed",
+        "payment_status": "pending",
         "advance_required": True,
         "advance_released": False,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -738,6 +760,7 @@ async def create_reservation(reservation: ReservationCreate):
     
     return ReservationResponse(
         id=str(result.inserted_id),
+        booking_id=booking_id,
         services=service_ids,
         service_names=service_names,
         service_worker_pairs=service_worker_pairs,
@@ -752,6 +775,7 @@ async def create_reservation(reservation: ReservationCreate):
         client_name=reservation.client_name,
         client_phone=phone,
         status="confirmed",
+        payment_status="pending",
         advance_required=True,
         advance_released=False,
         created_at=doc["created_at"]
@@ -777,6 +801,7 @@ async def get_reservations(
     return [
         ReservationResponse(
             id=str(r["_id"]),
+            booking_id=r.get("booking_id", ""),
             services=r.get("services", []),
             service_names=r.get("service_names", []),
             service_worker_pairs=r.get("service_worker_pairs", []),
@@ -791,6 +816,7 @@ async def get_reservations(
             client_name=r["client_name"],
             client_phone=r["client_phone"],
             status=r["status"],
+            payment_status=r.get("payment_status", "pending"),
             advance_required=r.get("advance_required", True),
             advance_released=r.get("advance_released", False),
             created_at=r.get("created_at", "")
@@ -824,6 +850,25 @@ async def cancel_reservation(reservation_id: str, user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Reservation not found")
     
     return {"message": "Reservation cancelled"}
+
+@api_router.put("/reservations/{reservation_id}/payment-status")
+async def update_payment_status(reservation_id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    reservation = await db.reservations.find_one({"_id": ObjectId(reservation_id)})
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    
+    current = reservation.get("payment_status", "pending")
+    new_status = "paid" if current == "pending" else "pending"
+    
+    await db.reservations.update_one(
+        {"_id": ObjectId(reservation_id)},
+        {"$set": {"payment_status": new_status}}
+    )
+    
+    return {"payment_status": new_status}
 
 # ================== BLACKLIST ENDPOINTS ==================
 
@@ -947,13 +992,17 @@ async def get_settings():
             salon_name="Beauty Salon",
             work_start="09:00",
             work_end="21:00",
-            advance_instructions="Uplata avansa je obavezna 24h pre termina. Instrukcije za uplatu će vam biti poslate."
+            advance_instructions="Uplata avansa je obavezna 24h pre termina. Instrukcije za uplatu će vam biti poslate.",
+            bank_account="",
+            payment_recipient=""
         )
     return SettingsResponse(
         salon_name=settings.get("salon_name", "Beauty Salon"),
         work_start=settings.get("work_start", "09:00"),
         work_end=settings.get("work_end", "21:00"),
-        advance_instructions=settings.get("advance_instructions", "")
+        advance_instructions=settings.get("advance_instructions", ""),
+        bank_account=settings.get("bank_account", ""),
+        payment_recipient=settings.get("payment_recipient", "")
     )
 
 @api_router.put("/settings", response_model=SettingsResponse)
@@ -975,7 +1024,9 @@ async def update_settings(update: SettingsUpdate, user: dict = Depends(get_curre
         salon_name=settings.get("salon_name", "Beauty Salon"),
         work_start=settings.get("work_start", "09:00"),
         work_end=settings.get("work_end", "21:00"),
-        advance_instructions=settings.get("advance_instructions", "")
+        advance_instructions=settings.get("advance_instructions", ""),
+        bank_account=settings.get("bank_account", ""),
+        payment_recipient=settings.get("payment_recipient", "")
     )
 
 # ================== ROOT ENDPOINT ==================

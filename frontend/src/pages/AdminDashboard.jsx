@@ -8,7 +8,7 @@ import { Input } from "../components/ui/input";
 import { 
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
-  Plus, Edit2, Trash2, DollarSign, Shield
+  Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -195,6 +195,15 @@ const ReservationsPage = () => {
     }
   };
 
+  const handleTogglePayment = async (id) => {
+    try {
+      await axios.put(`${API}/reservations/${id}/payment-status`, {}, { headers });
+      fetchReservations();
+    } catch (error) {
+      toast.error("Greška pri promeni statusa uplate");
+    }
+  };
+
   const handleCancel = async (id) => {
     try {
       await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers });
@@ -279,13 +288,14 @@ const ReservationsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow className="border-[#2A2A2D] hover:bg-transparent">
+                  <TableHead className="text-[#9CA3AF]">ID</TableHead>
                   <TableHead className="text-[#9CA3AF]">Vreme</TableHead>
                   <TableHead className="text-[#9CA3AF]">Ime</TableHead>
                   <TableHead className="text-[#9CA3AF]">Telefon</TableHead>
                   <TableHead className="text-[#9CA3AF]">Usluge</TableHead>
                   <TableHead className="text-[#9CA3AF]">Radnici</TableHead>
                   <TableHead className="text-[#9CA3AF] text-right">Cena</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Avans</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Uplata</TableHead>
                   <TableHead className="text-[#9CA3AF] text-right">Akcije</TableHead>
                 </TableRow>
               </TableHeader>
@@ -294,6 +304,11 @@ const ReservationsPage = () => {
                   const isBlacklisted = blacklist.includes(res.client_phone);
                   return (
                     <TableRow key={res.id} className="border-[#2A2A2D]" data-testid={`reservation-${res.id}`}>
+                      <TableCell>
+                        <span className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded" data-testid={`booking-id-${res.id}`}>
+                          #{res.booking_id || "—"}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <div className="font-semibold text-[#C5A880]">
                           {res.time} - {res.end_time}
@@ -334,23 +349,24 @@ const ReservationsPage = () => {
                         {res.total_price.toLocaleString()} RSD
                       </TableCell>
                       <TableCell>
-                        {res.advance_required && !res.advance_released ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleReleaseAdvance(res.id)}
-                            className="bg-green-600/20 text-green-400 hover:bg-green-600/30 h-8 text-xs"
-                            data-testid={`release-advance-${res.id}`}
+                        {res.payment_status === "paid" ? (
+                          <button
+                            onClick={() => handleTogglePayment(res.id)}
+                            className="px-2.5 py-1 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors cursor-pointer"
+                            data-testid={`payment-status-${res.id}`}
                           >
-                            <DollarSign className="w-3 h-3 mr-1" />
-                            Oslobodi
-                          </Button>
-                        ) : res.advance_released ? (
-                          <span className="px-2 py-1 rounded-full text-xs bg-green-600/20 text-green-400">
                             <Check className="w-3 h-3 inline mr-1" />
-                            OK
-                          </span>
+                            Plaćeno
+                          </button>
                         ) : (
-                          <span className="text-[#9CA3AF] text-xs">-</span>
+                          <button
+                            onClick={() => handleTogglePayment(res.id)}
+                            className="px-2.5 py-1 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer"
+                            data-testid={`payment-status-${res.id}`}
+                          >
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            Čeka uplatu
+                          </button>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -409,6 +425,7 @@ const EmployeesPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [form, setForm] = useState({
     name: "",
     services: [],
@@ -501,10 +518,12 @@ const EmployeesPage = () => {
     try {
       await axios.delete(`${API}/workers/${id}`, { headers });
       toast.success("Radnik je trajno obrisan");
+      setDeleteConfirm(null);
       fetchData();
     } catch (error) {
       const msg = error.response?.data?.detail || "Greška pri brisanju";
       toast.error(msg);
+      setDeleteConfirm(null);
     }
   };
 
@@ -698,7 +717,7 @@ const EmployeesPage = () => {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleDelete(emp.id)}
+                    onClick={() => setDeleteConfirm(emp)}
                     className="h-8 w-8 hover:bg-red-400/10 text-red-400"
                     data-testid={`delete-employee-${emp.id}`}
                   >
@@ -720,11 +739,42 @@ const EmployeesPage = () => {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Potvrda brisanja
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Da li ste sigurni da želite trajno da obrišete radnika <span className="text-white font-medium">{deleteConfirm?.name}</span>? Ova akcija se ne može poništiti.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              className="flex-1 border-[#2A2A2D] bg-transparent hover:bg-[#0A0A0B]"
+              data-testid="cancel-delete-btn"
+            >
+              Otkaži
+            </Button>
+            <Button
+              onClick={() => handleDelete(deleteConfirm?.id)}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              data-testid="confirm-delete-btn"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Obriši
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
-
-// Services Page
 const ServicesPage = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -989,6 +1039,8 @@ const SettingsPage = () => {
     work_start: "09:00",
     work_end: "21:00",
     advance_instructions: "",
+    bank_account: "",
+    payment_recipient: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1076,6 +1128,35 @@ const SettingsPage = () => {
             className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg p-3 text-white resize-none focus:border-[#C5A880] focus:outline-none"
             data-testid="settings-advance-instructions"
           />
+        </div>
+
+        <div className="border-t border-[#2A2A2D] pt-6">
+          <h3 className="font-medium mb-4 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-[#C5A880]" />
+            Podaci za uplatu
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-[#9CA3AF] mb-2 block">Tekući račun</label>
+              <Input
+                value={settings.bank_account}
+                onChange={(e) => setSettings({ ...settings, bank_account: e.target.value })}
+                placeholder="265-1234567890123-12"
+                className="bg-[#0A0A0B] border-[#2A2A2D]"
+                data-testid="settings-bank-account"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-[#9CA3AF] mb-2 block">Primalac uplate</label>
+              <Input
+                value={settings.payment_recipient}
+                onChange={(e) => setSettings({ ...settings, payment_recipient: e.target.value })}
+                placeholder="Ime salona ili vlasnika"
+                className="bg-[#0A0A0B] border-[#2A2A2D]"
+                data-testid="settings-payment-recipient"
+              />
+            </div>
+          </div>
         </div>
 
         <Button

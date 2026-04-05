@@ -285,6 +285,15 @@ const BookingPage = () => {
             <Check className="w-8 h-8 text-[#C5A880]" />
           </div>
           <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Rezervacija Potvrđena</h1>
+          
+          {/* Booking ID */}
+          {bookingDetails.booking_id && (
+            <div className="inline-block bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-lg px-4 py-2 mb-4" data-testid="success-booking-id">
+              <span className="text-[#9CA3AF] text-sm">Vaš ID: </span>
+              <span className="font-mono font-bold text-[#C5A880] text-lg">#{bookingDetails.booking_id}</span>
+            </div>
+          )}
+          
           <p className="text-[#9CA3AF] mb-6">Hvala vam na rezervaciji!</p>
           
           <div className="bg-[#0A0A0B] rounded-xl p-6 text-left space-y-4 mb-6">
@@ -320,14 +329,38 @@ const BookingPage = () => {
             </div>
           </div>
 
-          {bookingDetails.advance_required && !bookingDetails.advance_released && (
-            <div className="bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl p-4 mb-6 text-left">
-              <p className="text-[#C5A880] text-sm font-medium mb-1">Avans obavezan</p>
-              <p className="text-[#9CA3AF] text-sm">
-                {settings?.advance_instructions || "Uplata avansa je obavezna 24h pre termina."}
+          {/* Payment / Uplatnica Section */}
+          <div className="bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">
+            <h3 className="text-[#C5A880] font-medium mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Podaci za uplatu avansa
+            </h3>
+            <div className="space-y-2.5 text-sm">
+              {settings?.bank_account && (
+                <div>
+                  <span className="text-[#9CA3AF]">Tekući račun: </span>
+                  <span className="text-white font-mono font-medium">{settings.bank_account}</span>
+                </div>
+              )}
+              {(settings?.payment_recipient || settings?.salon_name) && (
+                <div>
+                  <span className="text-[#9CA3AF]">Primalac: </span>
+                  <span className="text-white font-medium">{settings.payment_recipient || settings.salon_name}</span>
+                </div>
+              )}
+              {bookingDetails.booking_id && (
+                <div>
+                  <span className="text-[#9CA3AF]">Svrha uplate: </span>
+                  <span className="text-white font-medium">Rezervacija #{bookingDetails.booking_id}</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 pt-3 border-t border-[#C5A880]/20">
+              <p className="text-[#9CA3AF] text-xs leading-relaxed">
+                Molimo pošaljite sliku uplatnice na Viber/Instagram salona radi konačne potvrde termina.
               </p>
             </div>
-          )}
+          </div>
 
           <Button
             onClick={resetBooking}
