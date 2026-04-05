@@ -8,7 +8,8 @@ import { Input } from "../components/ui/input";
 import { 
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
-  Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard
+  Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard,
+  SlidersHorizontal
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -41,13 +42,17 @@ const AdminDashboard = () => {
     navigate("/admin/login");
   };
 
-  const navItems = [
+  const baseNavItems = [
     { path: "/admin", label: "Rezervacije", icon: Calendar },
     { path: "/admin/blacklist", label: "Crna Lista", icon: Shield },
     { path: "/admin/employees", label: "Radnici", icon: Users },
     { path: "/admin/services", label: "Usluge", icon: Scissors },
     { path: "/admin/settings", label: "Podešavanja", icon: Settings },
   ];
+
+  const navItems = user?.role === "super_admin"
+    ? [...baseNavItems, { path: "/admin/system", label: "System Config", icon: SlidersHorizontal }]
+    : baseNavItems;
 
   return (
     <div className="min-h-screen bg-[#0A0A0B]">
@@ -140,6 +145,9 @@ const AdminDashboard = () => {
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="services" element={<ServicesPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            {user?.role === "super_admin" && (
+              <Route path="system" element={<SystemConfigPage />} />
+            )}
           </Routes>
         </main>
       </div>
@@ -777,6 +785,7 @@ const EmployeesPage = () => {
 };
 const ServicesPage = () => {
   const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
@@ -793,7 +802,17 @@ const ServicesPage = () => {
 
   useEffect(() => {
     fetchServices();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get(`${API}/categories`);
+      setCategories(res.data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
 
   const fetchServices = async () => {
     try {
@@ -862,11 +881,9 @@ const ServicesPage = () => {
     }
   };
 
-  const categoryLabels = {
-    hair: "Frizura",
-    massage: "Masaža",
-    nails: "Nokti",
-  };
+  const categoryLabels = Object.fromEntries(
+    categories.map(c => [c.key, c.label])
+  );
 
   return (
     <div className="animate-fade-in">
@@ -1314,3 +1331,99 @@ const BlacklistPage = () => {
 };
 
 export default AdminDashboard;
+
+// System Config Page (Super-Admin only)
+const SystemConfigPage = () => {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const token = localStorage.getItem("access_token");
+  const headers = { Authorization: `Bearer ${token}` };
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await axios.get(`${API}/categories/config`, { headers });
+      setCategories(res.data);
+    } catch (error) {
+      toast.error("Greška pri učitavanju konfiguracije");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle = async (key, currentEnabled) => {
+    try {
+      await axios.put(
+        `${API}/categories/config`,
+        { category: key, enabled: !currentEnabled },
+        { headers }
+      );
+      setCategories(prev =>
+        prev.map(c => c.key === key ? { ...c, enabled: !currentEnabled } : c)
+      );
+      toast.success(`${categories.find(c => c.key === key)?.label} — ${!currentEnabled ? "uključeno" : "isključeno"}`);
+    } catch (error) {
+      toast.error("Greška pri promeni konfiguracije");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-[#C5A880] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const enabledCount = categories.filter(c => c.enabled).length;
+
+  return (
+    <div className="animate-fade-in" data-testid="system-config-page">
+      <div className="mb-8">
+        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">System Config</h2>
+        <p className="text-[#9CA3AF]">
+          Upravljajte kategorijama usluga. Isključene kategorije se ne prikazuju klijentima niti salon-adminu.
+        </p>
+      </div>
+
+      <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+        <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
+          <span className="text-sm text-[#9CA3AF]">Master kategorije</span>
+          <span className="text-xs text-[#C5A880]">{enabledCount} / {categories.length} aktivno</span>
+        </div>
+        <div className="divide-y divide-[#2A2A2D]">
+          {categories.map((cat) => (
+            <div
+              key={cat.key}
+              className={`flex items-center justify-between p-5 transition-colors ${
+                cat.enabled ? "" : "opacity-50"
+              }`}
+              data-testid={`category-row-${cat.key}`}
+            >
+              <div>
+                <span className="font-medium text-lg">{cat.label}</span>
+                <span className="ml-3 text-xs text-[#9CA3AF] font-mono">{cat.key}</span>
+              </div>
+              <Switch
+                checked={cat.enabled}
+                onCheckedChange={() => handleToggle(cat.key, cat.enabled)}
+                className="data-[state=checked]:bg-[#C5A880]"
+                data-testid={`category-toggle-${cat.key}`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 p-4 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl">
+        <p className="text-sm text-[#9CA3AF]">
+          <strong className="text-[#C5A880]">Napomena:</strong> Isključivanje kategorije sakriva usluge i radnike iz javnog prikaza, ali ih ne briše iz baze podataka. Ponovo uključivanje sve vraća.
+        </p>
+      </div>
+    </div>
+  );
+};

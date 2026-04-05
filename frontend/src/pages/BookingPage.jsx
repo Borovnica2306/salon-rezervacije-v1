@@ -29,6 +29,7 @@ const BookingPage = () => {
   const [services, setServices] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [categories, setCategories] = useState([]);
   
   // Booking state
   const [selectedServices, setSelectedServices] = useState([]);
@@ -105,14 +106,16 @@ const BookingPage = () => {
 
   const fetchData = async () => {
     try {
-      const [servicesRes, workersRes, settingsRes] = await Promise.all([
+      const [servicesRes, workersRes, settingsRes, categoriesRes] = await Promise.all([
         axios.get(`${API}/services`),
         axios.get(`${API}/workers`),
         axios.get(`${API}/settings`),
+        axios.get(`${API}/categories`),
       ]);
       setServices(servicesRes.data);
       setWorkers(workersRes.data);
       setSettings(settingsRes.data);
+      setCategories(categoriesRes.data);
     } catch (error) {
       toast.error("Greška pri učitavanju podataka");
     }
@@ -259,11 +262,9 @@ const BookingPage = () => {
     return acc;
   }, {});
 
-  const categoryLabels = {
-    hair: "Frizura",
-    massage: "Masaža",
-    nails: "Nokti",
-  };
+  const categoryLabels = Object.fromEntries(
+    categories.map(c => [c.key, c.label])
+  );
 
   const categoryImages = {
     hair: "https://images.pexels.com/photos/973403/pexels-photo-973403.jpeg",

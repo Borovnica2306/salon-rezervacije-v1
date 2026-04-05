@@ -18,6 +18,17 @@ from datetime import datetime, timezone, timedelta
 import string
 import random
 
+# ================== MASTER CATEGORIES ==================
+MASTER_CATEGORIES = {
+    "hair": "Frizura",
+    "massage": "Masaža",
+    "nails": "Nokti",
+    "makeup": "Šminkanje",
+    "depilation": "Depilacija",
+    "cosmetics": "Kozmetika",
+    "eyebrows": "Obrve/Trepavice",
+}
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -201,8 +212,46 @@ class SettingsResponse(BaseModel):
     payment_recipient: str = ""
 
 class AvailableSlotsRequest(BaseModel):
-    service_worker_pairs: List[ServiceWorkerPair]  # Array of {service_id, worker_id}
+    service_worker_pairs: List[ServiceWorkerPair]
     date: str
+
+class CategoryToggle(BaseModel):
+    category: str
+    enabled: bool
+
+
+# ================== CATEGORIES CONFIG ENDPOINTS ==================
+
+@api_router.get("/categories")
+async def get_categories():
+    """Public: returns only enabled categories"""
+    enabled = await get_enabled_categories()
+    return [{"key": k, "label": MASTER_CATEGORIES[k]} for k in enabled if k in MASTER_CATEGORIES]
+
+@api_router.get("/categories/config")
+async def get_categories_config(user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super-Admin access required")
+    configs = await db.categories_config.find({}, {"_id": 0}).to_list(100)
+    config_map = {c["category"]: c["enabled"] for c in configs}
+    return [
+        {"key": k, "label": v, "enabled": config_map.get(k, True)}
+        for k, v in MASTER_CATEGORIES.items()
+    ]
+
+@api_router.put("/categories/config")
+async def update_category_config(toggle: CategoryToggle, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super-Admin access required")
+    if toggle.category not in MASTER_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Nepoznata kategorija")
+    await db.categories_config.update_one(
+        {"category": toggle.category},
+        {"$set": {"category": toggle.category, "enabled": toggle.enabled}},
+        upsert=True
+    )
+    return {"category": toggle.category, "enabled": toggle.enabled}
+
 
 # ================== AUTH ENDPOINTS ==================
 
@@ -242,8 +291,33 @@ async def get_me(user: dict = Depends(get_current_user)):
 # ================== SERVICES ENDPOINTS ==================
 
 @api_router.get("/services", response_model=List[ServiceResponse])
-async def get_services(active_only: bool = True):
+async def get_services(active_only: bool = True, request: Request = None):
     query = {"active": True} if active_only else {}
+    
+    # Filter by enabled categories for public/salon-admin calls
+    # Check if this is a public call (no auth) or salon-admin
+    try:
+        token = request.cookies.get("access_token") if request else None
+        if not token:
+            auth_header = request.headers.get("Authorization", "") if request else ""
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+        if token:
+            payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+            usr = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+            if usr and usr.get("role") == "super_admin":
+                # Super-admin sees all services
+                pass
+            else:
+                enabled = await get_enabled_categories()
+                query["category"] = {"$in": enabled}
+        else:
+            enabled = await get_enabled_categories()
+            query["category"] = {"$in": enabled}
+    except Exception:
+        enabled = await get_enabled_categories()
+        query["category"] = {"$in": enabled}
+    
     services = await db.services.find(query, {"_id": 1, "name": 1, "category": 1, "duration": 1, "price": 1, "description": 1, "active": 1}).to_list(100)
     return [
         ServiceResponse(
@@ -259,7 +333,7 @@ async def get_services(active_only: bool = True):
 
 @api_router.post("/services", response_model=ServiceResponse)
 async def create_service(service: ServiceCreate, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     doc = {
@@ -276,7 +350,7 @@ async def create_service(service: ServiceCreate, user: dict = Depends(get_curren
 
 @api_router.put("/services/{service_id}", response_model=ServiceResponse)
 async def update_service(service_id: str, update: ServiceUpdate, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
@@ -303,7 +377,7 @@ async def update_service(service_id: str, update: ServiceUpdate, user: dict = De
 
 @api_router.delete("/services/{service_id}")
 async def delete_service(service_id: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     await db.services.update_one({"_id": ObjectId(service_id)}, {"$set": {"active": False}})
@@ -331,7 +405,7 @@ async def get_workers(active_only: bool = True):
 
 @api_router.post("/workers", response_model=WorkerResponse)
 async def create_worker(worker: WorkerCreate, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     doc = {
@@ -350,7 +424,7 @@ async def create_worker(worker: WorkerCreate, user: dict = Depends(get_current_u
 
 @api_router.put("/workers/{worker_id}", response_model=WorkerResponse)
 async def update_worker(worker_id: str, update: WorkerUpdate, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
@@ -379,7 +453,7 @@ async def update_worker(worker_id: str, update: WorkerUpdate, user: dict = Depen
 
 @api_router.delete("/workers/{worker_id}")
 async def delete_worker(worker_id: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     # Check if worker exists
@@ -641,6 +715,13 @@ async def generate_booking_id() -> str:
             return bid
     return ''.join(random.choices(chars, k=6))
 
+async def get_enabled_categories() -> List[str]:
+    """Get list of enabled category keys"""
+    configs = await db.categories_config.find().to_list(100)
+    if not configs:
+        return list(MASTER_CATEGORIES.keys())
+    return [c["category"] for c in configs if c.get("enabled", True)]
+
 @api_router.post("/reservations", response_model=ReservationResponse)
 async def create_reservation(reservation: ReservationCreate):
     phone = normalize_phone(reservation.client_phone.strip())
@@ -787,7 +868,7 @@ async def get_reservations(
     worker_id: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     query = {"status": {"$ne": "cancelled"}}
@@ -825,7 +906,7 @@ async def get_reservations(
 
 @api_router.put("/reservations/{reservation_id}/release-advance")
 async def release_advance(reservation_id: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     result = await db.reservations.update_one(
@@ -839,7 +920,7 @@ async def release_advance(reservation_id: str, user: dict = Depends(get_current_
 
 @api_router.put("/reservations/{reservation_id}/cancel")
 async def cancel_reservation(reservation_id: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     result = await db.reservations.update_one(
@@ -853,7 +934,7 @@ async def cancel_reservation(reservation_id: str, user: dict = Depends(get_curre
 
 @api_router.put("/reservations/{reservation_id}/payment-status")
 async def update_payment_status(reservation_id: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     reservation = await db.reservations.find_one({"_id": ObjectId(reservation_id)})
@@ -874,7 +955,7 @@ async def update_payment_status(reservation_id: str, user: dict = Depends(get_cu
 
 @api_router.get("/blacklist")
 async def get_blacklist(user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     phones = await db.blacklisted_phones.find({}, {"_id": 0}).to_list(1000)
@@ -882,7 +963,7 @@ async def get_blacklist(user: dict = Depends(get_current_user)):
 
 @api_router.post("/blacklist")
 async def add_to_blacklist(phone: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     phone = normalize_phone(phone.strip())
@@ -899,7 +980,7 @@ async def add_to_blacklist(phone: str, user: dict = Depends(get_current_user)):
 
 @api_router.delete("/blacklist/{phone}")
 async def remove_from_blacklist(phone: str, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     phone = normalize_phone(phone)
@@ -1007,7 +1088,7 @@ async def get_settings():
 
 @api_router.put("/settings", response_model=SettingsResponse)
 async def update_settings(update: SettingsUpdate, user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
@@ -1085,6 +1166,34 @@ async def startup_event():
             {"$set": {"password_hash": hash_password(admin_password)}}
         )
         logger.info(f"Admin password updated: {admin_email}")
+    
+    # Seed super-admin
+    sa_email = "bornaja23@gmail.com"
+    sa_password = "Markonijus23!"
+    existing_sa = await db.users.find_one({"email": sa_email})
+    if not existing_sa:
+        await db.users.insert_one({
+            "email": sa_email,
+            "password_hash": hash_password(sa_password),
+            "name": "Super Admin",
+            "role": "super_admin",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Super-admin created: {sa_email}")
+    elif existing_sa.get("role") != "super_admin" or not verify_password(sa_password, existing_sa["password_hash"]):
+        await db.users.update_one(
+            {"email": sa_email},
+            {"$set": {"password_hash": hash_password(sa_password), "role": "super_admin"}}
+        )
+        logger.info(f"Super-admin updated: {sa_email}")
+    
+    # Seed categories config
+    cat_count = await db.categories_config.count_documents({})
+    if cat_count == 0:
+        await db.categories_config.insert_many(
+            [{"category": k, "enabled": True} for k in MASTER_CATEGORIES]
+        )
+        logger.info(f"Seeded {len(MASTER_CATEGORIES)} category configs")
     
     # Seed default settings
     settings = await db.settings.find_one({"type": "salon"})
@@ -1193,7 +1302,11 @@ async def startup_event():
     os_module.makedirs("/app/memory", exist_ok=True)
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write(f"# Test Credentials\n\n")
-        f.write(f"## Admin\n")
+        f.write(f"## Super-Admin\n")
+        f.write(f"- Email: {sa_email}\n")
+        f.write(f"- Password: {sa_password}\n")
+        f.write(f"- Role: super_admin\n\n")
+        f.write(f"## Salon-Admin\n")
         f.write(f"- Email: {admin_email}\n")
         f.write(f"- Password: {admin_password}\n")
         f.write(f"- Role: admin\n\n")
