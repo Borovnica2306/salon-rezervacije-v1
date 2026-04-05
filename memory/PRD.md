@@ -37,6 +37,7 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - [x] Split-booking: sekvencijalna dostupnost sa max 15-min gap između usluga
 - [x] Per-worker conflict detection sa worker_time_blocks
 - [x] Admin tabela prikazuje sve parove usluga-radnik
+- [x] Safe Delete radnika: hard delete sa referential integrity check
 
 ## What's Been Implemented
 
@@ -45,11 +46,10 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - Admin seeding na startup
 - Auto-seeding usluga i radnika
 - Services CRUD (`/api/services`)
-- Workers CRUD (`/api/workers`)
+- Workers CRUD (`/api/workers`) — **Safe Delete**: hard delete sa proverom budućih termina
 - Reservations (`/api/reservations`)
-- **Split-booking**: Sequential availability calculation with max 15-min gap
-- **Per-worker blocking**: `worker_time_blocks` stored per reservation
-- **Gap fix**: Gap only applies BETWEEN services (not before first service)
+- Split-booking: Sequential availability with max 15-min gap
+- Per-worker blocking: `worker_time_blocks` stored per reservation
 - Blacklist management (`/api/blacklist`)
 - Settings (`/api/settings`)
 - Client reservations (`/api/my-reservations`)
@@ -60,27 +60,22 @@ Aplikacija za rezervaciju termina u beauty salonu sa sledećim zahtevima:
 - Mobile-first responsive dizajn
 - 4-step booking wizard with per-service worker selection
 - "Moje rezervacije" modal za klijente
-- Admin login stranica
 - Admin dashboard:
-  - Rezervacije tabela sa **split-booking prikazom** (usluga: radnik za svaki par)
+  - Rezervacije tabela sa split-booking prikazom
   - Crna Lista (zasebna stranica)
-  - Radnici (CRUD)
+  - Radnici (CRUD) — error poruka za blokirano brisanje
   - Usluge (CRUD)
   - Podešavanja
-
-### Seeded Data
-**Usluge:** Šišanje, Farbanje kose, Manikir, Pedikir, Relax masaža, + user-added
-**Radnici:** Milena (nails), Suzana (hair), Slobodan (massage)
 
 ## API Endpoints
 - `POST /api/auth/login` - Admin login
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/me` - Current user
 - `GET/POST/PUT/DELETE /api/services` - Services CRUD
-- `GET/POST/PUT/DELETE /api/workers` - Workers CRUD
-- `POST /api/reservations` - Create reservation (with worker_time_blocks)
+- `GET/POST/PUT/DELETE /api/workers` - Workers CRUD (delete = hard delete with future booking check)
+- `POST /api/reservations` - Create reservation
 - `GET /api/reservations` - List reservations (admin)
-- `POST /api/reservations/available-slots` - Get available slots (sequential logic)
+- `POST /api/reservations/available-slots` - Get available slots
 - `PUT /api/reservations/{id}/release-advance` - Release advance
 - `PUT /api/reservations/{id}/cancel` - Cancel reservation (admin)
 - `GET/POST/DELETE /api/blacklist` - Blacklist management

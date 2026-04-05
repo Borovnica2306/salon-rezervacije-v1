@@ -500,10 +500,11 @@ const EmployeesPage = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/workers/${id}`, { headers });
-      toast.success("Radnik deaktiviran");
+      toast.success("Radnik je trajno obrisan");
       fetchData();
     } catch (error) {
-      toast.error("Greška pri brisanju");
+      const msg = error.response?.data?.detail || "Greška pri brisanju";
+      toast.error(msg);
     }
   };
 

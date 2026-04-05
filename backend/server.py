@@ -374,8 +374,32 @@ async def delete_worker(worker_id: str, user: dict = Depends(get_current_user)):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    await db.workers.update_one({"_id": ObjectId(worker_id)}, {"$set": {"active": False}})
-    return {"message": "Worker deactivated"}
+    # Check if worker exists
+    worker = await db.workers.find_one({"_id": ObjectId(worker_id)})
+    if not worker:
+        raise HTTPException(status_code=404, detail="Radnik nije pronađen.")
+    
+    # Check for future reservations involving this worker
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    future_count = await db.reservations.count_documents({
+        "status": {"$ne": "cancelled"},
+        "date": {"$gte": today},
+        "$or": [
+            {"worker_id": worker_id},
+            {"service_worker_pairs.worker_id": worker_id},
+            {"worker_time_blocks.worker_id": worker_id}
+        ]
+    })
+    
+    if future_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Nije moguće obrisati radnika koji ima zakazane termine. Prvo otkažite ili premestite termine."
+        )
+    
+    # Hard delete
+    await db.workers.delete_one({"_id": ObjectId(worker_id)})
+    return {"message": "Radnik je trajno obrisan."}
 
 # ================== RESERVATIONS ENDPOINTS ==================
 
