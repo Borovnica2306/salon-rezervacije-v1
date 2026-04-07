@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -42,6 +42,7 @@ const BookingPage = () => {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState(PHONE_PREFIX);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blacklistError, setBlacklistError] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
 
@@ -192,8 +193,12 @@ const BookingPage = () => {
       setBookingComplete(true);
       toast.success("Rezervacija uspešno kreirana!");
     } catch (error) {
-      const message = error.response?.data?.detail || "Greška pri kreiranju rezervacije";
-      toast.error(message);
+      const detail = error.response?.data?.detail || "";
+      if (detail.toLowerCase().includes("crn") || detail.toLowerCase().includes("blacklist") || detail.toLowerCase().includes("blokiran")) {
+        setBlacklistError(true);
+      } else {
+        toast.error(detail || "Greška pri kreiranju rezervacije");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -210,6 +215,7 @@ const BookingPage = () => {
     setClientPhone(PHONE_PREFIX);
     setBookingComplete(false);
     setBookingDetails(null);
+    setBlacklistError(false);
   };
 
   // My Reservations functions
@@ -486,9 +492,14 @@ const BookingPage = () => {
                         Otkaži rezervaciju
                       </Button>
                     ) : (
-                      <p className="text-xs text-[#9CA3AF] text-center">
-                        Otkazivanje nije moguće manje od 24h pre termina
-                      </p>
+                      <div className="text-center p-2 bg-[#2A2A2D]/30 rounded-lg">
+                        <p className="text-xs text-[#9CA3AF]">
+                          Otkazivanje je moguće najkasnije 24h pre termina.
+                        </p>
+                        <p className="text-xs text-[#9CA3AF] mt-1">
+                          Za hitne izmene, pozovite salon.
+                        </p>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -839,6 +850,17 @@ const BookingPage = () => {
                 <p className="text-xs text-[#9CA3AF] mt-1">Format: +381 i zatim broj bez nule</p>
               </div>
             </div>
+
+            {/* Blacklist Error */}
+            {blacklistError && (
+              <div className="mt-6 p-5 bg-red-500/10 border border-red-500/30 rounded-xl text-center" data-testid="blacklist-error">
+                <Ban className="w-8 h-8 text-red-400 mx-auto mb-3" />
+                <p className="font-medium text-red-400 mb-1">Zakazivanje nije moguće</p>
+                <p className="text-sm text-[#9CA3AF]">
+                  Nažalost, zakazivanje nije moguće sa ovog broja telefona. Molimo kontaktirajte salon direktno.
+                </p>
+              </div>
+            )}
 
             {/* Booking Summary */}
             <div className="mt-8 bg-[#141416] rounded-xl border border-[#2A2A2D] p-6">
