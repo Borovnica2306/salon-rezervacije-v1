@@ -1206,86 +1206,9 @@ async def startup_event():
             "advance_instructions": "Uplata avansa je obavezna 24h pre termina. Instrukcije za uplatu će vam biti poslate."
         })
     
-    # One-time seed for services and workers (only on first ever startup)
-    seed_flag = await db.settings.find_one({"type": "seed_completed"})
-    if not seed_flag:
-        existing_services = await db.services.count_documents({})
-        existing_workers = await db.workers.count_documents({})
-        
-        if existing_services == 0:
-            logger.info("Seeding initial services...")
-            default_services = [
-                {
-                    "name": "Šišanje",
-                    "category": "hair",
-                    "duration": 30,
-                    "price": 2000.0,
-                    "description": "Klasično šišanje",
-                    "active": True,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                },
-                {
-                    "name": "Farbanje kose",
-                    "category": "hair",
-                    "duration": 90,
-                    "price": 5000.0,
-                    "description": "Farbanje cele kose",
-                    "active": True,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                },
-                {
-                    "name": "Manikir",
-                    "category": "nails",
-                    "duration": 45,
-                    "price": 2500.0,
-                    "description": "Klasični manikir",
-                    "active": True,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                },
-                {
-                    "name": "Pedikir",
-                    "category": "nails",
-                    "duration": 60,
-                    "price": 3000.0,
-                    "description": "Klasični pedikir",
-                    "active": True,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                },
-                {
-                    "name": "Relax masaža",
-                    "category": "massage",
-                    "duration": 60,
-                    "price": 4000.0,
-                    "description": "Opuštajuća masaža celog tela",
-                    "active": True,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                }
-            ]
-            result = await db.services.insert_many(default_services)
-            service_ids = [str(sid) for sid in result.inserted_ids]
-            logger.info(f"Created {len(service_ids)} services")
-        else:
-            services = await db.services.find({"active": True}).to_list(100)
-            service_ids = [str(s["_id"]) for s in services]
-        
-        if existing_workers == 0:
-            logger.info("Seeding initial worker...")
-            await db.workers.insert_one({
-                "name": "Ana",
-                "services": service_ids,
-                "work_start": "09:00",
-                "work_end": "21:00",
-                "break_start": "13:00",
-                "break_end": "14:00",
-                "days_off": [0],
-                "active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
-            logger.info("Created worker: Ana")
-        
-        # Mark seed as completed — never re-seed again
-        await db.settings.insert_one({"type": "seed_completed", "completed_at": datetime.now(timezone.utc).isoformat()})
-        logger.info("Seed completed and flagged")
+    # NO automatic seeding of services or workers
+    # All services and workers are managed manually by the admin
+    # This prevents any accidental data loss from automated cleanup
     
     # Write test credentials
     import os as os_module
