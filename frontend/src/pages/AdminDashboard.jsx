@@ -1015,13 +1015,13 @@ const ServicesPage = () => {
 
               <div>
                 <label className="text-sm text-[#9CA3AF] mb-2 block">Kategorija</label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {Object.entries(categoryLabels).map(([key, label]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setForm({ ...form, category: key })}
-                      className={`flex-1 py-2 rounded-lg text-sm transition-colors ${
+                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                         form.category === key
                           ? "bg-[#C5A880] text-black"
                           : "bg-[#0A0A0B] border border-[#2A2A2D] text-[#9CA3AF]"
