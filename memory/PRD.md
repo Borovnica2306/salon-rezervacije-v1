@@ -26,36 +26,15 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Multi-Level Admin (super_admin + admin)
 - [x] Master Category Switch (7 kategorija, soft-hide logika)
 - [x] System Config stranica (samo za super_admin)
+- [x] Seed_completed flag (sprečava re-seeding radnika nakon restarta)
 
-## Master Categories
-| Key | Label | Default |
-|-----|-------|---------|
-| hair | Frizura | ON |
-| massage | Masaža | ON |
-| nails | Nokti | ON |
-| makeup | Šminkanje | ON |
-| depilation | Depilacija | ON |
-| cosmetics | Kozmetika | ON |
-| eyebrows | Obrve/Trepavice | ON |
+## Bug Fixes
+- BUG #002: Worker desync — Ana se vraćala nakon restarta jer seed logika nije imala completion flag. Fix: `seed_completed` document u settings kolekciji.
 
-## API Endpoints
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout
-- `GET /api/auth/me` - Current user
-- `GET /api/categories` - Public enabled categories
-- `GET /api/categories/config` - All categories with toggle (super_admin)
-- `PUT /api/categories/config` - Toggle category (super_admin)
-- `GET/POST/PUT/DELETE /api/services` - Services CRUD
-- `GET/POST/PUT/DELETE /api/workers` - Workers CRUD
-- `POST /api/reservations` - Create reservation
-- `GET /api/reservations` - List reservations (admin)
-- `POST /api/reservations/available-slots` - Available slots
-- `PUT /api/reservations/{id}/payment-status` - Toggle payment
-- `PUT /api/reservations/{id}/cancel` - Cancel
-- `GET/POST/DELETE /api/blacklist` - Blacklist
-- `GET/PUT /api/settings` - Settings (incl. bank_account)
-- `POST /api/my-reservations` - Client's reservations
-- `PUT /api/my-reservations/{id}/cancel` - Client cancel
+## Current Active Workers
+- Suzana (hair)
+- Milena (nails)
+- Slobodan (massage)
 
 ## Backlog
 - P2: SMS/Email notifikacije
