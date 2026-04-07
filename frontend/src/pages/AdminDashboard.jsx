@@ -314,18 +314,12 @@ const ReservationsPage = () => {
                   return (
                     <TableRow key={res.id} className="border-[#2A2A2D]" data-testid={`reservation-${res.id}`}>
                       <TableCell>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(res.booking_id || "");
-                            toast.success("ID kopiran!");
-                          }}
-                          className="inline-flex items-center gap-1.5 font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded hover:bg-[#C5A880]/20 transition-colors cursor-pointer"
+                        <span
+                          className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded"
                           data-testid={`booking-id-${res.id}`}
-                          title="Kopiraj ID"
                         >
                           #{res.booking_id || "—"}
-                          <Copy className="w-3 h-3 opacity-60" />
-                        </button>
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold text-[#C5A880]">
@@ -440,17 +434,9 @@ const ReservationsPage = () => {
                   {/* Header: ID + Time + Price */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(res.booking_id || "");
-                          toast.success("ID kopiran!");
-                        }}
-                        className="inline-flex items-center gap-1 font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded hover:bg-[#C5A880]/20 transition-colors"
-                        title="Kopiraj ID"
-                      >
+                      <span className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded">
                         #{res.booking_id || "—"}
-                        <Copy className="w-3 h-3 opacity-60" />
-                      </button>
+                      </span>
                       <span className="font-semibold text-[#C5A880]">
                         {res.time} - {res.end_time}
                       </span>

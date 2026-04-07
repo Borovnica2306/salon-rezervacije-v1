@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -295,12 +295,20 @@ const BookingPage = () => {
           </div>
           <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Rezervacija Potvrđena</h1>
           
-          {/* Booking ID */}
+          {/* Booking ID with Copy */}
           {bookingDetails.booking_id && (
-            <div className="inline-block bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-lg px-4 py-2 mb-4" data-testid="success-booking-id">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(bookingDetails.booking_id);
+                toast.success("Kopirano!");
+              }}
+              className="inline-flex items-center gap-2 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-lg px-4 py-2.5 mb-4 hover:bg-[#C5A880]/20 transition-colors active:scale-95"
+              data-testid="success-booking-id"
+            >
               <span className="text-[#9CA3AF] text-sm">Vaš ID: </span>
               <span className="font-mono font-bold text-[#C5A880] text-lg">#{bookingDetails.booking_id}</span>
-            </div>
+              <Copy className="w-4 h-4 text-[#C5A880] opacity-70" />
+            </button>
           )}
           
           <p className="text-[#9CA3AF] mb-6">Hvala vam na rezervaciji!</p>
