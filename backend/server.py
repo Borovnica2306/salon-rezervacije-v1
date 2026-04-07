@@ -695,10 +695,12 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
         
         current += 15
     
-    # Filter out slots that start within 2 hours for today
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if date == today_str or date == datetime.now().strftime("%Y-%m-%d"):
-        now_minutes = datetime.now().hour * 60 + datetime.now().minute
+    # Filter out slots that start within 2 hours for today (Belgrade time)
+    belgrade_tz = timezone(timedelta(hours=2))
+    now_belgrade = datetime.now(belgrade_tz)
+    today_belgrade = now_belgrade.strftime("%Y-%m-%d")
+    if date == today_belgrade:
+        now_minutes = now_belgrade.hour * 60 + now_belgrade.minute
         min_allowed = now_minutes + 120  # 2 hours from now
         slots = [s for s in slots if time_to_minutes(s) >= min_allowed]
         slot_details = {k: v for k, v in slot_details.items() if time_to_minutes(k) >= min_allowed}
@@ -755,10 +757,12 @@ async def create_reservation(reservation: ReservationCreate):
     if today_count >= 3:
         raise HTTPException(status_code=400, detail="Maksimalno 3 rezervacije dnevno po broju telefona.")
     
-    # Hard limit: block bookings within 2 hours for today
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    if reservation.date == today_str:
-        now_minutes = datetime.now().hour * 60 + datetime.now().minute
+    # Hard limit: block bookings within 2 hours for today (Belgrade time)
+    belgrade_tz = timezone(timedelta(hours=2))
+    now_belgrade = datetime.now(belgrade_tz)
+    today_belgrade = now_belgrade.strftime("%Y-%m-%d")
+    if reservation.date == today_belgrade:
+        now_minutes = now_belgrade.hour * 60 + now_belgrade.minute
         slot_minutes = time_to_minutes(reservation.time)
         if slot_minutes < now_minutes + 120:
             raise HTTPException(status_code=400, detail="Nije moguće zakazati termin koji počinje za manje od 2 sata.")
