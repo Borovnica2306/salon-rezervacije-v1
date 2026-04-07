@@ -271,6 +271,20 @@ const BookingPage = () => {
     setHasSearched(false);
   };
 
+  // Check if selected slot is "urgent" (within 12 hours)
+  const isUrgentSlot = useMemo(() => {
+    if (!selectedDate || !selectedTime) return false;
+    const slotDate = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      parseInt(selectedTime.split(":")[0]),
+      parseInt(selectedTime.split(":")[1])
+    );
+    const hoursUntil = (slotDate - new Date()) / (1000 * 60 * 60);
+    return hoursUntil > 0 && hoursUntil < 12;
+  }, [selectedDate, selectedTime]);
+
   // Generate next 30 days
   const dates = Array.from({ length: 30 }, (_, i) => addDays(new Date(), i));
 
@@ -930,6 +944,16 @@ const BookingPage = () => {
               Klikom na "Potvrdi Rezervaciju" prihvatate uslove korišćenja.
               Avans je obavezan 24h pre termina.
             </p>
+
+            {/* Urgent slot warning */}
+            {isUrgentSlot && (
+              <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl" data-testid="urgent-slot-warning">
+                <p className="text-sm text-orange-400 font-medium mb-1">Napomena: Izabrali ste termin za danas.</p>
+                <p className="text-xs text-[#9CA3AF]">
+                  Molimo vas da odmah nakon zakazivanja pošaljete dokaz o uplati kako bismo osigurali vaše mesto, ili nas pozovite telefonom.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
