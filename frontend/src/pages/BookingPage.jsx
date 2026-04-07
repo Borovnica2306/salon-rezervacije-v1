@@ -32,6 +32,7 @@ const BookingPage = () => {
   const [categories, setCategories] = useState([]);
   
   // Booking state
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedServices, setSelectedServices] = useState([]);
   // Map of serviceId -> workerId
   const [serviceWorkerMap, setServiceWorkerMap] = useState({});
@@ -200,6 +201,7 @@ const BookingPage = () => {
 
   const resetBooking = () => {
     setStep(1);
+    setSelectedCategory(null);
     setSelectedServices([]);
     setServiceWorkerMap({});
     setSelectedDate(null);
@@ -521,62 +523,143 @@ const BookingPage = () => {
           ))}
         </div>
 
-        {/* Step 1: Services */}
-        {step === 1 && (
+        {/* Step 1: Categories -> Services */}
+        {step === 1 && !selectedCategory && (
           <div className="animate-fade-in">
-            <div className="space-y-6 stagger-children">
-              {Object.entries(servicesByCategory).map(([category, categoryServices]) => (
-                <div key={category}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div 
-                      className="w-12 h-12 rounded-lg bg-cover bg-center"
-                      style={{ backgroundImage: `url(${categoryImages[category]})` }}
-                    />
-                    <h3 className="font-medium text-lg">{categoryLabels[category] || category}</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {categoryServices.map((service) => {
-                      const isSelected = selectedServices.find(s => s.id === service.id);
-                      const availableWorkers = getWorkersForService(service.id);
-                      return (
-                        <button
-                          key={service.id}
-                          onClick={() => handleServiceToggle(service)}
-                          disabled={availableWorkers.length === 0}
-                          className={`w-full p-4 rounded-xl border text-left transition-all ${
-                            isSelected
-                              ? "border-[#C5A880] bg-[#C5A880]/10"
-                              : availableWorkers.length === 0
-                              ? "border-[#2A2A2D] bg-[#141416] opacity-50 cursor-not-allowed"
-                              : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
-                          }`}
-                          data-testid={`service-${service.id}`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{service.name}</p>
-                              <p className="text-sm text-[#9CA3AF] mt-1">
-                                <Clock className="w-3 h-3 inline mr-1" />
-                                {service.duration} min
-                                {availableWorkers.length === 0 && (
-                                  <span className="ml-2 text-red-400">• Nema radnika</span>
-                                )}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-[#C5A880]">{service.price.toLocaleString()} RSD</p>
-                              {isSelected && (
-                                <Check className="w-5 h-5 text-[#C5A880] mt-1 ml-auto" />
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="mb-6">
+              <p className="overline mb-2">Korak 1</p>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Kategoriju</h2>
+              <p className="text-[#9CA3AF] text-sm mt-2">Odaberite vrstu usluge koju želite</p>
             </div>
+            <div className="grid grid-cols-2 gap-3 stagger-children">
+              {categories.map((cat) => {
+                const catServices = servicesByCategory[cat.key] || [];
+                if (catServices.length === 0) return null;
+                const count = catServices.length;
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => setSelectedCategory(cat.key)}
+                    className="relative overflow-hidden rounded-xl border border-[#2A2A2D] bg-[#141416] p-5 text-left transition-all hover:border-[#C5A880]/50 active:scale-[0.98]"
+                    data-testid={`category-card-${cat.key}`}
+                  >
+                    {categoryImages[cat.key] && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-15"
+                        style={{ backgroundImage: `url(${categoryImages[cat.key]})` }}
+                      />
+                    )}
+                    <div className="relative">
+                      <h3 className="font-medium text-base">{cat.label}</h3>
+                      <p className="text-xs text-[#9CA3AF] mt-1">{count} {count === 1 ? "usluga" : count < 5 ? "usluge" : "usluga"}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Show selected services summary if any */}
+            {selectedServices.length > 0 && (
+              <div className="mt-6 p-4 bg-[#141416] rounded-xl border border-[#C5A880]/30">
+                <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge:</p>
+                <div className="space-y-1">
+                  {selectedServices.map(s => (
+                    <div key={s.id} className="flex justify-between text-sm">
+                      <span>{s.name}</span>
+                      <span className="text-[#C5A880]">{s.price.toLocaleString()} RSD</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-[#2A2A2D] mt-3 pt-3 flex justify-between font-medium">
+                  <span>Ukupno</span>
+                  <span className="text-[#C5A880]">{selectedServices.reduce((sum, s) => sum + s.price, 0).toLocaleString()} RSD</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 1 && selectedCategory && (
+          <div className="animate-fade-in">
+            <div className="mb-6">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="flex items-center gap-2 text-[#9CA3AF] hover:text-white transition-colors mb-4"
+                data-testid="back-to-categories-btn"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span className="text-sm">Nazad na kategorije</span>
+              </button>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light flex items-center gap-3">
+                {categoryImages[selectedCategory] && (
+                  <div
+                    className="w-10 h-10 rounded-lg bg-cover bg-center shrink-0"
+                    style={{ backgroundImage: `url(${categoryImages[selectedCategory]})` }}
+                  />
+                )}
+                {categoryLabels[selectedCategory] || selectedCategory}
+              </h2>
+            </div>
+
+            <div className="space-y-2 stagger-children">
+              {(servicesByCategory[selectedCategory] || []).map((service) => {
+                const isSelected = selectedServices.find(s => s.id === service.id);
+                const availableWorkers = getWorkersForService(service.id);
+                return (
+                  <button
+                    key={service.id}
+                    onClick={() => handleServiceToggle(service)}
+                    disabled={availableWorkers.length === 0}
+                    className={`w-full p-4 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? "border-[#C5A880] bg-[#C5A880]/10"
+                        : availableWorkers.length === 0
+                        ? "border-[#2A2A2D] bg-[#141416] opacity-50 cursor-not-allowed"
+                        : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
+                    }`}
+                    data-testid={`service-${service.id}`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">{service.name}</p>
+                        <p className="text-sm text-[#9CA3AF] mt-1">
+                          <Clock className="w-3 h-3 inline mr-1" />
+                          {service.duration} min
+                          {availableWorkers.length === 0 && (
+                            <span className="ml-2 text-red-400">• Nema radnika</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-[#C5A880]">{service.price.toLocaleString()} RSD</p>
+                        {isSelected && (
+                          <Check className="w-5 h-5 text-[#C5A880] mt-1 ml-auto" />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected services summary */}
+            {selectedServices.length > 0 && (
+              <div className="mt-6 p-4 bg-[#141416] rounded-xl border border-[#C5A880]/30">
+                <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge ({selectedServices.length}):</p>
+                <div className="space-y-1">
+                  {selectedServices.map(s => (
+                    <div key={s.id} className="flex justify-between text-sm">
+                      <span>{s.name} <span className="text-[#9CA3AF]">({categoryLabels[s.category] || s.category})</span></span>
+                      <span className="text-[#C5A880]">{s.price.toLocaleString()} RSD</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-[#2A2A2D] mt-3 pt-3 flex justify-between font-medium">
+                  <span>Ukupno</span>
+                  <span className="text-[#C5A880]">{selectedServices.reduce((sum, s) => sum + s.price, 0).toLocaleString()} RSD</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
