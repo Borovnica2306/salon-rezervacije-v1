@@ -380,8 +380,13 @@ async def delete_service(service_id: str, user: dict = Depends(get_current_user)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    await db.services.update_one({"_id": ObjectId(service_id)}, {"$set": {"active": False}})
-    return {"message": "Service deactivated"}
+    service = await db.services.find_one({"_id": ObjectId(service_id)})
+    if not service:
+        raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
+    
+    # Hard delete — existing reservations keep service_names as text strings
+    await db.services.delete_one({"_id": ObjectId(service_id)})
+    return {"message": "Usluga je trajno obrisana."}
 
 # ================== WORKERS ENDPOINTS ==================
 

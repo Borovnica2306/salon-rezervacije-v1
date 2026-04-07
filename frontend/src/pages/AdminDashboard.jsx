@@ -9,7 +9,7 @@ import {
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
   Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard,
-  SlidersHorizontal
+  SlidersHorizontal, Copy
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -314,9 +314,18 @@ const ReservationsPage = () => {
                   return (
                     <TableRow key={res.id} className="border-[#2A2A2D]" data-testid={`reservation-${res.id}`}>
                       <TableCell>
-                        <span className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded" data-testid={`booking-id-${res.id}`}>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(res.booking_id || "");
+                            toast.success("ID kopiran!");
+                          }}
+                          className="inline-flex items-center gap-1.5 font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded hover:bg-[#C5A880]/20 transition-colors cursor-pointer"
+                          data-testid={`booking-id-${res.id}`}
+                          title="Kopiraj ID"
+                        >
                           #{res.booking_id || "—"}
-                        </span>
+                          <Copy className="w-3 h-3 opacity-60" />
+                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold text-[#C5A880]">
@@ -431,9 +440,17 @@ const ReservationsPage = () => {
                   {/* Header: ID + Time + Price */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(res.booking_id || "");
+                          toast.success("ID kopiran!");
+                        }}
+                        className="inline-flex items-center gap-1 font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded hover:bg-[#C5A880]/20 transition-colors"
+                        title="Kopiraj ID"
+                      >
                         #{res.booking_id || "—"}
-                      </span>
+                        <Copy className="w-3 h-3 opacity-60" />
+                      </button>
                       <span className="font-semibold text-[#C5A880]">
                         {res.time} - {res.end_time}
                       </span>
@@ -973,7 +990,7 @@ const ServicesPage = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API}/services/${id}`, { headers });
-      toast.success("Usluga deaktivirana");
+      toast.success("Usluga je trajno obrisana");
       fetchServices();
     } catch (error) {
       toast.error("Greška pri brisanju");
