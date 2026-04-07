@@ -254,8 +254,8 @@ const BookingPage = () => {
     setHasSearched(false);
   };
 
-  // Generate next 14 days
-  const dates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
+  // Generate next 30 days
+  const dates = Array.from({ length: 30 }, (_, i) => addDays(new Date(), i));
 
   // Group services by category
   const servicesByCategory = services.reduce((acc, service) => {
