@@ -212,6 +212,18 @@ const ReservationsPage = () => {
     }
   };
 
+  // Calculate urgency marker based on time until appointment
+  const getUrgencyMarker = (res) => {
+    if (res.payment_status === "paid" || res.status === "cancelled") return null;
+    const startDateTime = new Date(`${res.date}T${res.time}:00`);
+    const now = new Date();
+    const hoursLeft = (startDateTime - now) / (1000 * 60 * 60);
+    if (hoursLeft <= 0) return null; // Already past
+    if (hoursLeft < 12) return "expired";
+    if (hoursLeft < 24) return "warning";
+    return null;
+  };
+
   const handleCancel = async (id) => {
     try {
       await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers });
@@ -311,8 +323,15 @@ const ReservationsPage = () => {
               <TableBody>
                 {reservations.map((res) => {
                   const isBlacklisted = blacklist.includes(res.client_phone);
+                  const urgency = getUrgencyMarker(res);
                   return (
-                    <TableRow key={res.id} className="border-[#2A2A2D]" data-testid={`reservation-${res.id}`}>
+                    <TableRow
+                      key={res.id}
+                      className={`border-[#2A2A2D] ${
+                        urgency === "expired" ? "bg-red-500/5" : ""
+                      }`}
+                      data-testid={`reservation-${res.id}`}
+                    >
                       <TableCell>
                         <span
                           className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded"
@@ -361,25 +380,37 @@ const ReservationsPage = () => {
                         {res.total_price.toLocaleString()} RSD
                       </TableCell>
                       <TableCell>
-                        {res.payment_status === "paid" ? (
-                          <button
-                            onClick={() => handleTogglePayment(res.id)}
-                            className="px-2.5 py-1 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors cursor-pointer"
-                            data-testid={`payment-status-${res.id}`}
-                          >
-                            <Check className="w-3 h-3 inline mr-1" />
-                            Plaćeno
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleTogglePayment(res.id)}
-                            className="px-2.5 py-1 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer"
-                            data-testid={`payment-status-${res.id}`}
-                          >
-                            <Clock className="w-3 h-3 inline mr-1" />
-                            Čeka uplatu
-                          </button>
-                        )}
+                        <div className="flex flex-col gap-1.5">
+                          {res.payment_status === "paid" ? (
+                            <button
+                              onClick={() => handleTogglePayment(res.id)}
+                              className="px-2.5 py-1 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors cursor-pointer"
+                              data-testid={`payment-status-${res.id}`}
+                            >
+                              <Check className="w-3 h-3 inline mr-1" />
+                              Plaćeno
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleTogglePayment(res.id)}
+                              className="px-2.5 py-1 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer"
+                              data-testid={`payment-status-${res.id}`}
+                            >
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              Čeka uplatu
+                            </button>
+                          )}
+                          {urgency === "warning" && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 text-orange-400 uppercase tracking-wide" data-testid={`urgency-warning-${res.id}`}>
+                              Poslati notifikaciju
+                            </span>
+                          )}
+                          {urgency === "expired" && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-400 uppercase tracking-wide animate-pulse" data-testid={`urgency-expired-${res.id}`}>
+                              Istekao grace period
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -429,8 +460,13 @@ const ReservationsPage = () => {
           <div className="md:hidden divide-y divide-[#2A2A2D]">
             {reservations.map((res) => {
               const isBlacklisted = blacklist.includes(res.client_phone);
+              const urgency = getUrgencyMarker(res);
               return (
-                <div key={res.id} className="p-4 space-y-3" data-testid={`reservation-mobile-${res.id}`}>
+                <div
+                  key={res.id}
+                  className={`p-4 space-y-3 ${urgency === "expired" ? "bg-red-500/5" : ""}`}
+                  data-testid={`reservation-mobile-${res.id}`}
+                >
                   {/* Header: ID + Time + Price */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -474,23 +510,35 @@ const ReservationsPage = () => {
 
                   {/* Actions row */}
                   <div className="flex items-center justify-between pt-2 border-t border-[#2A2A2D]/50">
-                    {res.payment_status === "paid" ? (
-                      <button
-                        onClick={() => handleTogglePayment(res.id)}
-                        className="px-3 py-1.5 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors"
-                      >
-                        <Check className="w-3 h-3 inline mr-1" />
-                        Plaćeno
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleTogglePayment(res.id)}
-                        className="px-3 py-1.5 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors"
-                      >
-                        <Clock className="w-3 h-3 inline mr-1" />
-                        Čeka uplatu
-                      </button>
-                    )}
+                    <div className="flex flex-col gap-1.5">
+                      {res.payment_status === "paid" ? (
+                        <button
+                          onClick={() => handleTogglePayment(res.id)}
+                          className="px-3 py-1.5 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors"
+                        >
+                          <Check className="w-3 h-3 inline mr-1" />
+                          Plaćeno
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleTogglePayment(res.id)}
+                          className="px-3 py-1.5 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors"
+                        >
+                          <Clock className="w-3 h-3 inline mr-1" />
+                          Čeka uplatu
+                        </button>
+                      )}
+                      {urgency === "warning" && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 text-orange-400 uppercase tracking-wide">
+                          Poslati notifikaciju
+                        </span>
+                      )}
+                      {urgency === "expired" && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-400 uppercase tracking-wide animate-pulse">
+                          Istekao grace period
+                        </span>
+                      )}
+                    </div>}
                     <div className="flex gap-2">
                       {!isBlacklisted ? (
                         <button
