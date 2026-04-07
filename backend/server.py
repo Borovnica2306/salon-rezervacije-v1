@@ -1206,96 +1206,86 @@ async def startup_event():
             "advance_instructions": "Uplata avansa je obavezna 24h pre termina. Instrukcije za uplatu će vam biti poslate."
         })
     
-    # Clean up duplicates and seed initial data
-    # Only seed if no ACTIVE workers exist
-    existing_services = await db.services.count_documents({"active": True})
-    existing_workers = await db.workers.count_documents({"active": True})
-    
-    # Only clean up if there are more than 5 services or more than 3 workers (duplicates)
-    total_services = await db.services.count_documents({})
-    total_workers = await db.workers.count_documents({})
-    
-    if total_services > 10 or total_workers > 5:
-        # Clear duplicates detected
-        logger.info("Cleaning up duplicate services and workers...")
-        await db.services.delete_many({})
-        await db.workers.delete_many({})
-        existing_services = 0
-        existing_workers = 0
-    
-    # Seed services if no active ones exist
-    if existing_services == 0:
-        logger.info("Seeding initial services...")
-        default_services = [
-            {
-                "name": "Šišanje",
-                "category": "hair",
-                "duration": 30,
-                "price": 2000.0,
-                "description": "Klasično šišanje",
+    # One-time seed for services and workers (only on first ever startup)
+    seed_flag = await db.settings.find_one({"type": "seed_completed"})
+    if not seed_flag:
+        existing_services = await db.services.count_documents({})
+        existing_workers = await db.workers.count_documents({})
+        
+        if existing_services == 0:
+            logger.info("Seeding initial services...")
+            default_services = [
+                {
+                    "name": "Šišanje",
+                    "category": "hair",
+                    "duration": 30,
+                    "price": 2000.0,
+                    "description": "Klasično šišanje",
+                    "active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "name": "Farbanje kose",
+                    "category": "hair",
+                    "duration": 90,
+                    "price": 5000.0,
+                    "description": "Farbanje cele kose",
+                    "active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "name": "Manikir",
+                    "category": "nails",
+                    "duration": 45,
+                    "price": 2500.0,
+                    "description": "Klasični manikir",
+                    "active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "name": "Pedikir",
+                    "category": "nails",
+                    "duration": 60,
+                    "price": 3000.0,
+                    "description": "Klasični pedikir",
+                    "active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                {
+                    "name": "Relax masaža",
+                    "category": "massage",
+                    "duration": 60,
+                    "price": 4000.0,
+                    "description": "Opuštajuća masaža celog tela",
+                    "active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+            ]
+            result = await db.services.insert_many(default_services)
+            service_ids = [str(sid) for sid in result.inserted_ids]
+            logger.info(f"Created {len(service_ids)} services")
+        else:
+            services = await db.services.find({"active": True}).to_list(100)
+            service_ids = [str(s["_id"]) for s in services]
+        
+        if existing_workers == 0:
+            logger.info("Seeding initial worker...")
+            await db.workers.insert_one({
+                "name": "Ana",
+                "services": service_ids,
+                "work_start": "09:00",
+                "work_end": "21:00",
+                "break_start": "13:00",
+                "break_end": "14:00",
+                "days_off": [0],
                 "active": True,
                 "created_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "name": "Farbanje kose",
-                "category": "hair",
-                "duration": 90,
-                "price": 5000.0,
-                "description": "Farbanje cele kose",
-                "active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "name": "Manikir",
-                "category": "nails",
-                "duration": 45,
-                "price": 2500.0,
-                "description": "Klasični manikir",
-                "active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "name": "Pedikir",
-                "category": "nails",
-                "duration": 60,
-                "price": 3000.0,
-                "description": "Klasični pedikir",
-                "active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "name": "Relax masaža",
-                "category": "massage",
-                "duration": 60,
-                "price": 4000.0,
-                "description": "Opuštajuća masaža celog tela",
-                "active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-        ]
-        result = await db.services.insert_many(default_services)
-        service_ids = [str(sid) for sid in result.inserted_ids]
-        logger.info(f"Created {len(service_ids)} services")
-    else:
-        # Get existing service IDs
-        services = await db.services.find({"active": True}).to_list(100)
-        service_ids = [str(s["_id"]) for s in services]
-    
-    # Seed worker if none exist
-    if existing_workers == 0:
-        logger.info("Seeding initial worker...")
-        await db.workers.insert_one({
-            "name": "Ana",
-            "services": service_ids,  # Ana can do ALL services
-            "work_start": "09:00",
-            "work_end": "21:00",
-            "break_start": "13:00",
-            "break_end": "14:00",
-            "days_off": [0],  # Sunday off
-            "active": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        logger.info("Created worker: Ana")
+            })
+            logger.info("Created worker: Ana")
+        
+        # Mark seed as completed — never re-seed again
+        await db.settings.insert_one({"type": "seed_completed", "completed_at": datetime.now(timezone.utc).isoformat()})
+        logger.info("Seed completed and flagged")
     
     # Write test credentials
     import os as os_module
