@@ -24,6 +24,17 @@ import {
 
 const PHONE_PREFIX = "+381";
 
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.cssText = "position:fixed;opacity:0;left:-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+  toast.success("Kopirano!");
+}
+
 const BookingPage = () => {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -299,8 +310,20 @@ const BookingPage = () => {
           {bookingDetails.booking_id && (
             <button
               onClick={() => {
-                navigator.clipboard.writeText(bookingDetails.booking_id);
-                toast.success("Kopirano!");
+                const text = bookingDetails.booking_id;
+                try {
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                      toast.success("Kopirano!");
+                    }).catch(() => {
+                      fallbackCopy(text);
+                    });
+                  } else {
+                    fallbackCopy(text);
+                  }
+                } catch {
+                  fallbackCopy(text);
+                }
               }}
               className="inline-flex items-center gap-2 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-lg px-4 py-2.5 mb-4 hover:bg-[#C5A880]/20 transition-colors active:scale-95"
               data-testid="success-booking-id"
