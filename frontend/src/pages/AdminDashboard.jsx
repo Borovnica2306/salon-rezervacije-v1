@@ -57,7 +57,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-[#0A0A0B]">
       {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 glass border-b border-[#2A2A2D]">
+      <header className="lg:hidden sticky top-0 z-50 bg-[#0A0A0B]/95 backdrop-blur-md border-b border-[#2A2A2D]">
         <div className="flex items-center justify-between p-4">
           <h1 className="font-['Cormorant_Garamond'] text-xl font-light">Dashboard</h1>
           <button
@@ -292,7 +292,8 @@ const ReservationsPage = () => {
         </div>
       ) : (
         <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-[#2A2A2D] hover:bg-transparent">
@@ -419,6 +420,104 @@ const ReservationsPage = () => {
                 })}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="md:hidden divide-y divide-[#2A2A2D]">
+            {reservations.map((res) => {
+              const isBlacklisted = blacklist.includes(res.client_phone);
+              return (
+                <div key={res.id} className="p-4 space-y-3" data-testid={`reservation-mobile-${res.id}`}>
+                  {/* Header: ID + Time + Price */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded">
+                        #{res.booking_id || "—"}
+                      </span>
+                      <span className="font-semibold text-[#C5A880]">
+                        {res.time} - {res.end_time}
+                      </span>
+                    </div>
+                    <span className="font-semibold text-[#C5A880] text-sm">
+                      {res.total_price.toLocaleString()} RSD
+                    </span>
+                  </div>
+
+                  {/* Client info */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{res.client_name}</div>
+                      <div className="text-xs text-[#9CA3AF] flex items-center gap-1">
+                        {res.client_phone}
+                        {isBlacklisted && <Ban className="w-3 h-3 text-red-400" />}
+                      </div>
+                    </div>
+                    <div className="text-xs text-[#9CA3AF]">{res.total_duration} min</div>
+                  </div>
+
+                  {/* Services & Workers */}
+                  {res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
+                    <div className="space-y-1">
+                      {res.service_worker_pairs.map((pair, idx) => (
+                        <div key={idx} className="text-xs flex justify-between">
+                          <span className="text-[#9CA3AF]">{pair.service_name}</span>
+                          <span className="text-[#C5A880] font-medium">{pair.worker_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-[#9CA3AF]">{res.service_names.join(", ")}</div>
+                  )}
+
+                  {/* Actions row */}
+                  <div className="flex items-center justify-between pt-2 border-t border-[#2A2A2D]/50">
+                    {res.payment_status === "paid" ? (
+                      <button
+                        onClick={() => handleTogglePayment(res.id)}
+                        className="px-3 py-1.5 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors"
+                      >
+                        <Check className="w-3 h-3 inline mr-1" />
+                        Plaćeno
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleTogglePayment(res.id)}
+                        className="px-3 py-1.5 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors"
+                      >
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        Čeka uplatu
+                      </button>
+                    )}
+                    <div className="flex gap-2">
+                      {!isBlacklisted ? (
+                        <button
+                          onClick={() => handleBlacklist(res.client_phone)}
+                          className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors"
+                          title="Blokiraj"
+                        >
+                          <Ban className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleRemoveFromBlacklist(res.client_phone)}
+                          className="p-2 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors"
+                          title="Odblokiraj"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleCancel(res.id)}
+                        className="p-2 rounded-lg text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400 transition-colors"
+                        title="Otkaži"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1000,41 +1099,43 @@ const ServicesPage = () => {
                   {categoryServices.map((service) => (
                     <div
                       key={service.id}
-                      className={`bg-[#141416] rounded-xl border p-4 flex items-center justify-between ${
+                      className={`bg-[#141416] rounded-xl border p-4 ${
                         service.active ? "border-[#2A2A2D]" : "border-red-400/30 opacity-60"
                       }`}
                       data-testid={`service-item-${service.id}`}
                     >
-                      <div>
-                        <h4 className="font-medium">{service.name}</h4>
-                        <p className="text-sm text-[#9CA3AF]">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          {service.duration} min
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-[#C5A880]">
-                          {service.price.toLocaleString()} RSD
-                        </span>
-                        <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleEdit(service)}
-                            className="h-8 w-8 hover:bg-[#0A0A0B]"
-                            data-testid={`edit-service-${service.id}`}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleDelete(service.id)}
-                            className="h-8 w-8 hover:bg-red-400/10 text-red-400"
-                            data-testid={`delete-service-${service.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium truncate">{service.name}</h4>
+                          <p className="text-sm text-[#9CA3AF]">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            {service.duration} min
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-semibold text-[#C5A880] text-sm whitespace-nowrap">
+                            {service.price.toLocaleString()} RSD
+                          </span>
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleEdit(service)}
+                              className="h-8 w-8 hover:bg-[#0A0A0B]"
+                              data-testid={`edit-service-${service.id}`}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleDelete(service.id)}
+                              className="h-8 w-8 hover:bg-red-400/10 text-red-400"
+                              data-testid={`delete-service-${service.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1254,14 +1355,14 @@ const BlacklistPage = () => {
       {/* Add new phone */}
       <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-6 mb-6">
         <h3 className="font-medium mb-4">Dodaj broj na crnu listu</h3>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
             <Input
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
               placeholder="+381 6X XXX XXXX"
-              className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880]"
+              className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] w-full"
               data-testid="blacklist-phone-input"
               onKeyDown={(e) => e.key === "Enter" && handleAddToBlacklist()}
             />
@@ -1269,7 +1370,7 @@ const BlacklistPage = () => {
           <Button
             onClick={handleAddToBlacklist}
             disabled={isAdding}
-            className="bg-red-500 hover:bg-red-600 text-white"
+            className="bg-red-500 hover:bg-red-600 text-white w-full sm:w-auto"
             data-testid="add-to-blacklist-btn"
           >
             <Ban className="w-4 h-4 mr-2" />
@@ -1288,42 +1389,71 @@ const BlacklistPage = () => {
         </div>
       ) : (
         <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-[#2A2A2D] hover:bg-transparent">
-                <TableHead className="text-[#9CA3AF]">Broj telefona</TableHead>
-                <TableHead className="text-[#9CA3AF]">Datum blokiranja</TableHead>
-                <TableHead className="text-[#9CA3AF] text-right">Akcija</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {blacklist.map((item, index) => (
-                <TableRow key={index} className="border-[#2A2A2D]" data-testid={`blacklist-row-${index}`}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <Ban className="w-4 h-4 text-red-400" />
-                      {item.phone}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-[#9CA3AF]">
-                    {item.created_at ? format(new Date(item.created_at), "d. MMM yyyy HH:mm", { locale: sr }) : "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleRemoveFromBlacklist(item.phone)}
-                      className="border-green-400/30 text-green-400 hover:bg-green-400/10"
-                      data-testid={`unblock-${index}`}
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Odblokiraj
-                    </Button>
-                  </TableCell>
+          {/* Desktop Table */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[#2A2A2D] hover:bg-transparent">
+                  <TableHead className="text-[#9CA3AF]">Broj telefona</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Datum blokiranja</TableHead>
+                  <TableHead className="text-[#9CA3AF] text-right">Akcija</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {blacklist.map((item, index) => (
+                  <TableRow key={index} className="border-[#2A2A2D]" data-testid={`blacklist-row-${index}`}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Ban className="w-4 h-4 text-red-400" />
+                        {item.phone}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[#9CA3AF]">
+                      {item.created_at ? format(new Date(item.created_at), "d. MMM yyyy HH:mm", { locale: sr }) : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRemoveFromBlacklist(item.phone)}
+                        className="border-green-400/30 text-green-400 hover:bg-green-400/10"
+                        data-testid={`unblock-${index}`}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Odblokiraj
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="sm:hidden divide-y divide-[#2A2A2D]">
+            {blacklist.map((item, index) => (
+              <div key={index} className="p-4 flex items-center justify-between gap-3" data-testid={`blacklist-mobile-${index}`}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Ban className="w-4 h-4 text-red-400 shrink-0" />
+                    <span className="truncate">{item.phone}</span>
+                  </div>
+                  <div className="text-xs text-[#9CA3AF] mt-1">
+                    {item.created_at ? format(new Date(item.created_at), "d. MMM yyyy HH:mm", { locale: sr }) : "-"}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleRemoveFromBlacklist(item.phone)}
+                  className="border-green-400/30 text-green-400 hover:bg-green-400/10 shrink-0"
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  Odblokiraj
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -1405,8 +1535,8 @@ const SystemConfigPage = () => {
               data-testid={`category-row-${cat.key}`}
             >
               <div>
-                <span className="font-medium text-lg">{cat.label}</span>
-                <span className="ml-3 text-xs text-[#9CA3AF] font-mono">{cat.key}</span>
+                <span className="font-medium text-base sm:text-lg">{cat.label}</span>
+                <span className="hidden sm:inline ml-3 text-xs text-[#9CA3AF] font-mono">{cat.key}</span>
               </div>
               <Switch
                 checked={cat.enabled}
