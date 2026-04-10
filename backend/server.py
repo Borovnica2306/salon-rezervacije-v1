@@ -594,8 +594,12 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     # Calculate total duration of all services
     total_duration = sum(service_duration.get(p["service_id"], 0) for p in service_worker_pairs)
     
-    # Maximum gap between services
-    MAX_GAP = 15
+    # Fixed Social Buffer between consecutive services (exactly 15 minutes)
+    SOCIAL_BUFFER = 15
+    
+    # Total chain duration = service durations + buffers between them
+    num_buffers = max(0, len(service_worker_pairs) - 1)
+    total_chain_duration = total_duration + (num_buffers * SOCIAL_BUFFER)
     
     def is_worker_available(wid: str, start: int, end: int) -> bool:
         """Check if a worker is available during a time range."""
@@ -622,6 +626,8 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     def check_sequential_availability(start_time: int) -> tuple:
         """
         Check if all services can be done sequentially starting at start_time.
+        Fixed 15-minute Social Buffer between consecutive services.
+        All-or-Nothing: entire chain must be valid or the slot is rejected.
         Returns (is_valid, total_end_time, time_blocks)
         """
         current_time = start_time
@@ -631,33 +637,27 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
             wid = pair["worker_id"]
             duration = service_duration.get(pair["service_id"], 0)
             
-            # Gap only allowed BETWEEN services (not before the first one)
-            max_allowed_gap = MAX_GAP if idx > 0 else 0
+            # Fixed 15-min Social Buffer BETWEEN services (not before first)
+            buffer = SOCIAL_BUFFER if idx > 0 else 0
+            check_start = current_time + buffer
+            check_end = check_start + duration
             
-            # Try to find a slot for this worker starting from current_time
-            found = False
-            for gap in range(0, max_allowed_gap + 1, 5):  # Check 0, 5, 10, 15 min gaps
-                check_start = current_time + gap
-                check_end = check_start + duration
-                
-                # Make sure we don't exceed work hours
-                if check_end > max_end:
-                    break
-                
-                if is_worker_available(wid, check_start, check_end):
-                    time_blocks.append({
-                        "worker_id": wid,
-                        "service_id": pair["service_id"],
-                        "start_time": check_start,
-                        "end_time": check_end,
-                        "gap": gap
-                    })
-                    current_time = check_end
-                    found = True
-                    break
-            
-            if not found:
+            # Service must finish within work hours
+            if check_end > max_end:
                 return (False, 0, [])
+            
+            # Worker must be available for this exact time block
+            if not is_worker_available(wid, check_start, check_end):
+                return (False, 0, [])
+            
+            time_blocks.append({
+                "worker_id": wid,
+                "service_id": pair["service_id"],
+                "start_time": check_start,
+                "end_time": check_end,
+                "gap": buffer
+            })
+            current_time = check_end
         
         return (True, current_time, time_blocks)
     
@@ -666,7 +666,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     slot_details = {}
     current = min_start
     
-    while current + total_duration <= max_end:
+    while current + total_chain_duration <= max_end:
         is_valid, end_time, time_blocks = check_sequential_availability(current)
         
         if is_valid:
@@ -832,6 +832,52 @@ async def create_reservation(reservation: ReservationCreate):
         end_time = minutes_to_time(start_minutes + total_duration)
         actual_duration = total_duration
         worker_time_blocks = []
+    
+    # --- Anti-Conflict: Prevent client from double-booking overlapping times ---
+    existing_client_reservations = await db.reservations.find({
+        "client_phone": phone,
+        "date": reservation.date,
+        "status": {"$ne": "cancelled"}
+    }).to_list(100)
+    
+    if existing_client_reservations:
+        # Build new reservation time ranges (from worker_time_blocks or fallback)
+        new_ranges = []
+        if worker_time_blocks:
+            for block in worker_time_blocks:
+                new_ranges.append((
+                    time_to_minutes(block["start_time"]),
+                    time_to_minutes(block["end_time"])
+                ))
+        else:
+            new_ranges.append((
+                time_to_minutes(reservation.time),
+                time_to_minutes(end_time)
+            ))
+        
+        for existing_res in existing_client_reservations:
+            # Build existing reservation time ranges
+            existing_ranges = []
+            if "worker_time_blocks" in existing_res and existing_res["worker_time_blocks"]:
+                for block in existing_res["worker_time_blocks"]:
+                    existing_ranges.append((
+                        time_to_minutes(block["start_time"]),
+                        time_to_minutes(block["end_time"])
+                    ))
+            else:
+                existing_ranges.append((
+                    time_to_minutes(existing_res["time"]),
+                    time_to_minutes(existing_res["end_time"])
+                ))
+            
+            # Check overlap: two ranges overlap if start_a < end_b AND start_b < end_a
+            for new_start, new_end in new_ranges:
+                for ex_start, ex_end in existing_ranges:
+                    if new_start < ex_end and ex_start < new_end:
+                        raise HTTPException(
+                            status_code=409,
+                            detail="Već imate rezervaciju koja se preklapa sa ovim terminom. Molimo izaberite drugo vreme."
+                        )
     
     # Get first worker for legacy compatibility
     first_worker_id = worker_ids[0] if worker_ids else None
