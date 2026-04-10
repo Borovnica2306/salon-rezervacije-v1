@@ -34,16 +34,24 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Refaktorisanje server.py u module (database, models, auth, logic, routes)
 - [x] Vizuelni Timeline na confirmation stranici (emoji, usluge, pauze, cene)
 - [x] "Dodaj u kalendar" dugmad (Google Calendar link + ICS download za Apple/Outlook)
+- [x] Admin Dashboard: Worker filter bar (pill dugmad za filtriranje po radniku)
+- [x] Admin Dashboard: Visual Social Buffer u karticama (mini-timeline sa ☕ pauzom)
+- [x] Admin Dashboard: Cancel confirmation dialog (sa detaljima rezervacije)
+- [x] Backend: Multi-worker $or query za filtriranje rezervacija po radniku
 
 ## Arhitektura (Modularna)
 ```
 /app/backend/
-├── server.py      # 134 linija - App init, CORS, startup/shutdown
-├── database.py    # 16 linija  - MongoDB konekcija, MASTER_CATEGORIES
-├── models.py      # 127 linija - Svi Pydantic modeli
-├── auth.py        # 67 linija  - JWT, lozinke, get_current_user
-├── logic.py       # 296 linija - Smart Pairing, slotovi, Viber placeholder
-└── routes.py      # 746 linija - Svi API endpoint-i
+├── server.py      # App init, CORS, startup/shutdown
+├── database.py    # MongoDB konekcija, MASTER_CATEGORIES
+├── models.py      # Svi Pydantic modeli
+├── auth.py        # JWT, lozinke, get_current_user
+├── logic.py       # Smart Pairing, slotovi, Viber placeholder
+└── routes.py      # Svi API endpoint-i
+/app/frontend/src/pages/
+├── BookingPage.jsx      # Klijentski booking wizard + confirmation timeline
+├── AdminDashboard.jsx   # Admin panel sa filterima i timeline-om
+└── AdminLogin.jsx       # JWT login forma
 ```
 
 ## Current Active Workers
