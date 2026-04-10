@@ -30,20 +30,24 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Smart Pairing Logic — Fiksni 15-min Social Buffer između vezanih usluga
 - [x] Anti-Conflict validacija — Sprečava preklapanje termina istog klijenta (po telefonu)
 - [x] All-or-Nothing lanac — Termin se prikazuje samo ako je ceo niz izvodljiv
-- [x] Frontend totalDuration uključuje bufere (15min × broj prelaza)
+- [x] Frontend totalDuration uključuje bufere (15min x broj prelaza)
+- [x] Refaktorisanje server.py u module (P3 -> DONE)
 
-## Bug Fixes
-- BUG #002: Worker desync — Ana se vraćala nakon restarta jer seed logika nije imala completion flag. Fix: `seed_completed` document u settings kolekciji.
+## Arhitektura (Modularna)
+```
+/app/backend/
+├── server.py      # 134 linija - App init, CORS, startup/shutdown
+├── database.py    # 16 linija  - MongoDB konekcija, MASTER_CATEGORIES
+├── models.py      # 127 linija - Svi Pydantic modeli
+├── auth.py        # 67 linija  - JWT, lozinke, get_current_user
+├── logic.py       # 296 linija - Smart Pairing, slotovi, Viber placeholder
+└── routes.py      # 746 linija - Svi API endpoint-i
+```
 
 ## Current Active Workers
-- Suzana (hair)
-- Milena (nails)
-- Slobodan (massage)
-- Dragana (makeup)
-- Dobrila (depilation)
-- Jovana (cosmetics)
-- Dejan (eyebrows)
+- Suzana (hair), Milena (nails), Slobodan (massage)
+- Dragana (makeup), Dobrila (depilation), Jovana (cosmetics), Dejan (eyebrows)
 
 ## Backlog
-- P2: SMS/Email notifikacije za potvrde i podsetnike
-- P3: Refaktorisanje server.py u module (routes, models, db)
+- P2: Viber notifikacije (placeholder funkcije već postoje u logic.py)
+- Budući zadaci: po zahtevu korisnika
