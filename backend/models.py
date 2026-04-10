@@ -123,5 +123,13 @@ class CategoryToggle(BaseModel):
     category: str
     enabled: bool
 
+class AdminReservationCreate(BaseModel):
+    service_worker_pairs: List[ServiceWorkerPair]
+    date: str
+    time: str
+    client_name: str
+    client_phone: str
+    force: bool = False
+
 class ClientReservationsRequest(BaseModel):
     phone: str

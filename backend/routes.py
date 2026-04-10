@@ -11,6 +11,7 @@ from models import (
     WorkerCreate, WorkerUpdate, WorkerResponse, ServiceWorkerPair,
     ReservationCreate, ReservationResponse, SettingsUpdate, SettingsResponse,
     AvailableSlotsRequest, CategoryToggle, ClientReservationsRequest,
+    AdminReservationCreate,
 )
 from auth import (
     get_jwt_secret, JWT_ALGORITHM, hash_password, verify_password,
@@ -484,6 +485,181 @@ async def create_reservation(reservation: ReservationCreate):
         services=service_ids,
         service_names=service_names,
         service_worker_pairs=service_worker_pairs,
+        worker_time_blocks=worker_time_blocks,
+        worker_id=first_worker_id,
+        worker_name=first_worker.get("name", ""),
+        date=reservation.date,
+        time=reservation.time,
+        end_time=end_time,
+        total_duration=actual_duration,
+        total_price=total_price,
+        client_name=reservation.client_name,
+        client_phone=phone,
+        status="confirmed",
+        payment_status="pending",
+        advance_required=True,
+        advance_released=False,
+        created_at=doc["created_at"]
+    )
+
+
+@api_router.post("/admin/reservations", response_model=ReservationResponse)
+async def admin_create_reservation(
+    reservation: AdminReservationCreate,
+    user: dict = Depends(get_current_user)
+):
+    """Admin manual booking - can force-create even with conflicts."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    phone = normalize_phone(reservation.client_phone.strip())
+
+    # Check daily limit (max 3 per phone per day) - still enforced for admin
+    today_count = await db.reservations.count_documents({
+        "client_phone": phone,
+        "date": reservation.date,
+        "status": {"$ne": "cancelled"}
+    })
+
+    # Get all service IDs from pairs
+    service_ids = [p.service_id for p in reservation.service_worker_pairs]
+    worker_ids = [p.worker_id for p in reservation.service_worker_pairs]
+
+    # Get services and calculate totals
+    service_docs = await db.services.find({
+        "_id": {"$in": [ObjectId(s) for s in service_ids]},
+        "active": True
+    }).to_list(100)
+
+    if len(service_docs) != len(service_ids):
+        raise HTTPException(status_code=400, detail="Neke izabrane usluge nisu dostupne.")
+
+    service_map = {str(s["_id"]): s for s in service_docs}
+    total_duration = sum(s["duration"] for s in service_docs)
+    total_price = sum(s["price"] for s in service_docs)
+
+    # Get workers
+    workers_list = await db.workers.find({
+        "_id": {"$in": [ObjectId(w) for w in worker_ids]},
+        "active": True
+    }).to_list(100)
+
+    if len(workers_list) != len(set(worker_ids)):
+        raise HTTPException(status_code=400, detail="Neki izabrani radnici nisu dostupni.")
+
+    worker_map = {str(w["_id"]): w for w in workers_list}
+
+    # Build service_worker_pairs with names
+    swp = []
+    service_names = []
+    for p in reservation.service_worker_pairs:
+        srv = service_map.get(p.service_id)
+        wrk = worker_map.get(p.worker_id)
+        if srv and wrk:
+            swp.append({
+                "service_id": p.service_id,
+                "service_name": srv["name"],
+                "worker_id": p.worker_id,
+                "worker_name": wrk["name"],
+                "duration": srv["duration"],
+                "price": srv["price"]
+            })
+            service_names.append(srv["name"])
+
+    # Check slot availability
+    pairs_dict = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in reservation.service_worker_pairs]
+    available = await get_available_slots_multi(pairs_dict, reservation.date)
+    slot_available = reservation.time in available.get("slots", [])
+
+    slot_detail = available.get("slot_details", {}).get(reservation.time, {})
+    if slot_detail:
+        end_time = slot_detail["end_time"]
+        actual_duration = slot_detail["total_duration"]
+        worker_time_blocks = slot_detail.get("time_blocks", [])
+    else:
+        start_minutes = time_to_minutes(reservation.time)
+        end_time = minutes_to_time(start_minutes + total_duration)
+        actual_duration = total_duration
+        worker_time_blocks = []
+
+    # Anti-Conflict check
+    conflict_detected = False
+    existing_client_reservations = await db.reservations.find({
+        "client_phone": phone,
+        "date": reservation.date,
+        "status": {"$ne": "cancelled"}
+    }).to_list(100)
+
+    if existing_client_reservations:
+        new_ranges = []
+        if worker_time_blocks:
+            for block in worker_time_blocks:
+                new_ranges.append((time_to_minutes(block["start_time"]), time_to_minutes(block["end_time"])))
+        else:
+            new_ranges.append((time_to_minutes(reservation.time), time_to_minutes(end_time)))
+
+        for existing_res in existing_client_reservations:
+            existing_ranges = []
+            if "worker_time_blocks" in existing_res and existing_res["worker_time_blocks"]:
+                for block in existing_res["worker_time_blocks"]:
+                    existing_ranges.append((time_to_minutes(block["start_time"]), time_to_minutes(block["end_time"])))
+            else:
+                existing_ranges.append((time_to_minutes(existing_res["time"]), time_to_minutes(existing_res["end_time"])))
+
+            for ns, ne in new_ranges:
+                for es, ee in existing_ranges:
+                    if ns < ee and es < ne:
+                        conflict_detected = True
+                        break
+
+    # If not force and there's an issue, return warning
+    if not reservation.force:
+        warnings = []
+        if not slot_available:
+            warnings.append("Izabrani termin nije dostupan po standardnoj proveri.")
+        if conflict_detected:
+            warnings.append("Klijent već ima rezervaciju koja se preklapa sa ovim terminom.")
+        if today_count >= 3:
+            warnings.append("Klijent već ima 3 rezervacije za ovaj dan.")
+        if warnings:
+            raise HTTPException(status_code=409, detail="|".join(warnings))
+
+    # Force create - proceed
+    first_worker_id = worker_ids[0] if worker_ids else None
+    first_worker = worker_map.get(first_worker_id, {})
+    booking_id = await generate_booking_id()
+
+    doc = {
+        "booking_id": booking_id,
+        "services": service_ids,
+        "service_names": service_names,
+        "service_worker_pairs": swp,
+        "worker_time_blocks": worker_time_blocks,
+        "worker_id": first_worker_id,
+        "worker_name": first_worker.get("name", ""),
+        "date": reservation.date,
+        "time": reservation.time,
+        "end_time": end_time,
+        "total_duration": actual_duration,
+        "total_price": total_price,
+        "client_name": reservation.client_name,
+        "client_phone": phone,
+        "status": "confirmed",
+        "payment_status": "pending",
+        "advance_required": True,
+        "advance_released": False,
+        "created_by": "admin",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    result = await db.reservations.insert_one(doc)
+
+    return ReservationResponse(
+        id=str(result.inserted_id),
+        booking_id=booking_id,
+        services=service_ids,
+        service_names=service_names,
+        service_worker_pairs=swp,
         worker_time_blocks=worker_time_blocks,
         worker_id=first_worker_id,
         worker_name=first_worker.get("name", ""),

@@ -1,0 +1,138 @@
+{
+  "summary": "Admin Manual Booking (Ručna Rezervacija) feature testing complete. Backend: 10/10 tests passed. Frontend: All new features working correctly - 3-step modal, service/worker selection, date/time picker, client info form, and successful reservation creation.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "ManualBookingModal",
+        "issues": ["Console warning: '<span> cannot be a child of <option>' - minor React hydration warning in service select dropdown (non-blocking)"]
+      }
+    ]
+  },
+  
+  "passed_tests": [
+    "Backend: POST /api/admin/reservations without auth returns 401",
+    "Backend: POST /api/admin/reservations with invalid token returns 401",
+    "Backend: POST /api/admin/reservations creates reservation successfully with admin auth",
+    "Backend: POST /api/admin/reservations with multiple services creates multi-service reservation",
+    "Backend: Admin reservation appears in GET /api/reservations listing with all timeline details",
+    "Backend: POST /api/admin/reservations with overlap returns 409 with warning message when force=false",
+    "Backend: POST /api/admin/reservations with overlap and force=true creates reservation anyway (override)",
+    "Backend: POST /api/admin/reservations with unavailable slot returns 409 warning when force=false",
+    "Backend: Invalid service ID returns error (400/422/500)",
+    "Backend: Invalid worker ID returns error (400/422/500)",
+    "Frontend: 'Nova Rezervacija' button visible in admin dashboard header",
+    "Frontend: Clicking 'Nova Rezervacija' opens 3-step modal with title 'Ručna Rezervacija'",
+    "Frontend: Step 1 - service select dropdown loads services",
+    "Frontend: Step 1 - worker select appears after service selection",
+    "Frontend: Step 1 - can add service+worker pair (shows 'service → worker (duration min)' format)",
+    "Frontend: Step 1 - can remove pairs with X button",
+    "Frontend: Step 2 - date picker visible and functional",
+    "Frontend: Step 2 - time slots load for selected date (46 slots available)",
+    "Frontend: Step 2 - slot details show with time blocks",
+    "Frontend: Step 3 - client name and phone inputs visible",
+    "Frontend: Step 3 - booking summary shows date, time, services, total price",
+    "Frontend: Step 3 - submit button 'Potvrdi Rezervaciju' visible",
+    "Frontend: After successful booking, toast 'Rezervacija kreirana!' appears and modal closes",
+    "Frontend: Reservation appears in dashboard table immediately after creation",
+    "Frontend: Existing client-side booking flow works (category→service→worker→date/time selection)"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_admin_manual_booking.py",
+    "/app/test_reports/pytest/pytest_results_admin_manual_booking.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "AdminReservationCreate model correctly includes 'force' field with default=False",
+    "Backend endpoint properly returns 409 with pipe-separated warning messages for conflicts",
+    "Frontend ManualBookingModal correctly handles 409 response and shows warnings with force override button",
+    "Modal uses proper data-testid attributes for all interactive elements",
+    "Service select uses native HTML select element as expected",
+    "Worker select only appears after service is selected (correct UX flow)"
+  ],
+  
+  "updated_files": [
+    "/app/backend/tests/test_admin_manual_booking.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all features working)"
+  },
+  
+  "test_credentials": {
+    "super_admin": "bornaja23@gmail.com / Markonijus23!",
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+  
+  "seed_data_used": {
+    "test_date": "2026-04-20, 2026-04-21",
+    "workers": [
+      "Suzana (69d4d6f82990ad8a6366bf7d)",
+      "Milena (69d4d6f82990ad8a6366bf7e)",
+      "Slobodan (69d4d6f82990ad8a6366bf7f)"
+    ],
+    "services": [
+      "Šišanje (69d3b77e0b47ad8f729e9ba2) - 30min",
+      "Manikir (69d3b77e0b47ad8f729e9ba4) - 45min",
+      "Relax masaža (69d3b77e0b47ad8f729e9ba6) - 60min"
+    ]
+  },
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "Admin Manual Booking feature fully verified. The 3-step modal flow works: Step 1 (service+worker selection), Step 2 (date+time selection with slot details), Step 3 (client info + submit). Backend conflict detection returns 409 with warnings when force=false, and allows override when force=true. Test reservations were created on 2026-04-20 and 2026-04-21 - these should be cleaned up via PUT /api/reservations/{id}/cancel if needed.",
+  
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "send_viber_notification (logic.py)"
+    ],
+    "note": "Viber functions are PLACEHOLDER only - they log but don't send real notifications"
+  },
+  
+  "feature_verification": {
+    "admin_manual_booking": {
+      "trigger_button": "'Nova Rezervacija' button in admin dashboard header (data-testid='admin-new-reservation-btn')",
+      "modal_title": "'Ručna Rezervacija' with step indicator (1/2/3)",
+      "step1_elements": {
+        "service_select": "data-testid='manual-service-select' (native HTML select)",
+        "worker_select": "data-testid='manual-worker-select' (appears after service selection)",
+        "add_pair_btn": "data-testid='manual-add-pair-btn'",
+        "pair_display": "data-testid='manual-pair-{idx}' showing 'service → worker (duration min)'",
+        "remove_pair": "data-testid='remove-pair-{idx}'",
+        "next_btn": "data-testid='manual-step1-next'"
+      },
+      "step2_elements": {
+        "date_input": "data-testid='manual-date-input' (HTML date input)",
+        "time_slots": "data-testid='manual-slot-{time}' (grid of available slots)",
+        "slot_details": "Shows time blocks with service name and worker name",
+        "next_btn": "data-testid='manual-step2-next'"
+      },
+      "step3_elements": {
+        "summary": "Shows date, time range, services, total price",
+        "client_name": "data-testid='manual-client-name'",
+        "client_phone": "data-testid='manual-client-phone'",
+        "warnings": "data-testid='manual-warnings' (shown on 409 conflict)",
+        "force_btn": "data-testid='manual-force-submit' (shown when warnings present)",
+        "submit_btn": "data-testid='manual-submit-btn'"
+      },
+      "conflict_handling": {
+        "409_response": "Backend returns 409 with pipe-separated warning messages",
+        "warning_display": "Red warning box with AlertTriangle icon",
+        "force_override": "'Zakaži svejedno (Override)' button to force create"
+      }
+    }
+  }
+}
