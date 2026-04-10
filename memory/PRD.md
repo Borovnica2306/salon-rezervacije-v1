@@ -27,6 +27,10 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Master Category Switch (7 kategorija, soft-hide logika)
 - [x] System Config stranica (samo za super_admin)
 - [x] Seed_completed flag (sprečava re-seeding radnika nakon restarta)
+- [x] Smart Pairing Logic — Fiksni 15-min Social Buffer između vezanih usluga
+- [x] Anti-Conflict validacija — Sprečava preklapanje termina istog klijenta (po telefonu)
+- [x] All-or-Nothing lanac — Termin se prikazuje samo ako je ceo niz izvodljiv
+- [x] Frontend totalDuration uključuje bufere (15min × broj prelaza)
 
 ## Bug Fixes
 - BUG #002: Worker desync — Ana se vraćala nakon restarta jer seed logika nije imala completion flag. Fix: `seed_completed` document u settings kolekciji.
@@ -35,7 +39,11 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - Suzana (hair)
 - Milena (nails)
 - Slobodan (massage)
+- Dragana (makeup)
+- Dobrila (depilation)
+- Jovana (cosmetics)
+- Dejan (eyebrows)
 
 ## Backlog
-- P2: SMS/Email notifikacije
-- P3: Refaktorisanje server.py u module
+- P2: SMS/Email notifikacije za potvrde i podsetnike
+- P3: Refaktorisanje server.py u module (routes, models, db)

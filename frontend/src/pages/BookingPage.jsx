@@ -91,7 +91,7 @@ const BookingPage = () => {
   const getE164Phone = (phone) => phone;
 
   // Calculate totals
-  const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
+  const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0) + Math.max(0, selectedServices.length - 1) * 15;
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
 
   // Check if all services have workers assigned
