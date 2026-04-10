@@ -31,7 +31,9 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Anti-Conflict validacija — Sprečava preklapanje termina istog klijenta (po telefonu)
 - [x] All-or-Nothing lanac — Termin se prikazuje samo ako je ceo niz izvodljiv
 - [x] Frontend totalDuration uključuje bufere (15min x broj prelaza)
-- [x] Refaktorisanje server.py u module (P3 -> DONE)
+- [x] Refaktorisanje server.py u module (database, models, auth, logic, routes)
+- [x] Vizuelni Timeline na confirmation stranici (emoji, usluge, pauze, cene)
+- [x] "Dodaj u kalendar" dugmad (Google Calendar link + ICS download za Apple/Outlook)
 
 ## Arhitektura (Modularna)
 ```
