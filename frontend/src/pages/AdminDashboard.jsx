@@ -161,22 +161,54 @@ const ReservationsPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [blacklist, setBlacklist] = useState([]);
+  const [workers, setWorkers] = useState([]);
+  const [selectedWorker, setSelectedWorker] = useState("all");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
+    fetchWorkers();
+  }, []);
+
+  useEffect(() => {
     fetchReservations();
     fetchBlacklist();
-  }, [selectedDate]);
+  }, [selectedDate, selectedWorker]);
+
+  const fetchWorkers = async () => {
+    try {
+      const response = await axios.get(`${API}/workers`, { headers });
+      setWorkers(response.data);
+    } catch (error) {
+      console.error("Error fetching workers:", error);
+    }
+  };
 
   const fetchReservations = async () => {
     try {
+      const params = { date: format(selectedDate, "yyyy-MM-dd") };
+      if (selectedWorker !== "all") {
+        params.worker_id = selectedWorker;
+      }
       const response = await axios.get(`${API}/reservations`, {
-        params: { date: format(selectedDate, "yyyy-MM-dd") },
+        params,
         headers,
       });
-      setReservations(response.data);
+      // Client-side filter for worker_time_blocks (multi-worker reservations)
+      if (selectedWorker !== "all") {
+        const filtered = response.data.filter(r => {
+          if (r.worker_id === selectedWorker) return true;
+          if (r.service_worker_pairs?.some(p => p.worker_id === selectedWorker)) return true;
+          if (r.worker_time_blocks?.some(b => b.worker_id === selectedWorker)) return true;
+          return false;
+        });
+        setReservations(filtered);
+      } else {
+        setReservations(response.data);
+      }
     } catch (error) {
       toast.error("Greška pri učitavanju rezervacija");
     } finally {
@@ -228,10 +260,17 @@ const ReservationsPage = () => {
     try {
       await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers });
       toast.success("Rezervacija otkazana");
+      setCancelDialogOpen(false);
+      setCancelTarget(null);
       fetchReservations();
     } catch (error) {
       toast.error("Greška pri otkazivanju");
     }
+  };
+
+  const openCancelDialog = (res) => {
+    setCancelTarget(res);
+    setCancelDialogOpen(true);
   };
 
   const handleBlacklist = async (phone) => {
@@ -252,6 +291,37 @@ const ReservationsPage = () => {
     } catch (error) {
       toast.error("Greška pri uklanjanju sa crne liste");
     }
+  };
+
+  // Build mini-timeline for a reservation card
+  const renderMiniTimeline = (res) => {
+    const blocks = res.worker_time_blocks || [];
+    if (blocks.length <= 1) return null;
+    return (
+      <div className="space-y-1 mt-1">
+        {blocks.map((block, idx) => {
+          const pair = res.service_worker_pairs?.[idx];
+          return (
+            <div key={idx}>
+              {block.gap > 0 && idx > 0 && (
+                <div className="flex items-center gap-1.5 py-0.5 pl-1" data-testid={`admin-buffer-${res.id}-${idx}`}>
+                  <span className="text-[10px]">☕</span>
+                  <span className="text-[10px] text-[#6B7280] italic">
+                    {blocks[idx - 1].end_time} - {block.start_time} ({block.gap} min pauza)
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#9CA3AF]">
+                  {block.start_time}-{block.end_time} {pair?.service_name || ""}
+                </span>
+                <span className="text-[#C5A880] font-medium">{pair?.worker_name || ""}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -293,6 +363,87 @@ const ReservationsPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Worker Filter */}
+      <div className="flex items-center gap-3 mb-4" data-testid="worker-filter">
+        <Users className="w-4 h-4 text-[#9CA3AF]" />
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+          <button
+            onClick={() => setSelectedWorker("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+              selectedWorker === "all"
+                ? "bg-[#C5A880] text-black"
+                : "bg-[#1E1E22] text-[#9CA3AF] hover:bg-[#2A2A2D] border border-[#2A2A2D]"
+            }`}
+            data-testid="filter-all-workers"
+          >
+            Svi radnici
+          </button>
+          {workers.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => setSelectedWorker(w.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                selectedWorker === w.id
+                  ? "bg-[#C5A880] text-black"
+                  : "bg-[#1E1E22] text-[#9CA3AF] hover:bg-[#2A2A2D] border border-[#2A2A2D]"
+              }`}
+              data-testid={`filter-worker-${w.id}`}
+            >
+              {w.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="bg-[#141416] border-[#2A2A2D]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Otkazivanje rezervacije</DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Da li ste sigurni da želite da otkažete ovu rezervaciju?
+            </DialogDescription>
+          </DialogHeader>
+          {cancelTarget && (
+            <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[#9CA3AF]">ID:</span>
+                <span className="font-mono text-[#C5A880]">#{cancelTarget.booking_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#9CA3AF]">Klijent:</span>
+                <span className="text-white">{cancelTarget.client_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#9CA3AF]">Vreme:</span>
+                <span className="text-white">{cancelTarget.time} - {cancelTarget.end_time}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#9CA3AF]">Usluge:</span>
+                <span className="text-white">{cancelTarget.service_names?.join(", ")}</span>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-3 mt-2">
+            <Button
+              variant="outline"
+              className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22]"
+              onClick={() => setCancelDialogOpen(false)}
+              data-testid="cancel-dialog-dismiss"
+            >
+              Ne, zadrži
+            </Button>
+            <Button
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => cancelTarget && handleCancel(cancelTarget.id)}
+              data-testid="cancel-dialog-confirm"
+            >
+              Da, otkaži
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Reservations Table */}
       {loading ? (
@@ -361,8 +512,10 @@ const ReservationsPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[200px]">
-                          {res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
+                        <div className="max-w-[220px]">
+                          {res.worker_time_blocks && res.worker_time_blocks.length > 1 ? (
+                            renderMiniTimeline(res)
+                          ) : res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
                             <div className="space-y-1">
                               {res.service_worker_pairs.map((pair, idx) => (
                                 <div key={idx} className="text-xs">
@@ -440,7 +593,7 @@ const ReservationsPage = () => {
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => handleCancel(res.id)}
+                            onClick={() => openCancelDialog(res)}
                             className="h-8 w-8 text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400"
                             title="Otkaži rezervaciju"
                             data-testid={`cancel-${res.id}`}
@@ -494,8 +647,10 @@ const ReservationsPage = () => {
                     <div className="text-xs text-[#9CA3AF]">{res.total_duration} min</div>
                   </div>
 
-                  {/* Services & Workers */}
-                  {res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
+                  {/* Services & Workers with Timeline */}
+                  {res.worker_time_blocks && res.worker_time_blocks.length > 1 ? (
+                    renderMiniTimeline(res)
+                  ) : res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
                     <div className="space-y-1">
                       {res.service_worker_pairs.map((pair, idx) => (
                         <div key={idx} className="text-xs flex justify-between">
@@ -558,7 +713,7 @@ const ReservationsPage = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => handleCancel(res.id)}
+                        onClick={() => openCancelDialog(res)}
                         className="p-2 rounded-lg text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400 transition-colors"
                         title="Otkaži"
                       >

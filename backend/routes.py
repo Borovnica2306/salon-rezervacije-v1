@@ -515,7 +515,11 @@ async def get_reservations(
     if date:
         query["date"] = date
     if worker_id:
-        query["worker_id"] = worker_id
+        query["$or"] = [
+            {"worker_id": worker_id},
+            {"service_worker_pairs.worker_id": worker_id},
+            {"worker_time_blocks.worker_id": worker_id},
+        ]
 
     reservations = await db.reservations.find(query).sort("date", 1).sort("time", 1).to_list(1000)
 
