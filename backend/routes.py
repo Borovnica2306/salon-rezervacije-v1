@@ -577,10 +577,40 @@ async def admin_create_reservation(
         actual_duration = slot_detail["total_duration"]
         worker_time_blocks = slot_detail.get("time_blocks", [])
     else:
+        # Manually compute time blocks for force-create scenarios
         start_minutes = time_to_minutes(reservation.time)
-        end_time = minutes_to_time(start_minutes + total_duration)
-        actual_duration = total_duration
+        current_min = start_minutes
         worker_time_blocks = []
+        for idx, p in enumerate(reservation.service_worker_pairs):
+            srv = service_map.get(p.service_id)
+            dur = srv["duration"] if srv else 0
+            buf = 15 if idx > 0 else 0
+            block_start = current_min + buf
+            block_end = block_start + dur
+            wrk = worker_map.get(p.worker_id)
+            worker_time_blocks.append({
+                "worker_id": p.worker_id,
+                "service_id": p.service_id,
+                "start_time": minutes_to_time(block_start),
+                "end_time": minutes_to_time(block_end),
+                "gap": buf
+            })
+            current_min = block_end
+        end_time = minutes_to_time(current_min)
+        actual_duration = current_min - start_minutes
+
+    # Check boundary violation per worker
+    boundary_violations = []
+    for block in worker_time_blocks:
+        wid = block.get("worker_id") if isinstance(block, dict) else block["worker_id"]
+        wrk = worker_map.get(wid)
+        if wrk:
+            w_end = time_to_minutes(wrk.get("work_end", "21:00"))
+            block_end = time_to_minutes(block["end_time"]) if isinstance(block["end_time"], str) else block["end_time"]
+            if block_end > w_end:
+                boundary_violations.append(
+                    f"{wrk['name']} radi do {wrk.get('work_end', '21:00')}, ali usluga se završava u {block['end_time']}."
+                )
 
     # Anti-Conflict check
     conflict_detected = False
@@ -615,7 +645,9 @@ async def admin_create_reservation(
     # If not force and there's an issue, return warning
     if not reservation.force:
         warnings = []
-        if not slot_available:
+        if boundary_violations:
+            warnings.extend(boundary_violations)
+        elif not slot_available:
             warnings.append("Izabrani termin nije dostupan po standardnoj proveri.")
         if conflict_detected:
             warnings.append("Klijent već ima rezervaciju koja se preklapa sa ovim terminom.")

@@ -143,17 +143,23 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
                     worker_blocked[wid] = []
                 worker_blocked[wid].append((start, end))
 
-    # Find common work hours across all workers
-    min_start = 0
-    max_end = 24 * 60
+    # Find the widest possible work window (for slot generation loop)
+    # Individual per-worker boundary checks happen inside check_sequential_availability
+    min_start = 24 * 60
+    max_end = 0
+    worker_hours = {}
 
     for wid in worker_ids:
         w = worker_map.get(wid)
         if w:
-            work_start = time_to_minutes(w.get("work_start", default_start))
-            work_end = time_to_minutes(w.get("work_end", default_end))
-            min_start = max(min_start, work_start)
-            max_end = min(max_end, work_end)
+            ws = time_to_minutes(w.get("work_start", default_start))
+            we = time_to_minutes(w.get("work_end", default_end))
+            worker_hours[wid] = (ws, we)
+            min_start = min(min_start, ws)
+            max_end = max(max_end, we)
+
+    if min_start >= max_end:
+        return {"slots": []}
 
     # Calculate total duration of all services
     total_duration = sum(service_duration.get(p["service_id"], 0) for p in service_worker_pairs)
@@ -165,6 +171,11 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     def is_worker_available(wid: str, start: int, end: int) -> bool:
         w = worker_map.get(wid)
         if not w:
+            return False
+
+        # Check worker's own work hours boundary
+        ws, we = worker_hours.get(wid, (0, 24 * 60))
+        if start < ws or end > we:
             return False
 
         break_start = time_to_minutes(w["break_start"]) if w.get("break_start") else None
@@ -186,6 +197,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
         Check if all services can be done sequentially starting at start_time.
         Fixed 15-minute Social Buffer between consecutive services.
         All-or-Nothing: entire chain must be valid or the slot is rejected.
+        Each worker's own work hours are checked individually.
         Returns (is_valid, total_end_time, time_blocks)
         """
         current_time = start_time
@@ -200,11 +212,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
             check_start = current_time + buffer
             check_end = check_start + duration
 
-            # Service must finish within work hours
-            if check_end > max_end:
-                return (False, 0, [])
-
-            # Worker must be available for this exact time block
+            # Worker must be available (includes their own work hours boundary check)
             if not is_worker_available(wid, check_start, check_end):
                 return (False, 0, [])
 
