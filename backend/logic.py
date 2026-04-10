@@ -22,8 +22,15 @@ def minutes_to_time(minutes: int) -> str:
 
 
 def normalize_phone(phone: str) -> str:
-    normalized = ''.join(c for c in phone if c.isdigit())
-    return normalized
+    digits = ''.join(c for c in phone if c.isdigit())
+    # Strip leading country code prefix to get local number
+    if digits.startswith('381'):
+        digits = digits[3:]
+    # Strip leading zero
+    if digits.startswith('0'):
+        digits = digits[1:]
+    # Return in consistent format: 381 + local number
+    return '381' + digits
 
 
 async def generate_booking_id() -> str:

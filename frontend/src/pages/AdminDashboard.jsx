@@ -165,7 +165,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
   const [slotDetails, setSlotDetails] = useState({});
   const [selectedTime, setSelectedTime] = useState("");
   const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
+  const [clientPhone, setClientPhone] = useState("+381");
   const [submitting, setSubmitting] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [warnings, setWarnings] = useState([]);
@@ -185,12 +185,29 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
       setSelectedPairs([]);
       setSelectedTime("");
       setClientName("");
-      setClientPhone("");
+      setClientPhone("+381");
       setWarnings([]);
       setShowForceConfirm(false);
       setDate(format(selectedDate, "yyyy-MM-dd"));
     }
   }, [open]);
+
+  const handleAdminPhoneChange = (value) => {
+    let cleaned = value.replace(/[^\d+]/g, '');
+    if (!cleaned.startsWith('+381')) {
+      const digitsOnly = cleaned.replace(/\D/g, '');
+      let normalized = digitsOnly;
+      if (normalized.startsWith('381')) normalized = normalized.substring(3);
+      if (normalized.startsWith('0')) normalized = normalized.substring(1);
+      cleaned = '+381' + normalized;
+    } else {
+      const after = cleaned.substring(4).replace(/\D/g, '');
+      const normalized = after.startsWith('0') ? after.substring(1) : after;
+      cleaned = '+381' + normalized;
+    }
+    if (cleaned.length > 13) cleaned = cleaned.substring(0, 13);
+    setClientPhone(cleaned);
+  };
 
   // Fetch available slots when pairs or date change
   useEffect(() => {
@@ -478,11 +495,12 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <label className="text-xs text-[#9CA3AF] mb-1 block">Broj telefona</label>
               <Input
                 value={clientPhone}
-                onChange={e => setClientPhone(e.target.value)}
+                onChange={e => handleAdminPhoneChange(e.target.value)}
                 placeholder="+381641234567"
                 className="bg-[#1E1E22] border-[#2A2A2D] text-white"
                 data-testid="manual-client-phone"
               />
+              <p className="text-xs text-[#9CA3AF] mt-1">Format: +381 i zatim broj bez nule</p>
             </div>
 
             {/* Warnings from backend */}
@@ -512,7 +530,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <Button variant="outline" onClick={() => setStep(2)} className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22]">Nazad</Button>
               <Button
                 onClick={() => handleSubmit(false)}
-                disabled={!clientName.trim() || !clientPhone.trim() || submitting}
+                disabled={!clientName.trim() || clientPhone.length < 12 || submitting}
                 className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40"
                 data-testid="manual-submit-btn"
               >
