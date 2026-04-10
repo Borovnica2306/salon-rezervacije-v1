@@ -311,7 +311,92 @@ const BookingPage = () => {
     return worker?.name || "";
   };
 
+  // --- Confirmation page helpers ---
+  const CATEGORY_EMOJI = {
+    hair: "\u2702\uFE0F",
+    massage: "\uD83D\uDC86",
+    nails: "\uD83D\uDC85",
+    makeup: "\uD83D\uDC84",
+    depilation: "\uD83E\uDEAE",
+    cosmetics: "\uD83E\uDDF4",
+    eyebrows: "\uD83D\uDC41\uFE0F",
+  };
+
+  const buildTimelineItems = () => {
+    const blocks = bookingDetails?.worker_time_blocks || [];
+    const pairs = bookingDetails?.service_worker_pairs || [];
+    if (!blocks.length) return [];
+    const items = [];
+    blocks.forEach((block, idx) => {
+      const pair = pairs[idx];
+      const serviceData = services.find(s => s.id === block.service_id);
+      const category = serviceData?.category || "hair";
+      if (block.gap > 0 && idx > 0) {
+        items.push({
+          type: "buffer",
+          startTime: blocks[idx - 1].end_time,
+          endTime: block.start_time,
+          duration: block.gap,
+        });
+      }
+      items.push({
+        type: "service",
+        startTime: block.start_time,
+        endTime: block.end_time,
+        serviceName: pair?.service_name || "Usluga",
+        workerName: pair?.worker_name || "",
+        emoji: CATEGORY_EMOJI[category] || "\uD83D\uDC88",
+        price: pair?.price || 0,
+      });
+    });
+    return items;
+  };
+
+  const getGoogleCalendarUrl = () => {
+    const d = bookingDetails.date.replace(/-/g, "");
+    const st = bookingDetails.time.replace(":", "") + "00";
+    const et = bookingDetails.end_time.replace(":", "") + "00";
+    const title = `Termin - ${settings?.salon_name || "Beauty Salon"}`;
+    const svcList = bookingDetails.service_names?.join(", ") || "";
+    const desc = `Usluge: ${svcList}\nID: #${bookingDetails.booking_id}`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${d}T${st}/${d}T${et}&details=${encodeURIComponent(desc)}&ctz=Europe/Belgrade`;
+  };
+
+  const downloadICS = () => {
+    const d = bookingDetails.date.replace(/-/g, "");
+    const st = bookingDetails.time.replace(":", "") + "00";
+    const et = bookingDetails.end_time.replace(":", "") + "00";
+    const title = `Termin - ${settings?.salon_name || "Beauty Salon"}`;
+    const svcList = bookingDetails.service_names?.join(", ") || "";
+    const now = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//SalonBooking//RS",
+      "BEGIN:VEVENT",
+      `DTSTART;TZID=Europe/Belgrade:${d}T${st}`,
+      `DTEND;TZID=Europe/Belgrade:${d}T${et}`,
+      `DTSTAMP:${now}`,
+      `SUMMARY:${title}`,
+      `DESCRIPTION:Usluge: ${svcList}\\nID: #${bookingDetails.booking_id}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rezervacija-${bookingDetails.booking_id}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (bookingComplete && bookingDetails) {
+    const timelineItems = buildTimelineItems();
+    const hasTimeline = timelineItems.length > 0;
+
     return (
       <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-[#141416] rounded-2xl border border-[#2A2A2D] p-8 text-center animate-fade-in">
@@ -319,7 +404,7 @@ const BookingPage = () => {
             <Check className="w-8 h-8 text-[#C5A880]" />
           </div>
           <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Rezervacija Potvrđena</h1>
-          
+
           {/* Booking ID with Copy */}
           {bookingDetails.booking_id && (
             <button
@@ -347,40 +432,111 @@ const BookingPage = () => {
               <Copy className="w-4 h-4 text-[#C5A880] opacity-70" />
             </button>
           )}
-          
+
           <p className="text-[#9CA3AF] mb-6">Hvala vam na rezervaciji!</p>
-          
-          <div className="bg-[#0A0A0B] rounded-xl p-6 text-left space-y-4 mb-6">
-            <div className="flex justify-between">
-              <span className="text-[#9CA3AF]">Datum:</span>
-              <span className="font-medium">{bookingDetails.date}</span>
+
+          {/* Date & Total Info */}
+          <div className="bg-[#0A0A0B] rounded-xl p-5 text-left mb-4">
+            <div className="flex justify-between mb-3">
+              <span className="text-[#9CA3AF] text-sm">Datum:</span>
+              <span className="font-medium text-sm">{bookingDetails.date}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-[#9CA3AF]">Vreme:</span>
-              <span className="font-medium">{bookingDetails.time} - {bookingDetails.end_time}</span>
+            <div className="flex justify-between mb-3">
+              <span className="text-[#9CA3AF] text-sm">Vreme:</span>
+              <span className="font-medium text-sm">{bookingDetails.time} - {bookingDetails.end_time}</span>
             </div>
-            
-            {/* Show each service with its worker */}
-            <div className="border-t border-[#2A2A2D] pt-3">
-              <span className="text-[#9CA3AF] text-sm">Usluge i radnici:</span>
-              <div className="mt-2 space-y-2">
-                {bookingDetails.service_worker_pairs?.map((pair, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span>{pair.service_name}</span>
-                    <span className="text-[#C5A880]">{pair.worker_name}</span>
+            <div className="flex justify-between mb-3">
+              <span className="text-[#9CA3AF] text-sm">Trajanje:</span>
+              <span className="font-medium text-sm">{bookingDetails.total_duration} min</span>
+            </div>
+            <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
+              <span className="text-[#9CA3AF] text-sm">Ukupno:</span>
+              <span className="font-semibold text-[#C5A880]">{bookingDetails.total_price?.toLocaleString()} RSD</span>
+            </div>
+          </div>
+
+          {/* Visual Timeline */}
+          <div className="bg-[#0A0A0B] rounded-xl p-5 text-left mb-4" data-testid="service-timeline">
+            <span className="text-[#9CA3AF] text-xs uppercase tracking-wider">Vaš raspored</span>
+            <div className="mt-4 relative">
+              {/* Timeline vertical line */}
+              <div className="absolute left-[19px] top-2 bottom-2 w-px bg-[#2A2A2D]" />
+
+              <div className="space-y-0">
+                {timelineItems.map((item, idx) => (
+                  item.type === "service" ? (
+                    <div key={idx} className="relative flex items-start gap-3 py-2.5" data-testid={`timeline-service-${idx}`}>
+                      {/* Dot */}
+                      <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[#C5A880]/15 border border-[#C5A880]/40 flex items-center justify-center flex-shrink-0 text-base">
+                        {item.emoji}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-white">{item.serviceName}</div>
+                        <div className="text-xs text-[#9CA3AF] mt-0.5">
+                          {item.startTime} - {item.endTime} &middot; {item.workerName}
+                        </div>
+                      </div>
+                      <div className="text-xs text-[#C5A880] font-medium flex-shrink-0 pt-0.5">
+                        {item.price?.toLocaleString()} RSD
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={idx} className="relative flex items-center gap-3 py-1.5" data-testid={`timeline-buffer-${idx}`}>
+                      {/* Buffer dot */}
+                      <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[#1E1E22] border border-dashed border-[#3A3A3E] flex items-center justify-center flex-shrink-0 text-sm">
+                        ☕
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs text-[#6B7280] italic">
+                          Pauza {item.startTime} - {item.endTime} ({item.duration} min)
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ))}
+
+                {/* Fallback: no timeline blocks (single service) */}
+                {!hasTimeline && bookingDetails.service_worker_pairs?.map((pair, idx) => (
+                  <div key={idx} className="relative flex items-start gap-3 py-2.5">
+                    <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[#C5A880]/15 border border-[#C5A880]/40 flex items-center justify-center flex-shrink-0 text-base">
+                      {CATEGORY_EMOJI[services.find(s => s.id === pair.service_id)?.category] || "\uD83D\uDC88"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-white">{pair.service_name}</div>
+                      <div className="text-xs text-[#9CA3AF] mt-0.5">
+                        {bookingDetails.time} - {bookingDetails.end_time} &middot; {pair.worker_name}
+                      </div>
+                    </div>
+                    <div className="text-xs text-[#C5A880] font-medium flex-shrink-0 pt-0.5">
+                      {pair.price?.toLocaleString()} RSD
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-            
-            <div className="flex justify-between">
-              <span className="text-[#9CA3AF]">Trajanje:</span>
-              <span className="font-medium">{bookingDetails.total_duration} min</span>
-            </div>
-            <div className="border-t border-[#2A2A2D] pt-4 flex justify-between">
-              <span className="text-[#9CA3AF]">Ukupno:</span>
-              <span className="font-semibold text-[#C5A880] text-lg">{bookingDetails.total_price?.toLocaleString()} RSD</span>
-            </div>
+          </div>
+
+          {/* Add to Calendar */}
+          <div className="flex gap-2 mb-4" data-testid="add-to-calendar">
+            <a
+              href={getGoogleCalendarUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 bg-[#1E1E22] hover:bg-[#2A2A2D] border border-[#2A2A2D] rounded-xl py-3 px-3 transition-colors text-sm"
+              data-testid="google-calendar-btn"
+            >
+              <Calendar className="w-4 h-4 text-[#C5A880]" />
+              <span className="text-[#E5E7EB]">Google Calendar</span>
+            </a>
+            <button
+              onClick={downloadICS}
+              className="flex-1 flex items-center justify-center gap-2 bg-[#1E1E22] hover:bg-[#2A2A2D] border border-[#2A2A2D] rounded-xl py-3 px-3 transition-colors text-sm"
+              data-testid="ics-download-btn"
+            >
+              <Calendar className="w-4 h-4 text-[#C5A880]" />
+              <span className="text-[#E5E7EB]">Apple / Outlook</span>
+            </button>
           </div>
 
           {/* Payment / Uplatnica Section */}
