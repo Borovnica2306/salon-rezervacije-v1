@@ -10,47 +10,29 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 
 ## Core Requirements — All Completed
 - [x] Multi-step booking wizard (4 koraka)
-- [x] Izbor usluga sa automatskim sabiranjem trajanja
-- [x] Izbor radnika po usluzi (split-booking)
-- [x] Kalendar sa slobodnim terminima
-- [x] Potvrda rezervacije bez registracije
-- [x] JWT autentifikacija (admin + super_admin)
-- [x] CRUD za usluge i radnike
-- [x] Safe Delete radnika + Confirmation dialog
-- [x] Booking ID (#A1B2) za svaku rezervaciju
-- [x] Success page sa uplatnicom
-- [x] Admin kolona "Status uplate" (Čeka uplatu / Plaćeno)
-- [x] Blacklist telefona + Limit 3 dnevno
-- [x] "Moje rezervacije" za klijente (24h otkazivanje)
-- [x] Multi-Level Admin (super_admin + admin)
-- [x] Master Category Switch (7 kategorija)
-- [x] System Config stranica (samo za super_admin)
-- [x] Smart Pairing Logic — Fiksni 15-min Social Buffer
-- [x] Anti-Conflict validacija (po telefonu)
+- [x] Split-booking sa 15-min Social Buffer između usluga
+- [x] Smart Pairing + Anti-Conflict validacija
 - [x] All-or-Nothing lanac
-- [x] Refaktorisanje server.py u module
-- [x] Vizuelni Timeline na confirmation stranici
-- [x] "Dodaj u kalendar" (Google Calendar + ICS)
-- [x] Admin: Worker filter bar
-- [x] Admin: Visual Social Buffer u karticama
-- [x] Admin: Cancel confirmation dialog
-- [x] Admin: Manual Booking (Ručna Rezervacija) — 3-step modal sa force-override
+- [x] JWT auth (admin + super_admin)
+- [x] CRUD za usluge i radnike + Safe Delete
+- [x] Booking ID, Uplatnica, Payment Status toggle
+- [x] Blacklist telefona + Limit 3/dan
+- [x] "Moje rezervacije" (24h otkazivanje)
+- [x] Multi-Level Admin + Master Category Switch
+- [x] Modularna arhitektura (server, database, models, auth, logic, routes)
+- [x] Vizuelni Timeline + Add to Calendar (Google + ICS)
+- [x] Admin: Worker filter + Social Buffer kartice + Cancel dialog
+- [x] Admin: Manual Booking (3-step modal + force override)
+- [x] Standardizacija formata telefona (+381, zero-strip)
+- [x] Striktna provera radnog vremena (per-worker boundary check)
+- [x] Admin boundary warning sa force-override opcijom
 
-## Arhitektura
-```
-/app/backend/
-├── server.py, database.py, models.py, auth.py, logic.py, routes.py
-/app/frontend/src/pages/
-├── BookingPage.jsx, AdminDashboard.jsx, AdminLogin.jsx
-```
-
-## API Endpoints
-- POST /api/admin/reservations — Admin manual booking (sa force override)
-- POST /api/reservations — Client booking
-- POST /api/reservations/available-slots — Slot availability
-- GET /api/reservations — Admin listing (filter by date + worker_id)
-- GET /api/services, /api/workers, /api/settings, /api/categories
+## Key Technical Details
+- Boundary check: svaki radnik ima SVOJE radno vreme, provera ide per-worker
+- 20:30+30min=21:00 → OK (tačno na granici)
+- 20:45+30min=21:15 → NEDOSTUPAN (prelazi granicu)
+- Admin vidi specifičnu poruku: "Suzana radi do 21:00, ali usluga se završava u 21:15"
 
 ## Backlog
 - P2: Viber notifikacije (placeholder u logic.py)
-- Budući zadaci: po zahtevu korisnika
+- Budući zadaci po zahtevu korisnika
