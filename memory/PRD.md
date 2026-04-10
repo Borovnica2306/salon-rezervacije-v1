@@ -11,53 +11,46 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 ## Core Requirements — All Completed
 - [x] Multi-step booking wizard (4 koraka)
 - [x] Izbor usluga sa automatskim sabiranjem trajanja
-- [x] Izbor radnika po usluzi (split-booking sa max 15-min gap)
+- [x] Izbor radnika po usluzi (split-booking)
 - [x] Kalendar sa slobodnim terminima
 - [x] Potvrda rezervacije bez registracije
 - [x] JWT autentifikacija (admin + super_admin)
 - [x] CRUD za usluge i radnike
-- [x] Safe Delete radnika (hard delete + referential integrity check)
-- [x] Confirmation dialog pre brisanja radnika
+- [x] Safe Delete radnika + Confirmation dialog
 - [x] Booking ID (#A1B2) za svaku rezervaciju
 - [x] Success page sa uplatnicom
 - [x] Admin kolona "Status uplate" (Čeka uplatu / Plaćeno)
 - [x] Blacklist telefona + Limit 3 dnevno
 - [x] "Moje rezervacije" za klijente (24h otkazivanje)
 - [x] Multi-Level Admin (super_admin + admin)
-- [x] Master Category Switch (7 kategorija, soft-hide logika)
+- [x] Master Category Switch (7 kategorija)
 - [x] System Config stranica (samo za super_admin)
-- [x] Seed_completed flag (sprečava re-seeding radnika nakon restarta)
-- [x] Smart Pairing Logic — Fiksni 15-min Social Buffer između vezanih usluga
-- [x] Anti-Conflict validacija — Sprečava preklapanje termina istog klijenta (po telefonu)
-- [x] All-or-Nothing lanac — Termin se prikazuje samo ako je ceo niz izvodljiv
-- [x] Frontend totalDuration uključuje bufere (15min x broj prelaza)
-- [x] Refaktorisanje server.py u module (database, models, auth, logic, routes)
-- [x] Vizuelni Timeline na confirmation stranici (emoji, usluge, pauze, cene)
-- [x] "Dodaj u kalendar" dugmad (Google Calendar link + ICS download za Apple/Outlook)
-- [x] Admin Dashboard: Worker filter bar (pill dugmad za filtriranje po radniku)
-- [x] Admin Dashboard: Visual Social Buffer u karticama (mini-timeline sa ☕ pauzom)
-- [x] Admin Dashboard: Cancel confirmation dialog (sa detaljima rezervacije)
-- [x] Backend: Multi-worker $or query za filtriranje rezervacija po radniku
+- [x] Smart Pairing Logic — Fiksni 15-min Social Buffer
+- [x] Anti-Conflict validacija (po telefonu)
+- [x] All-or-Nothing lanac
+- [x] Refaktorisanje server.py u module
+- [x] Vizuelni Timeline na confirmation stranici
+- [x] "Dodaj u kalendar" (Google Calendar + ICS)
+- [x] Admin: Worker filter bar
+- [x] Admin: Visual Social Buffer u karticama
+- [x] Admin: Cancel confirmation dialog
+- [x] Admin: Manual Booking (Ručna Rezervacija) — 3-step modal sa force-override
 
-## Arhitektura (Modularna)
+## Arhitektura
 ```
 /app/backend/
-├── server.py      # App init, CORS, startup/shutdown
-├── database.py    # MongoDB konekcija, MASTER_CATEGORIES
-├── models.py      # Svi Pydantic modeli
-├── auth.py        # JWT, lozinke, get_current_user
-├── logic.py       # Smart Pairing, slotovi, Viber placeholder
-└── routes.py      # Svi API endpoint-i
+├── server.py, database.py, models.py, auth.py, logic.py, routes.py
 /app/frontend/src/pages/
-├── BookingPage.jsx      # Klijentski booking wizard + confirmation timeline
-├── AdminDashboard.jsx   # Admin panel sa filterima i timeline-om
-└── AdminLogin.jsx       # JWT login forma
+├── BookingPage.jsx, AdminDashboard.jsx, AdminLogin.jsx
 ```
 
-## Current Active Workers
-- Suzana (hair), Milena (nails), Slobodan (massage)
-- Dragana (makeup), Dobrila (depilation), Jovana (cosmetics), Dejan (eyebrows)
+## API Endpoints
+- POST /api/admin/reservations — Admin manual booking (sa force override)
+- POST /api/reservations — Client booking
+- POST /api/reservations/available-slots — Slot availability
+- GET /api/reservations — Admin listing (filter by date + worker_id)
+- GET /api/services, /api/workers, /api/settings, /api/categories
 
 ## Backlog
-- P2: Viber notifikacije (placeholder funkcije već postoje u logic.py)
+- P2: Viber notifikacije (placeholder u logic.py)
 - Budući zadaci: po zahtevu korisnika
