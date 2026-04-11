@@ -250,6 +250,21 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
     return workers.filter(w => w.services?.includes(serviceId));
   };
 
+  const canProceedStep1 = selectedPairs.length > 0 || (tempServiceId && tempWorkerId);
+
+  const handleNextStep = () => {
+    if (tempServiceId && tempWorkerId) {
+      const svc = services.find(s => s.id === tempServiceId);
+      const wrk = workers.find(w => w.id === tempWorkerId);
+      if (svc && wrk) {
+        setSelectedPairs(prev => [...prev, { service: svc, worker: wrk }]);
+      }
+      setTempServiceId("");
+      setTempWorkerId("");
+    }
+    setStep(2);
+  };
+
   const totalDuration = selectedPairs.reduce((s, p) => s + p.service.duration, 0) + Math.max(0, selectedPairs.length - 1) * 15;
   const totalPrice = selectedPairs.reduce((s, p) => s + p.service.price, 0);
 
@@ -337,7 +352,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <select
                 value={tempServiceId}
                 onChange={e => { setTempServiceId(e.target.value); setTempWorkerId(""); }}
-                className="w-full bg-[#1E1E22] border border-[#2A2A2D] rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-[#1E1E22] border border-[#2A2A2D] rounded-lg px-3 py-2 text-sm text-white min-h-[48px]"
                 data-testid="manual-service-select"
               >
                 <option value="">Izaberite uslugu...</option>
@@ -350,7 +365,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                 <select
                   value={tempWorkerId}
                   onChange={e => setTempWorkerId(e.target.value)}
-                  className="w-full bg-[#1E1E22] border border-[#2A2A2D] rounded-lg px-3 py-2 text-sm text-white"
+                  className="w-full bg-[#1E1E22] border border-[#2A2A2D] rounded-lg px-3 py-2 text-sm text-white min-h-[48px]"
                   data-testid="manual-worker-select"
                 >
                   <option value="">Izaberite radnika...</option>
@@ -363,7 +378,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <Button
                 onClick={addPair}
                 disabled={!tempServiceId || !tempWorkerId}
-                className="w-full bg-[#1E1E22] border border-[#2A2A2D] hover:bg-[#2A2A2D] text-[#C5A880] disabled:opacity-40"
+                className="w-full bg-[#1E1E22] border border-[#2A2A2D] hover:bg-[#2A2A2D] text-[#C5A880] disabled:opacity-40 min-h-[48px]"
                 size="sm"
                 data-testid="manual-add-pair-btn"
               >
@@ -372,9 +387,9 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
             </div>
 
             <Button
-              onClick={() => setStep(2)}
-              disabled={selectedPairs.length === 0}
-              className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40"
+              onClick={handleNextStep}
+              disabled={!canProceedStep1}
+              className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40 min-h-[48px]"
               data-testid="manual-step1-next"
             >
               Dalje
@@ -391,7 +406,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                 type="date"
                 value={date}
                 onChange={e => { setDate(e.target.value); setSelectedTime(""); }}
-                className="w-full bg-[#1E1E22] border border-[#2A2A2D] rounded-lg px-3 py-2.5 text-sm text-white"
+                className="w-full bg-[#1E1E22] border border-[#2A2A2D] rounded-lg px-3 py-2.5 text-sm text-white min-h-[48px]"
                 data-testid="manual-date-input"
               />
             </div>
@@ -444,11 +459,11 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22]">Nazad</Button>
+              <Button variant="outline" onClick={() => setStep(1)} className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22] min-h-[48px]">Nazad</Button>
               <Button
                 onClick={() => setStep(3)}
                 disabled={!selectedTime}
-                className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40"
+                className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40 min-h-[48px]"
                 data-testid="manual-step2-next"
               >
                 Dalje
@@ -486,7 +501,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                 value={clientName}
                 onChange={e => setClientName(e.target.value)}
                 placeholder="Ime i prezime"
-                className="bg-[#1E1E22] border-[#2A2A2D] text-white"
+                className="bg-[#1E1E22] border-[#2A2A2D] text-white min-h-[48px]"
                 data-testid="manual-client-name"
               />
             </div>
@@ -497,7 +512,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                 value={clientPhone}
                 onChange={e => handleAdminPhoneChange(e.target.value)}
                 placeholder="+381641234567"
-                className="bg-[#1E1E22] border-[#2A2A2D] text-white"
+                className="bg-[#1E1E22] border-[#2A2A2D] text-white min-h-[48px]"
                 data-testid="manual-client-phone"
               />
               <p className="text-xs text-[#9CA3AF] mt-1">Format: +381 i zatim broj bez nule</p>
@@ -519,7 +534,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <Button
                 onClick={() => handleSubmit(true)}
                 disabled={submitting}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium min-h-[48px]"
                 data-testid="manual-force-submit"
               >
                 {submitting ? "Kreiranje..." : "Zakaži svejedno (Override)"}
@@ -527,11 +542,11 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
             )}
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(2)} className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22]">Nazad</Button>
+              <Button variant="outline" onClick={() => setStep(2)} className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22] min-h-[48px]">Nazad</Button>
               <Button
                 onClick={() => handleSubmit(false)}
                 disabled={!clientName.trim() || clientPhone.length < 12 || submitting}
-                className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40"
+                className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40 min-h-[48px]"
                 data-testid="manual-submit-btn"
               >
                 {submitting ? "Kreiranje..." : "Potvrdi Rezervaciju"}
@@ -763,32 +778,33 @@ const ReservationsPage = () => {
         workers.length === 0 ? (
           <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">Nema aktivnih radnika</p></div>
         ) : (
-          <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden" data-testid="timeline-grid">
-            {/* Desktop Grid */}
-            <div className="hidden md:block">
-              <div className="flex border-b border-[#2A2A2D] sticky top-0 z-20 bg-[#141416]">
-                <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D]">Vreme</div>
+          <div className="bg-[#141416] rounded-xl border border-[#2A2A2D]" data-testid="timeline-grid">
+            <div className="overflow-auto max-h-[70vh]" ref={gridRef} data-testid="grid-body">
+              {/* Header - sticky top */}
+              <div className="flex sticky top-0 z-20 bg-[#141416] border-b border-[#2A2A2D]">
+                <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D] sticky left-0 z-30 bg-[#141416]">Vreme</div>
                 {workers.map(w => (
-                  <div key={w.id} className="flex-1 min-w-[130px] p-2 text-center border-r border-[#2A2A2D] last:border-r-0">
+                  <div key={w.id} className="flex-1 min-w-[120px] flex-shrink-0 p-2 text-center border-r border-[#2A2A2D] last:border-r-0">
                     <div className="text-xs font-medium text-white truncate">{w.name}</div>
                     <div className="text-[10px] text-[#6B7280]">{w.work_start}-{w.work_end}</div>
                   </div>
                 ))}
               </div>
-              <div className="overflow-y-auto max-h-[60vh] relative" ref={gridRef} data-testid="grid-body">
+              {/* Body */}
+              <div className="relative">
                 {nowLineTop > 0 && nowLineTop < timeSlots.length * SLOT_HEIGHT && (
-                  <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: `${nowLineTop}px` }} data-testid="now-line">
+                  <div className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top: `${nowLineTop}px` }} data-testid="now-line">
                     <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 -ml-1" /><div className="flex-1 h-px bg-red-500/60" /></div>
                   </div>
                 )}
                 {timeSlots.map((slotMin) => (
                   <div key={slotMin} className="flex border-b border-[#1E1E22]" style={{ height: `${SLOT_HEIGHT}px` }}>
-                    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22]">{mtt(slotMin)}</div>
+                    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22] sticky left-0 z-10 bg-[#141416]">{mtt(slotMin)}</div>
                     {workers.map(w => {
                       const blocks = buildWorkerBlocks(w.id);
                       const cellBlocks = blocks.filter(b => b.startMin >= slotMin && b.startMin < slotMin + 30);
                       return (
-                        <div key={w.id} className="flex-1 min-w-[130px] border-r border-[#1E1E22] last:border-r-0 relative">
+                        <div key={w.id} className="flex-1 min-w-[120px] flex-shrink-0 border-r border-[#1E1E22] last:border-r-0 relative">
                           {cellBlocks.map((block, bIdx) => {
                             const topOff = ((block.startMin - slotMin) / 30) * SLOT_HEIGHT;
                             const blockH = Math.max(((block.endMin - block.startMin) / 30) * SLOT_HEIGHT, 24);
@@ -810,25 +826,6 @@ const ReservationsPage = () => {
                   </div>
                 ))}
               </div>
-            </div>
-            {/* Mobile */}
-            <div className="md:hidden divide-y divide-[#2A2A2D] max-h-[70vh] overflow-y-auto">
-              {activeReservations.length === 0 ? <div className="text-center py-12 text-[#9CA3AF]">Nema aktivnih rezervacija</div> :
-              activeReservations.sort((a, b) => a.time.localeCompare(b.time)).map((res) => {
-                const rIdx = reservations.indexOf(res);
-                const color = COLORS[rIdx % COLORS.length];
-                return (
-                  <div key={res.id} onClick={() => setSelectedRes(res)} className="p-3 flex items-center gap-3 cursor-pointer hover:bg-[#1E1E22] transition-colors" data-testid={`reservation-mobile-${res.id}`}>
-                    <div className="w-1 self-stretch rounded-full" style={{ backgroundColor: color }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between"><span className="text-sm font-medium text-[#C5A880]">{res.time}-{res.end_time}</span><span className="font-mono text-[10px] text-[#6B7280]">#{res.booking_id}</span></div>
-                      <div className="text-sm text-white truncate">{res.client_name}</div>
-                      <div className="text-xs text-[#9CA3AF] truncate">{res.service_names?.join(", ")}</div>
-                    </div>
-                    <div className="text-xs text-[#C5A880] font-medium flex-shrink-0">{res.total_price?.toLocaleString()}</div>
-                  </div>
-                );
-              })}
             </div>
           </div>
         )

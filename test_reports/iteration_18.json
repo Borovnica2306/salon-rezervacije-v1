@@ -1,0 +1,118 @@
+{
+  "summary": "Mobile UX fixes for Admin Dashboard verified. All 10 features tested and passed: Manual Booking Modal 'Dalje' button enables when service+worker selected (without clicking '+ Dodaj uslugu'), auto-adds pending pair on click, all inputs/selects/buttons have min-height 48px. Timeline Grid visible on mobile, has overflow-auto for horizontal scroll, time column sticky at left:0 with z-30 header/z-10 body, worker columns min-w-[120px] with flex-shrink-0, header row sticky at top:0.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "ManualBookingModal",
+        "issues": ["Console warning: '<span> cannot be a child of <option>' - React hydration warning in service select dropdown (non-blocking, cosmetic)"]
+      },
+      {
+        "screen": "AdminLogin",
+        "issues": ["Console warning: 'Cannot update a component while rendering a different component' - React state update warning (non-blocking)"]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "Manual Booking Modal: 'Dalje' button initially disabled when no service/worker selected",
+    "Manual Booking Modal: 'Dalje' button becomes ENABLED when service + worker dropdowns are filled (WITHOUT clicking '+ Dodaj uslugu')",
+    "Manual Booking Modal: 'Dalje' button auto-adds the pending service-worker pair when clicked (advances to Step 2)",
+    "Manual Booking Modal: Service select has min-height 48px (actual: 48px)",
+    "Manual Booking Modal: Worker select has min-height 48px (actual: 48px)",
+    "Manual Booking Modal: '+ Dodaj uslugu' button has min-height 48px (actual: 48px)",
+    "Manual Booking Modal: 'Dalje' button has min-height 48px (actual: 48px)",
+    "Manual Booking Modal: Date input has min-height 48px (actual: 48px)",
+    "Timeline Grid: Visible on mobile viewport (no hidden md:block) - display: block",
+    "Timeline Grid: Has overflow-auto class for horizontal scroll capability",
+    "Timeline Grid: Time column header (Vreme) is sticky at left:0",
+    "Timeline Grid: Time column header has z-index: 30",
+    "Timeline Grid: Time body cells are sticky at left:0",
+    "Timeline Grid: Time body cells have z-index: 10",
+    "Timeline Grid: Worker columns have min-width: 120px (all 7 workers at exactly 120px on mobile)",
+    "Timeline Grid: Worker columns have flex-shrink: 0",
+    "Timeline Grid: Header row is sticky at top:0 with z-index: 20",
+    "Timeline Grid: Auto-scroll to current time works (now-line visible when within work hours)",
+    "Desktop: Timeline Grid visible with worker columns expanding (219px each due to flex-1)",
+    "Desktop: Modal inputs maintain 48px min-height"
+  ],
+
+  "test_report_links": [
+    "/app/test_reports/iteration_18.json"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "AdminDashboard.jsx line 253: canProceedStep1 = selectedPairs.length > 0 || (tempServiceId && tempWorkerId) - correctly enables Dalje when pending pair exists",
+    "AdminDashboard.jsx line 255-266: handleNextStep() correctly auto-adds pending tempServiceId+tempWorkerId pair before advancing to step 2",
+    "AdminDashboard.jsx line 355-356, 365-369, 378-386, 389-396: All modal inputs/selects/buttons have min-h-[48px] class for touch targets",
+    "AdminDashboard.jsx line 782: Grid body has overflow-auto max-h-[70vh] for scrolling",
+    "AdminDashboard.jsx line 784: Header row has sticky top-0 z-20",
+    "AdminDashboard.jsx line 785: Time column header has sticky left-0 z-30",
+    "AdminDashboard.jsx line 787: Worker columns have flex-1 min-w-[120px] flex-shrink-0",
+    "AdminDashboard.jsx line 802: Time body cells have sticky left-0 z-10"
+  ],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100% (20/20 tests passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_used": {
+    "workers": ["Suzana", "Milena", "Slobodan", "Dragana", "Dobrila", "Jovana", "Dejan"],
+    "services": ["22 services available including Klasičan tretman lica, Šišanje, Manikir, etc."]
+  },
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Mobile UX fixes fully verified. Key implementation details: (1) canProceedStep1 logic uses OR condition to enable Dalje when tempServiceId && tempWorkerId exist, (2) handleNextStep() auto-adds pending pair before setStep(2), (3) All modal form elements have min-h-[48px] for 48px touch targets, (4) Grid uses overflow-auto with sticky positioning for time column (z-30 header, z-10 body) and header row (sticky top-0), (5) Worker columns use flex-1 min-w-[120px] flex-shrink-0 to maintain minimum width while expanding on larger screens. Console warnings about React hydration in select dropdowns are cosmetic and non-blocking.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["send_viber_notification (logic.py)"],
+    "note": "Viber functions are PLACEHOLDER only - they log but don't send real notifications"
+  },
+
+  "feature_verification": {
+    "manual_booking_modal": {
+      "dalje_button_logic": "canProceedStep1 = selectedPairs.length > 0 || (tempServiceId && tempWorkerId)",
+      "auto_add_pending_pair": "handleNextStep() adds pending pair before advancing to step 2",
+      "touch_targets": "All inputs/selects/buttons have min-h-[48px] = 48px actual height"
+    },
+    "timeline_grid": {
+      "visibility": "No hidden md:block - visible on all viewports",
+      "horizontal_scroll": "overflow-auto on grid body container",
+      "time_column_sticky": "sticky left-0 with z-30 (header) and z-10 (body cells)",
+      "worker_columns": "flex-1 min-w-[120px] flex-shrink-0 - 120px on mobile, expands on desktop",
+      "header_sticky": "sticky top-0 z-20 for vertical scroll"
+    }
+  },
+
+  "viewport_tests": {
+    "mobile_375x812": {
+      "grid_visible": true,
+      "worker_column_widths": [120, 120, 120, 120, 120, 120, 120],
+      "total_grid_width": "904px (64px time + 840px workers)"
+    },
+    "desktop_1920x800": {
+      "grid_visible": true,
+      "worker_column_widths": [219, 219, 219, 219, 219, 219, 218],
+      "note": "Columns expand due to flex-1"
+    }
+  }
+}
