@@ -22,7 +22,10 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] **Detail Dialog** — klik na blok otvara detalje sa akcijama (uplata/otkaži/blokiraj)
 - [x] **Archive Tab** — klasična tabela za prošle termine sa pretragom
 - [x] **Connected blocks** — ista boja ivice za povezane usluge istog booking-a
+- [x] **Mobile Timeline Grid** — horizontalni skrol, sticky time kolona (z-30/z-10), min-w-[120px] kolone
+- [x] **Dalje Button Fix** — auto-dodaje pending uslugu/radnika bez potrebe za klikom na "+Dodaj uslugu"
+- [x] **Touch Targets 48px** — svi inputi, selecti i dugmad u modalu imaju min-h-[48px]
 
 ## Backlog
-- P2: Viber notifikacije (placeholder u logic.py)
-- Budući zadaci po zahtevu korisnika
+- P1: Viber notifikacije (placeholder u logic.py)
+- P3: Drag & drop na admin timeline gridu za preraspoređivanje
