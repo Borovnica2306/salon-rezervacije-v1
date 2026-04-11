@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
@@ -545,598 +545,331 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
 };
 
 // Reservations Page
+const SLOT_HEIGHT = 48;
+const COLORS = ["#C5A880", "#7C9EB2", "#A8C686", "#D4A574", "#B294BB", "#86C1B9", "#DCA68B"];
+
 const ReservationsPage = () => {
   const [reservations, setReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [blacklist, setBlacklist] = useState([]);
   const [workers, setWorkers] = useState([]);
-  const [selectedWorker, setSelectedWorker] = useState("all");
+  const [settings, setSettings] = useState(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [manualBookingOpen, setManualBookingOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("grid");
+  const [archiveSearch, setArchiveSearch] = useState("");
+  const [selectedRes, setSelectedRes] = useState(null);
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}` };
+  const gridRef = React.useRef(null);
+
+  useEffect(() => { fetchWorkers(); fetchSettings(); }, []);
+  useEffect(() => { fetchReservations(); fetchBlacklist(); }, [selectedDate]);
 
   useEffect(() => {
-    fetchWorkers();
-  }, []);
+    if (!loading && activeTab === "grid" && gridRef.current) {
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      const ws = settings ? ttm(settings.work_start) : 540;
+      const scrollTo = ((mins - ws) / 30) * SLOT_HEIGHT;
+      gridRef.current.scrollTop = Math.max(0, scrollTo - SLOT_HEIGHT * 2);
+    }
+  }, [loading, activeTab, selectedDate]);
 
-  useEffect(() => {
-    fetchReservations();
-    fetchBlacklist();
-  }, [selectedDate, selectedWorker]);
+  const ttm = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const mtt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
+  const fetchSettings = async () => {
+    try { const r = await axios.get(`${API}/settings`, { headers }); setSettings(r.data); } catch (e) { console.error(e); }
+  };
   const fetchWorkers = async () => {
-    try {
-      const response = await axios.get(`${API}/workers`, { headers });
-      setWorkers(response.data);
-    } catch (error) {
-      console.error("Error fetching workers:", error);
-    }
+    try { const r = await axios.get(`${API}/workers`, { headers }); setWorkers(r.data); } catch (e) { console.error(e); }
   };
-
   const fetchReservations = async () => {
+    setLoading(true);
     try {
-      const params = { date: format(selectedDate, "yyyy-MM-dd") };
-      if (selectedWorker !== "all") {
-        params.worker_id = selectedWorker;
-      }
-      const response = await axios.get(`${API}/reservations`, {
-        params,
-        headers,
-      });
-      // Client-side filter for worker_time_blocks (multi-worker reservations)
-      if (selectedWorker !== "all") {
-        const filtered = response.data.filter(r => {
-          if (r.worker_id === selectedWorker) return true;
-          if (r.service_worker_pairs?.some(p => p.worker_id === selectedWorker)) return true;
-          if (r.worker_time_blocks?.some(b => b.worker_id === selectedWorker)) return true;
-          return false;
-        });
-        setReservations(filtered);
-      } else {
-        setReservations(response.data);
-      }
-    } catch (error) {
-      toast.error("Greška pri učitavanju rezervacija");
-    } finally {
-      setLoading(false);
-    }
+      const r = await axios.get(`${API}/reservations`, { params: { date: format(selectedDate, "yyyy-MM-dd") }, headers });
+      setReservations(r.data);
+    } catch (e) { toast.error("Greška pri učitavanju"); } finally { setLoading(false); }
   };
-
   const fetchBlacklist = async () => {
-    try {
-      const response = await axios.get(`${API}/blacklist`, { headers });
-      setBlacklist(response.data.map(b => b.phone));
-    } catch (error) {
-      console.error("Error fetching blacklist:", error);
-    }
+    try { const r = await axios.get(`${API}/blacklist`, { headers }); setBlacklist(r.data.map(b => b.phone)); } catch (e) { console.error(e); }
   };
-
-  const handleReleaseAdvance = async (id) => {
-    try {
-      await axios.put(`${API}/reservations/${id}/release-advance`, {}, { headers });
-      toast.success("Avans oslobođen");
-      fetchReservations();
-    } catch (error) {
-      toast.error("Greška pri oslobađanju avansa");
-    }
-  };
-
   const handleTogglePayment = async (id) => {
-    try {
-      await axios.put(`${API}/reservations/${id}/payment-status`, {}, { headers });
-      fetchReservations();
-    } catch (error) {
-      toast.error("Greška pri promeni statusa uplate");
-    }
+    try { await axios.put(`${API}/reservations/${id}/payment-status`, {}, { headers }); fetchReservations(); } catch (e) { toast.error("Greška"); }
   };
-
-  // Calculate urgency marker based on time until appointment
-  const getUrgencyMarker = (res) => {
-    if (res.payment_status === "paid" || res.status === "cancelled") return null;
-    const startDateTime = new Date(`${res.date}T${res.time}:00`);
-    const now = new Date();
-    const hoursLeft = (startDateTime - now) / (1000 * 60 * 60);
-    if (hoursLeft <= 0) return null; // Already past
-    if (hoursLeft < 12) return "expired";
-    if (hoursLeft < 24) return "warning";
-    return null;
-  };
-
   const handleCancel = async (id) => {
-    try {
-      await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers });
-      toast.success("Rezervacija otkazana");
-      setCancelDialogOpen(false);
-      setCancelTarget(null);
-      fetchReservations();
-    } catch (error) {
-      toast.error("Greška pri otkazivanju");
-    }
+    try { await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers }); toast.success("Otkazano"); setCancelDialogOpen(false); setCancelTarget(null); setSelectedRes(null); fetchReservations(); } catch (e) { toast.error("Greška"); }
   };
-
-  const openCancelDialog = (res) => {
-    setCancelTarget(res);
-    setCancelDialogOpen(true);
-  };
-
+  const openCancelDialog = (res) => { setCancelTarget(res); setCancelDialogOpen(true); };
   const handleBlacklist = async (phone) => {
-    try {
-      await axios.post(`${API}/blacklist?phone=${encodeURIComponent(phone)}`, {}, { headers });
-      toast.success("Broj dodat na crnu listu");
-      fetchBlacklist();
-    } catch (error) {
-      toast.error("Greška pri dodavanju na crnu listu");
-    }
+    try { await axios.post(`${API}/blacklist?phone=${encodeURIComponent(phone)}`, {}, { headers }); toast.success("Blokirano"); fetchBlacklist(); } catch (e) { toast.error("Greška"); }
   };
-
   const handleRemoveFromBlacklist = async (phone) => {
-    try {
-      await axios.delete(`${API}/blacklist/${encodeURIComponent(phone)}`, { headers });
-      toast.success("Broj uklonjen sa crne liste");
-      fetchBlacklist();
-    } catch (error) {
-      toast.error("Greška pri uklanjanju sa crne liste");
-    }
+    try { await axios.delete(`${API}/blacklist/${encodeURIComponent(phone)}`, { headers }); toast.success("Odblokirano"); fetchBlacklist(); } catch (e) { toast.error("Greška"); }
   };
 
-  // Build mini-timeline for a reservation card
-  const renderMiniTimeline = (res) => {
-    const blocks = res.worker_time_blocks || [];
-    if (blocks.length <= 1) return null;
-    return (
-      <div className="space-y-1 mt-1">
-        {blocks.map((block, idx) => {
-          const pair = res.service_worker_pairs?.[idx];
-          return (
-            <div key={idx}>
-              {block.gap > 0 && idx > 0 && (
-                <div className="flex items-center gap-1.5 py-0.5 pl-1" data-testid={`admin-buffer-${res.id}-${idx}`}>
-                  <span className="text-[10px]">☕</span>
-                  <span className="text-[10px] text-[#6B7280] italic">
-                    {blocks[idx - 1].end_time} - {block.start_time} ({block.gap} min pauza)
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#9CA3AF]">
-                  {block.start_time}-{block.end_time} {pair?.service_name || ""}
-                </span>
-                <span className="text-[#C5A880] font-medium">{pair?.worker_name || ""}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
+  const workStart = settings ? ttm(settings.work_start) : 540;
+  const workEnd = settings ? ttm(settings.work_end) : 1260;
+  const timeSlots = [];
+  for (let m = workStart; m < workEnd; m += 30) timeSlots.push(m);
+
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const isToday = format(selectedDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
+  const isPast = selectedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const activeReservations = reservations.filter(r => {
+    if (!isToday) return !isPast;
+    return nowMins < ttm(r.end_time) + 30;
+  });
+  const archivedReservations = reservations.filter(r => {
+    if (!isToday) return isPast;
+    return nowMins >= ttm(r.end_time) + 30;
+  });
+
+  const buildWorkerBlocks = (wid) => {
+    const blocks = [];
+    reservations.forEach((res, rIdx) => {
+      const color = COLORS[rIdx % COLORS.length];
+      const isArch = isToday && nowMins >= ttm(res.end_time) + 30;
+      if (res.worker_time_blocks && res.worker_time_blocks.length > 0) {
+        res.worker_time_blocks.forEach(block => {
+          if (block.worker_id === wid) {
+            const pair = res.service_worker_pairs?.find(p => p.service_id === block.service_id);
+            blocks.push({ res, startMin: ttm(block.start_time), endMin: ttm(block.end_time), serviceName: pair?.service_name || "", color, bookingId: res.booking_id, isArchived: isArch });
+          }
+        });
+      } else if (res.worker_id === wid || res.service_worker_pairs?.some(p => p.worker_id === wid)) {
+        blocks.push({ res, startMin: ttm(res.time), endMin: ttm(res.end_time), serviceName: res.service_names?.join(", ") || "", color, bookingId: res.booking_id, isArchived: isArch });
+      }
+    });
+    return blocks;
   };
+
+  const filteredArchive = archivedReservations.filter(r => {
+    if (!archiveSearch) return true;
+    const q = archiveSearch.toLowerCase();
+    return r.client_name?.toLowerCase().includes(q) || r.client_phone?.includes(q) || r.booking_id?.toLowerCase().includes(q) || r.service_names?.some(s => s.toLowerCase().includes(q));
+  });
+
+  const nowLineTop = isToday ? ((nowMins - workStart) / 30) * SLOT_HEIGHT : -1;
 
   return (
     <div className="animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Rezervacije</h2>
-          <p className="text-[#9CA3AF]">
-            {format(selectedDate, "EEEE, d. MMMM yyyy", { locale: sr })}
-          </p>
+          <p className="text-[#9CA3AF]">{format(selectedDate, "EEEE, d. MMMM yyyy", { locale: sr })}</p>
         </div>
-
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setManualBookingOpen(true)}
-            className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium mr-2"
-            data-testid="admin-new-reservation-btn"
-          >
+          <Button onClick={() => setManualBookingOpen(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium mr-2" data-testid="admin-new-reservation-btn">
             <Plus className="w-4 h-4 mr-1" /> Nova Rezervacija
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setSelectedDate(subDays(selectedDate, 1))}
-            className="border-[#2A2A2D] hover:bg-[#141416]"
-            data-testid="prev-day-btn"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setSelectedDate(new Date())}
-            className="border-[#2A2A2D] hover:bg-[#141416]"
-            data-testid="today-btn"
-          >
-            Danas
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-            className="border-[#2A2A2D] hover:bg-[#141416]"
-            data-testid="next-day-btn"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+          <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="prev-day-btn"><ChevronLeft className="w-4 h-4" /></Button>
+          <Button variant="outline" onClick={() => setSelectedDate(new Date())} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="today-btn">Danas</Button>
+          <Button variant="outline" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="next-day-btn"><ChevronRight className="w-4 h-4" /></Button>
         </div>
       </div>
 
-      {/* Worker Filter */}
-      <div className="flex items-center gap-3 mb-4" data-testid="worker-filter">
-        <Users className="w-4 h-4 text-[#9CA3AF]" />
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          <button
-            onClick={() => setSelectedWorker("all")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-              selectedWorker === "all"
-                ? "bg-[#C5A880] text-black"
-                : "bg-[#1E1E22] text-[#9CA3AF] hover:bg-[#2A2A2D] border border-[#2A2A2D]"
-            }`}
-            data-testid="filter-all-workers"
-          >
-            Svi radnici
-          </button>
-          {workers.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => setSelectedWorker(w.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                selectedWorker === w.id
-                  ? "bg-[#C5A880] text-black"
-                  : "bg-[#1E1E22] text-[#9CA3AF] hover:bg-[#2A2A2D] border border-[#2A2A2D]"
-              }`}
-              data-testid={`filter-worker-${w.id}`}
-            >
-              {w.name}
-            </button>
-          ))}
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 bg-[#0A0A0B] rounded-lg p-1 w-fit" data-testid="view-tabs">
+        <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
+          <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
+        </button>
+        <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
+          <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
+        </button>
       </div>
 
-      {/* Cancel Confirmation Dialog */}
+      {/* Cancel Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent className="bg-[#141416] border-[#2A2A2D]">
-          <DialogHeader>
-            <DialogTitle className="text-white">Otkazivanje rezervacije</DialogTitle>
-            <DialogDescription className="text-[#9CA3AF]">
-              Da li ste sigurni da želite da otkažete ovu rezervaciju?
-            </DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="text-white">Otkazivanje rezervacije</DialogTitle><DialogDescription className="text-[#9CA3AF]">Da li ste sigurni?</DialogDescription></DialogHeader>
           {cancelTarget && (
             <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#9CA3AF]">ID:</span>
-                <span className="font-mono text-[#C5A880]">#{cancelTarget.booking_id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#9CA3AF]">Klijent:</span>
-                <span className="text-white">{cancelTarget.client_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#9CA3AF]">Vreme:</span>
-                <span className="text-white">{cancelTarget.time} - {cancelTarget.end_time}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#9CA3AF]">Usluge:</span>
-                <span className="text-white">{cancelTarget.service_names?.join(", ")}</span>
-              </div>
+              <div className="flex justify-between"><span className="text-[#9CA3AF]">ID:</span><span className="font-mono text-[#C5A880]">#{cancelTarget.booking_id}</span></div>
+              <div className="flex justify-between"><span className="text-[#9CA3AF]">Klijent:</span><span className="text-white">{cancelTarget.client_name}</span></div>
+              <div className="flex justify-between"><span className="text-[#9CA3AF]">Vreme:</span><span className="text-white">{cancelTarget.time} - {cancelTarget.end_time}</span></div>
+              <div className="flex justify-between"><span className="text-[#9CA3AF]">Usluge:</span><span className="text-white">{cancelTarget.service_names?.join(", ")}</span></div>
             </div>
           )}
           <div className="flex gap-3 mt-2">
-            <Button
-              variant="outline"
-              className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22]"
-              onClick={() => setCancelDialogOpen(false)}
-              data-testid="cancel-dialog-dismiss"
-            >
-              Ne, zadrži
-            </Button>
-            <Button
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => cancelTarget && handleCancel(cancelTarget.id)}
-              data-testid="cancel-dialog-confirm"
-            >
-              Da, otkaži
-            </Button>
+            <Button variant="outline" className="flex-1 border-[#2A2A2D] hover:bg-[#1E1E22]" onClick={() => setCancelDialogOpen(false)} data-testid="cancel-dialog-dismiss">Ne, zadrži</Button>
+            <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => cancelTarget && handleCancel(cancelTarget.id)} data-testid="cancel-dialog-confirm">Da, otkaži</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Manual Booking Modal */}
-      <ManualBookingModal
-        open={manualBookingOpen}
-        onClose={() => setManualBookingOpen(false)}
-        onSuccess={() => fetchReservations()}
-        workers={workers}
-        selectedDate={selectedDate}
-      />
-
-      {/* Reservations Table */}
-      {loading ? (
-        <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div>
-      ) : reservations.length === 0 ? (
-        <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]">
-          <Calendar className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" />
-          <p className="text-[#9CA3AF]">Nema rezervacija za ovaj datum</p>
-        </div>
-      ) : (
-        <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-[#2A2A2D] hover:bg-transparent">
-                  <TableHead className="text-[#9CA3AF]">ID</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Vreme</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Ime</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Telefon</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Usluge</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Radnici</TableHead>
-                  <TableHead className="text-[#9CA3AF] text-right">Cena</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Uplata</TableHead>
-                  <TableHead className="text-[#9CA3AF] text-right">Akcije</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reservations.map((res) => {
-                  const isBlacklisted = blacklist.includes(res.client_phone);
-                  const urgency = getUrgencyMarker(res);
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedRes} onOpenChange={(v) => !v && setSelectedRes(null)}>
+        <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <span className="font-mono text-[#C5A880] text-sm bg-[#C5A880]/10 px-2 py-0.5 rounded">#{selectedRes?.booking_id}</span>
+              {selectedRes?.client_name}
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">{selectedRes?.time} - {selectedRes?.end_time} &middot; {selectedRes?.total_duration} min</DialogDescription>
+          </DialogHeader>
+          {selectedRes && (
+            <div className="space-y-3">
+              <div className="bg-[#0A0A0B] rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">Telefon:</span><span className="text-white">{selectedRes.client_phone}</span></div>
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">Ukupno:</span><span className="text-[#C5A880] font-medium">{selectedRes.total_price?.toLocaleString()} RSD</span></div>
+              </div>
+              <div className="space-y-1">
+                {selectedRes.worker_time_blocks?.length > 0 ? selectedRes.worker_time_blocks.map((block, idx) => {
+                  const pair = selectedRes.service_worker_pairs?.[idx];
                   return (
-                    <TableRow
-                      key={res.id}
-                      className={`border-[#2A2A2D] ${
-                        urgency === "expired" ? "bg-red-500/5" : ""
-                      }`}
-                      data-testid={`reservation-${res.id}`}
-                    >
-                      <TableCell>
-                        <span
-                          className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded"
-                          data-testid={`booking-id-${res.id}`}
-                        >
-                          #{res.booking_id || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-[#C5A880]">
-                          {res.time} - {res.end_time}
-                        </div>
-                        <div className="text-xs text-[#9CA3AF]">{res.total_duration} min</div>
-                      </TableCell>
-                      <TableCell className="font-medium">{res.client_name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {res.client_phone}
-                          {isBlacklisted && (
-                            <Ban className="w-3 h-3 text-red-400" title="Blokiran" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[150px] truncate" title={res.service_names.join(", ")}>
-                          {res.service_names.join(", ")}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[220px]">
-                          {res.worker_time_blocks && res.worker_time_blocks.length > 1 ? (
-                            renderMiniTimeline(res)
-                          ) : res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
-                            <div className="space-y-1">
-                              {res.service_worker_pairs.map((pair, idx) => (
-                                <div key={idx} className="text-xs">
-                                  <span className="text-[#9CA3AF]">{pair.service_name}:</span>{" "}
-                                  <span className="text-[#C5A880] font-medium">{pair.worker_name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span>{res.worker_name || "-"}</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-[#C5A880]">
-                        {res.total_price.toLocaleString()} RSD
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1.5">
-                          {res.payment_status === "paid" ? (
-                            <button
-                              onClick={() => handleTogglePayment(res.id)}
-                              className="px-2.5 py-1 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors cursor-pointer"
-                              data-testid={`payment-status-${res.id}`}
-                            >
-                              <Check className="w-3 h-3 inline mr-1" />
-                              Plaćeno
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleTogglePayment(res.id)}
-                              className="px-2.5 py-1 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer"
-                              data-testid={`payment-status-${res.id}`}
-                            >
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              Čeka uplatu
-                            </button>
-                          )}
-                          {urgency === "warning" && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 text-orange-400 uppercase tracking-wide" data-testid={`urgency-warning-${res.id}`}>
-                              Poslati notifikaciju
-                            </span>
-                          )}
-                          {urgency === "expired" && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-400 uppercase tracking-wide animate-pulse" data-testid={`urgency-expired-${res.id}`}>
-                              Istekao grace period
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {!isBlacklisted ? (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleBlacklist(res.client_phone)}
-                              className="h-8 w-8 text-red-400 hover:bg-red-400/10"
-                              title="Blokiraj broj"
-                              data-testid={`blacklist-${res.id}`}
-                            >
-                              <Ban className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleRemoveFromBlacklist(res.client_phone)}
-                              className="h-8 w-8 text-green-400 hover:bg-green-400/10"
-                              title="Odblokiraj broj"
-                              data-testid={`unblock-${res.id}`}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openCancelDialog(res)}
-                            className="h-8 w-8 text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400"
-                            title="Otkaži rezervaciju"
-                            data-testid={`cancel-${res.id}`}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile Card Layout */}
-          <div className="md:hidden divide-y divide-[#2A2A2D]">
-            {reservations.map((res) => {
-              const isBlacklisted = blacklist.includes(res.client_phone);
-              const urgency = getUrgencyMarker(res);
-              return (
-                <div
-                  key={res.id}
-                  className={`p-4 space-y-3 ${urgency === "expired" ? "bg-red-500/5" : ""}`}
-                  data-testid={`reservation-mobile-${res.id}`}
-                >
-                  {/* Header: ID + Time + Price */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-[#C5A880] bg-[#C5A880]/10 px-2 py-1 rounded">
-                        #{res.booking_id || "—"}
-                      </span>
-                      <span className="font-semibold text-[#C5A880]">
-                        {res.time} - {res.end_time}
-                      </span>
-                    </div>
-                    <span className="font-semibold text-[#C5A880] text-sm">
-                      {res.total_price.toLocaleString()} RSD
-                    </span>
-                  </div>
-
-                  {/* Client info */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{res.client_name}</div>
-                      <div className="text-xs text-[#9CA3AF] flex items-center gap-1">
-                        {res.client_phone}
-                        {isBlacklisted && <Ban className="w-3 h-3 text-red-400" />}
+                    <div key={idx}>
+                      {block.gap > 0 && idx > 0 && <div className="text-[10px] text-[#6B7280] italic pl-1 py-0.5">☕ Pauza ({block.gap} min)</div>}
+                      <div className="flex justify-between text-xs bg-[#0A0A0B] rounded px-2 py-1.5">
+                        <span className="text-white">{block.start_time}-{block.end_time} {pair?.service_name}</span>
+                        <span className="text-[#C5A880]">{pair?.worker_name}</span>
                       </div>
                     </div>
-                    <div className="text-xs text-[#9CA3AF]">{res.total_duration} min</div>
+                  );
+                }) : selectedRes.service_worker_pairs?.map((pair, idx) => (
+                  <div key={idx} className="flex justify-between text-xs bg-[#0A0A0B] rounded px-2 py-1.5">
+                    <span className="text-white">{pair.service_name}</span><span className="text-[#C5A880]">{pair.worker_name}</span>
                   </div>
+                ))}
+              </div>
+              <div className="flex gap-2 pt-2 border-t border-[#2A2A2D]">
+                <button onClick={() => { handleTogglePayment(selectedRes.id); setSelectedRes(null); }} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${selectedRes.payment_status === "paid" ? "bg-green-600/20 text-green-400" : "bg-amber-500/15 text-amber-400"}`} data-testid={`detail-payment-${selectedRes.id}`}>
+                  {selectedRes.payment_status === "paid" ? "Plaćeno" : "Čeka uplatu"}
+                </button>
+                <button onClick={() => { setSelectedRes(null); openCancelDialog(selectedRes); }} className="px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20" data-testid={`detail-cancel-${selectedRes.id}`}>Otkaži</button>
+                {!blacklist.includes(selectedRes.client_phone) ? (
+                  <button onClick={() => handleBlacklist(selectedRes.client_phone)} className="px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Ban className="w-3 h-3 inline mr-1" />Blokiraj</button>
+                ) : (
+                  <button onClick={() => handleRemoveFromBlacklist(selectedRes.client_phone)} className="px-3 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20"><Check className="w-3 h-3 inline mr-1" />Odblokiraj</button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-                  {/* Services & Workers with Timeline */}
-                  {res.worker_time_blocks && res.worker_time_blocks.length > 1 ? (
-                    renderMiniTimeline(res)
-                  ) : res.service_worker_pairs && res.service_worker_pairs.length > 0 ? (
-                    <div className="space-y-1">
-                      {res.service_worker_pairs.map((pair, idx) => (
-                        <div key={idx} className="text-xs flex justify-between">
-                          <span className="text-[#9CA3AF]">{pair.service_name}</span>
-                          <span className="text-[#C5A880] font-medium">{pair.worker_name}</span>
+      <ManualBookingModal open={manualBookingOpen} onClose={() => setManualBookingOpen(false)} onSuccess={() => fetchReservations()} workers={workers} selectedDate={selectedDate} />
+
+      {/* ===== GRID TAB ===== */}
+      {activeTab === "grid" && (
+        loading ? <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div> :
+        workers.length === 0 ? (
+          <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">Nema aktivnih radnika</p></div>
+        ) : (
+          <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden" data-testid="timeline-grid">
+            {/* Desktop Grid */}
+            <div className="hidden md:block">
+              <div className="flex border-b border-[#2A2A2D] sticky top-0 z-20 bg-[#141416]">
+                <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D]">Vreme</div>
+                {workers.map(w => (
+                  <div key={w.id} className="flex-1 min-w-[130px] p-2 text-center border-r border-[#2A2A2D] last:border-r-0">
+                    <div className="text-xs font-medium text-white truncate">{w.name}</div>
+                    <div className="text-[10px] text-[#6B7280]">{w.work_start}-{w.work_end}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="overflow-y-auto max-h-[60vh] relative" ref={gridRef} data-testid="grid-body">
+                {nowLineTop > 0 && nowLineTop < timeSlots.length * SLOT_HEIGHT && (
+                  <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: `${nowLineTop}px` }} data-testid="now-line">
+                    <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 -ml-1" /><div className="flex-1 h-px bg-red-500/60" /></div>
+                  </div>
+                )}
+                {timeSlots.map((slotMin) => (
+                  <div key={slotMin} className="flex border-b border-[#1E1E22]" style={{ height: `${SLOT_HEIGHT}px` }}>
+                    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22]">{mtt(slotMin)}</div>
+                    {workers.map(w => {
+                      const blocks = buildWorkerBlocks(w.id);
+                      const cellBlocks = blocks.filter(b => b.startMin >= slotMin && b.startMin < slotMin + 30);
+                      return (
+                        <div key={w.id} className="flex-1 min-w-[130px] border-r border-[#1E1E22] last:border-r-0 relative">
+                          {cellBlocks.map((block, bIdx) => {
+                            const topOff = ((block.startMin - slotMin) / 30) * SLOT_HEIGHT;
+                            const blockH = Math.max(((block.endMin - block.startMin) / 30) * SLOT_HEIGHT, 24);
+                            const isPaid = block.res.payment_status === "paid";
+                            return (
+                              <div key={bIdx} onClick={() => setSelectedRes(block.res)}
+                                className={`absolute left-1 right-1 rounded-md px-1.5 py-0.5 cursor-pointer overflow-hidden transition-all hover:brightness-110 hover:shadow-lg ${block.isArchived ? "opacity-40" : ""}`}
+                                style={{ top: `${topOff}px`, height: `${blockH}px`, backgroundColor: `${block.color}18`, borderLeft: `3px solid ${block.color}`, zIndex: 5 }}
+                                data-testid={`grid-block-${block.res.id}`}>
+                                <div className="text-[10px] font-medium truncate" style={{ color: block.color }}>{block.serviceName}</div>
+                                {blockH > 28 && <div className="text-[9px] text-[#9CA3AF] truncate">{block.res.client_name}</div>}
+                                {blockH > 42 && <div className="flex items-center gap-1 mt-0.5"><span className="text-[9px] font-mono text-[#6B7280]">#{block.bookingId}</span>{isPaid && <Check className="w-2.5 h-2.5 text-green-400" />}</div>}
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-[#9CA3AF]">{res.service_names.join(", ")}</div>
-                  )}
-
-                  {/* Actions row */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[#2A2A2D]/50">
-                    <div className="flex flex-col gap-1.5">
-                      {res.payment_status === "paid" ? (
-                        <button
-                          onClick={() => handleTogglePayment(res.id)}
-                          className="px-3 py-1.5 rounded-full text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors"
-                        >
-                          <Check className="w-3 h-3 inline mr-1" />
-                          Plaćeno
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleTogglePayment(res.id)}
-                          className="px-3 py-1.5 rounded-full text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors"
-                        >
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          Čeka uplatu
-                        </button>
-                      )}
-                      {urgency === "warning" && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/15 text-orange-400 uppercase tracking-wide">
-                          Poslati notifikaciju
-                        </span>
-                      )}
-                      {urgency === "expired" && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-400 uppercase tracking-wide animate-pulse">
-                          Istekao grace period
-                        </span>
-                      )}
-                    </div>}
-                    <div className="flex gap-2">
-                      {!isBlacklisted ? (
-                        <button
-                          onClick={() => handleBlacklist(res.client_phone)}
-                          className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors"
-                          title="Blokiraj"
-                        >
-                          <Ban className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRemoveFromBlacklist(res.client_phone)}
-                          className="p-2 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors"
-                          title="Odblokiraj"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => openCancelDialog(res)}
-                        className="p-2 rounded-lg text-[#9CA3AF] hover:bg-red-400/10 hover:text-red-400 transition-colors"
-                        title="Otkaži"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                      );
+                    })}
                   </div>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            </div>
+            {/* Mobile */}
+            <div className="md:hidden divide-y divide-[#2A2A2D] max-h-[70vh] overflow-y-auto">
+              {activeReservations.length === 0 ? <div className="text-center py-12 text-[#9CA3AF]">Nema aktivnih rezervacija</div> :
+              activeReservations.sort((a, b) => a.time.localeCompare(b.time)).map((res) => {
+                const rIdx = reservations.indexOf(res);
+                const color = COLORS[rIdx % COLORS.length];
+                return (
+                  <div key={res.id} onClick={() => setSelectedRes(res)} className="p-3 flex items-center gap-3 cursor-pointer hover:bg-[#1E1E22] transition-colors" data-testid={`reservation-mobile-${res.id}`}>
+                    <div className="w-1 self-stretch rounded-full" style={{ backgroundColor: color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between"><span className="text-sm font-medium text-[#C5A880]">{res.time}-{res.end_time}</span><span className="font-mono text-[10px] text-[#6B7280]">#{res.booking_id}</span></div>
+                      <div className="text-sm text-white truncate">{res.client_name}</div>
+                      <div className="text-xs text-[#9CA3AF] truncate">{res.service_names?.join(", ")}</div>
+                    </div>
+                    <div className="text-xs text-[#C5A880] font-medium flex-shrink-0">{res.total_price?.toLocaleString()}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        )
+      )}
+
+      {/* ===== ARCHIVE TAB ===== */}
+      {activeTab === "archive" && (
+        <div data-testid="archive-view">
+          <div className="mb-4">
+            <Input placeholder="Pretraži po imenu, telefonu, ID-u..." value={archiveSearch} onChange={e => setArchiveSearch(e.target.value)} className="bg-[#141416] border-[#2A2A2D] text-white max-w-sm" data-testid="archive-search" />
+          </div>
+          {filteredArchive.length === 0 ? (
+            <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]"><Clock className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">{isPast ? "Nema rezervacija" : "Nema arhiviranih termina"}</p></div>
+          ) : (
+            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-[#2A2A2D] hover:bg-transparent">
+                    <TableHead className="text-[#9CA3AF]">ID</TableHead><TableHead className="text-[#9CA3AF]">Vreme</TableHead><TableHead className="text-[#9CA3AF]">Klijent</TableHead><TableHead className="text-[#9CA3AF]">Usluge</TableHead><TableHead className="text-[#9CA3AF] text-right">Cena</TableHead><TableHead className="text-[#9CA3AF]">Uplata</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredArchive.sort((a, b) => a.time.localeCompare(b.time)).map(res => (
+                    <TableRow key={res.id} className="border-[#2A2A2D] opacity-70 hover:opacity-100 cursor-pointer" onClick={() => setSelectedRes(res)} data-testid={`archive-row-${res.id}`}>
+                      <TableCell><span className="font-mono text-xs text-[#C5A880]">#{res.booking_id}</span></TableCell>
+                      <TableCell><span className="text-sm text-[#C5A880]">{res.time}-{res.end_time}</span></TableCell>
+                      <TableCell><span className="text-sm">{res.client_name}</span><br /><span className="text-xs text-[#6B7280]">{res.client_phone}</span></TableCell>
+                      <TableCell><span className="text-xs text-[#9CA3AF]">{res.service_names?.join(", ")}</span></TableCell>
+                      <TableCell className="text-right text-sm font-medium text-[#C5A880]">{res.total_price?.toLocaleString()} RSD</TableCell>
+                      <TableCell><span className={`px-2 py-1 rounded-full text-[10px] ${res.payment_status === "paid" ? "bg-green-600/20 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{res.payment_status === "paid" ? "Plaćeno" : "Čeka"}</span></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
-
 // Employees Page
 const EmployeesPage = () => {
   const [employees, setEmployees] = useState([]);
