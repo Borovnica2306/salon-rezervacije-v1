@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -179,6 +179,25 @@ const BookingPage = () => {
     setSelectedTime(null);
   };
 
+  const removeServiceFromReview = (serviceId) => {
+    setServiceWorkerMap(prev => {
+      const newMap = { ...prev };
+      delete newMap[serviceId];
+      return newMap;
+    });
+    setSelectedServices(prev => {
+      const updated = prev.filter(s => s.id !== serviceId);
+      if (updated.length === 0) {
+        setStep(1);
+        setSelectedCategory(null);
+        setSelectedDate(null);
+        setSelectedTime(null);
+      }
+      return updated;
+    });
+    setSelectedTime(null);
+  };
+
   const handleSubmit = async () => {
     if (!clientName.trim() || clientPhone.length < 12) {
       toast.error("Molimo unesite ime i validan broj telefona");
@@ -303,6 +322,16 @@ const BookingPage = () => {
     hair: "https://images.pexels.com/photos/973403/pexels-photo-973403.jpeg",
     massage: "https://images.pexels.com/photos/6187839/pexels-photo-6187839.jpeg",
     nails: "https://images.unsplash.com/photo-1658492055212-e1acbccfca5a?w=400",
+  };
+
+  const CATEGORY_ICONS = {
+    hair: Scissors,
+    massage: Flower2,
+    nails: Gem,
+    makeup: Sparkles,
+    depilation: Zap,
+    cosmetics: Droplet,
+    eyebrows: Eye,
   };
 
   // Get worker names for summary
@@ -748,20 +777,18 @@ const BookingPage = () => {
                 const catServices = servicesByCategory[cat.key] || [];
                 if (catServices.length === 0) return null;
                 const count = catServices.length;
+                const IconComponent = CATEGORY_ICONS[cat.key] || Scissors;
                 return (
                   <button
                     key={cat.key}
                     onClick={() => setSelectedCategory(cat.key)}
-                    className="relative overflow-hidden rounded-xl border border-[#2A2A2D] bg-[#141416] p-5 text-left transition-all hover:border-[#C5A880]/50 active:scale-[0.98]"
+                    className="flex flex-col items-center gap-3 rounded-2xl border border-[#2A2A2D] bg-[#141416] p-6 text-center transition-all hover:border-[#C5A880]/50 hover:bg-[#1A1A1D] active:scale-[0.97]"
                     data-testid={`category-card-${cat.key}`}
                   >
-                    {categoryImages[cat.key] && (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center opacity-15"
-                        style={{ backgroundImage: `url(${categoryImages[cat.key]})` }}
-                      />
-                    )}
-                    <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-[#C5A880]/10 border border-[#C5A880]/20 flex items-center justify-center">
+                      <IconComponent className="w-6 h-6 text-[#C5A880]" />
+                    </div>
+                    <div>
                       <h3 className="font-medium text-base">{cat.label}</h3>
                       <p className="text-xs text-[#9CA3AF] mt-1">{count} {count === 1 ? "usluga" : count < 5 ? "usluge" : "usluga"}</p>
                     </div>
@@ -796,11 +823,11 @@ const BookingPage = () => {
             <div className="mb-6">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className="flex items-center gap-2 text-[#9CA3AF] hover:text-white transition-colors mb-4"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50 hover:bg-[#1A1A1D] transition-all mb-5"
                 data-testid="back-to-categories-btn"
               >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm">Nazad na kategorije</span>
+                <ChevronLeft className="w-5 h-5 text-[#C5A880]" />
+                <span className="text-sm font-medium">Nazad na kategorije</span>
               </button>
               <h2 className="font-['Cormorant_Garamond'] text-3xl font-light flex items-center gap-3">
                 {categoryImages[selectedCategory] && (
@@ -1065,14 +1092,33 @@ const BookingPage = () => {
 
             {/* Booking Summary */}
             <div className="mt-8 bg-[#141416] rounded-xl border border-[#2A2A2D] p-6">
-              <h3 className="font-medium mb-4">Pregled Rezervacije</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium">Pregled Rezervacije</h3>
+                <button
+                  onClick={() => { setStep(1); setSelectedCategory(null); }}
+                  className="flex items-center gap-1.5 text-xs text-[#C5A880] hover:text-[#B89970] transition-colors"
+                  data-testid="edit-services-link"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Izmeni usluge
+                </button>
+              </div>
               <div className="space-y-3 text-sm">
                 {/* Services with workers */}
                 <div className="space-y-2">
                   {selectedServices.map(s => (
-                    <div key={s.id} className="flex justify-between">
+                    <div key={s.id} className="flex items-center justify-between">
                       <span className="text-[#9CA3AF]">{s.name}:</span>
-                      <span className="text-[#C5A880]">{getWorkerName(serviceWorkerMap[s.id])}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#C5A880]">{getWorkerName(serviceWorkerMap[s.id])}</span>
+                        <button
+                          onClick={() => removeServiceFromReview(s.id)}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[#6B7280] hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                          data-testid={`remove-service-review-${s.id}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

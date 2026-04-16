@@ -246,6 +246,12 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
     setSelectedPairs(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const removePairFromReview = (idx) => {
+    setSelectedPairs(prev => prev.filter((_, i) => i !== idx));
+    setSelectedTime("");
+    setStep(1);
+  };
+
   const workersForService = (serviceId) => {
     return workers.filter(w => w.services?.includes(serviceId));
   };
@@ -477,6 +483,17 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
           <div className="space-y-4">
             {/* Summary */}
             <div className="bg-[#0A0A0B] rounded-lg p-3 text-sm space-y-1">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#9CA3AF] text-xs uppercase tracking-wider">Pregled</span>
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex items-center gap-1 text-xs text-[#C5A880] hover:text-[#B89970] transition-colors"
+                  data-testid="admin-edit-services-link"
+                >
+                  <Edit2 className="w-3 h-3" />
+                  Izmeni usluge
+                </button>
+              </div>
               <div className="flex justify-between">
                 <span className="text-[#9CA3AF]">Datum:</span>
                 <span className="text-white">{date}</span>
@@ -485,9 +502,19 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                 <span className="text-[#9CA3AF]">Vreme:</span>
                 <span className="text-white">{selectedTime} - {detail?.end_time || ""}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[#9CA3AF]">Usluge:</span>
-                <span className="text-white">{selectedPairs.map(p => p.service.name).join(", ")}</span>
+              <div className="space-y-1 pt-1">
+                {selectedPairs.map((pair, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-[#9CA3AF]">{pair.service.name} <span className="text-[#C5A880]">{pair.worker.name}</span></span>
+                    <button
+                      onClick={() => removePairFromReview(idx)}
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[#6B7280] hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      data-testid={`admin-remove-pair-review-${idx}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
               </div>
               <div className="flex justify-between border-t border-[#2A2A2D] pt-1 mt-1">
                 <span className="text-[#9CA3AF]">Ukupno:</span>
