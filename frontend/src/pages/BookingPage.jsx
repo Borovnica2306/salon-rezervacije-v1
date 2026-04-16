@@ -319,9 +319,13 @@ const BookingPage = () => {
   );
 
   const categoryImages = {
-    hair: "https://images.pexels.com/photos/973403/pexels-photo-973403.jpeg",
-    massage: "https://images.pexels.com/photos/6187839/pexels-photo-6187839.jpeg",
-    nails: "https://images.unsplash.com/photo-1658492055212-e1acbccfca5a?w=400",
+    hair: "https://images.unsplash.com/photo-1675034741473-afed58a142e8?w=400&q=80",
+    massage: "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=400&q=80",
+    nails: "https://images.unsplash.com/photo-1659391542239-9648f307c0b1?w=400&q=80",
+    makeup: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400&q=80",
+    depilation: "https://images.unsplash.com/photo-1609840533741-62c180d0be79?w=400&q=80",
+    cosmetics: "https://images.unsplash.com/photo-1761718210055-e83ca7e2c9ad?w=400&q=80",
+    eyebrows: "https://images.unsplash.com/photo-1735151225764-eac694642dbf?w=400&q=80",
   };
 
   const CATEGORY_ICONS = {
@@ -777,20 +781,24 @@ const BookingPage = () => {
                 const catServices = servicesByCategory[cat.key] || [];
                 if (catServices.length === 0) return null;
                 const count = catServices.length;
-                const IconComponent = CATEGORY_ICONS[cat.key] || Scissors;
+                const bgImage = categoryImages[cat.key];
                 return (
                   <button
                     key={cat.key}
                     onClick={() => setSelectedCategory(cat.key)}
-                    className="flex flex-col items-center gap-3 rounded-2xl border border-[#2A2A2D] bg-[#141416] p-6 text-center transition-all hover:border-[#C5A880]/50 hover:bg-[#1A1A1D] active:scale-[0.97]"
+                    className="relative overflow-hidden rounded-2xl border border-[#2A2A2D] h-36 text-left transition-all hover:border-[#C5A880]/50 active:scale-[0.97] group"
                     data-testid={`category-card-${cat.key}`}
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-[#C5A880]/10 border border-[#C5A880]/20 flex items-center justify-center">
-                      <IconComponent className="w-6 h-6 text-[#C5A880]" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-base">{cat.label}</h3>
-                      <p className="text-xs text-[#9CA3AF] mt-1">{count} {count === 1 ? "usluga" : count < 5 ? "usluge" : "usluga"}</p>
+                    {bgImage && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                        style={{ backgroundImage: `url(${bgImage})` }}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+                    <div className="relative h-full flex flex-col justify-end p-4">
+                      <h3 className="font-medium text-base text-white drop-shadow-md">{cat.label}</h3>
+                      <p className="text-xs text-white/70 mt-0.5">{count} {count === 1 ? "usluga" : count < 5 ? "usluge" : "usluga"}</p>
                     </div>
                   </button>
                 );
