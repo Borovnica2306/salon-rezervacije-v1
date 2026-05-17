@@ -22,13 +22,10 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Detail Dialog — klik na blok otvara detalje sa akcijama
 - [x] Archive Tab — klasična tabela za prošle termine sa pretragom
 - [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona, min-w-[120px]
-- [x] Dalje Button Fix — auto-dodaje pending uslugu/radnika
-- [x] Touch Targets 48px — svi inputi u modalu
+- [x] Touch Targets 48px, Dalje Button Fix, Edit Mode
 - [x] Visual Category Cards — realistične Unsplash slike sa gradient overlay
-- [x] Prominent Back Button — "Nazad na kategorije" full-width
-- [x] Edit Mode Step 4 — X dugme za uklanjanje, "Izmeni usluge" link
-- [x] Admin Edit Mode Step 3 — X po paru, "Izmeni usluge" link
-- [x] **IPS QR Kod Plaćanje** — NBS standard, srpska transliteracija, QRCodeSVG (220px), fallback tekst
+- [x] IPS QR Kod Plaćanje — NBS standard, srpska transliteracija, QRCodeSVG
+- [x] **Email polje klijenta** — obavezan input u Step 4, regex validacija, čuva se u MongoDB lowercase
 
 ## Backlog
 - P1: Viber notifikacije (placeholder u logic.py)
