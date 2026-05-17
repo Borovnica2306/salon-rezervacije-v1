@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode, Mail } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode, Mail, MessageCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -667,6 +667,27 @@ const BookingPage = () => {
               </div>
             </div>
           )}
+
+          {/* Viber Bot CTA */}
+          <div className="rounded-xl p-5 mb-4 text-left border border-[#7360F2]/30 bg-[#7360F2]/5" data-testid="viber-cta-section">
+            <h3 className="text-[#7360F2] font-medium mb-2 flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              Aktivirajte Viber podsetnike
+            </h3>
+            <p className="text-[#9CA3AF] text-xs leading-relaxed mb-4">
+              Kliknite na dugme ispod da otvorite naš Viber bot i dobijete automatsku potvrdu i podsetnik 24h pre Vašeg termina.
+            </p>
+            <a
+              href={`viber://pa?chatURI=${settings?.viber_bot_uri || "beautysalonbor"}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-xl bg-[#7360F2] hover:bg-[#6350E2] text-white font-medium transition-colors"
+              data-testid="viber-bot-btn"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Otvori Viber Bot
+            </a>
+          </div>
 
           {/* Payment / Uplatnica Section */}
           <div className="bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">

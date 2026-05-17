@@ -9,7 +9,7 @@ import {
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
   Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard,
-  SlidersHorizontal, Copy
+  SlidersHorizontal, Copy, Bell, Loader2
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -603,6 +603,7 @@ const ReservationsPage = () => {
   const [activeTab, setActiveTab] = useState("grid");
   const [archiveSearch, setArchiveSearch] = useState("");
   const [selectedRes, setSelectedRes] = useState(null);
+  const [sendingReminders, setSendingReminders] = useState(false);
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -645,6 +646,18 @@ const ReservationsPage = () => {
   };
   const handleConfirmPayment = async (id) => {
     try { await axios.patch(`${API}/admin/reservations/${id}/confirm-payment`, {}, { headers }); toast.success("Uplata potvrđena"); setSelectedRes(null); fetchReservations(); } catch (e) { toast.error("Greška"); }
+  };
+  const handleSendReminders = async () => {
+    setSendingReminders(true);
+    try {
+      const r = await axios.post(`${API}/admin/reservations/trigger-reminders`, {}, { headers });
+      const d = r.data;
+      toast.success(`Podsetnici poslati za ${d.date}: ${d.sent_confirmed + d.sent_pending} poruka (${d.errors} grešaka)`);
+    } catch (e) {
+      toast.error("Greška pri slanju podsetnika");
+    } finally {
+      setSendingReminders(false);
+    }
   };
   const handleCancel = async (id) => {
     try { await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers }); toast.success("Otkazano"); setCancelDialogOpen(false); setCancelTarget(null); setSelectedRes(null); fetchReservations(); } catch (e) { toast.error("Greška"); }
@@ -711,8 +724,18 @@ const ReservationsPage = () => {
           <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Rezervacije</h2>
           <p className="text-[#9CA3AF]">{format(selectedDate, "EEEE, d. MMMM yyyy", { locale: sr })}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setManualBookingOpen(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium mr-2" data-testid="admin-new-reservation-btn">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={handleSendReminders}
+            disabled={sendingReminders}
+            variant="outline"
+            className="border-[#2A2A2D] hover:bg-[#141416] text-[#9CA3AF] hover:text-white"
+            data-testid="send-reminders-btn"
+          >
+            {sendingReminders ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Bell className="w-4 h-4 mr-1.5" />}
+            Podsetnici za sutra
+          </Button>
+          <Button onClick={() => setManualBookingOpen(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium" data-testid="admin-new-reservation-btn">
             <Plus className="w-4 h-4 mr-1" /> Nova Rezervacija
           </Button>
           <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="prev-day-btn"><ChevronLeft className="w-4 h-4" /></Button>

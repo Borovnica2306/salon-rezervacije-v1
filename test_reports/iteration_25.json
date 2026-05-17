@@ -1,0 +1,92 @@
+{
+  "summary": "Frontend testing for Admin Dashboard 'Podsetnici za sutra' button and Client BookingPage Viber CTA section. All 11 features tested and passed.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Admin Dashboard: 'Podsetnici za sutra' button visible with Bell icon (data-testid='send-reminders-btn')",
+    "Admin Dashboard: Button text is 'Podsetnici za sutra'",
+    "Admin Dashboard: Clicking reminders button triggers POST /api/admin/reservations/trigger-reminders",
+    "Admin Dashboard: Toast shows stats after successful reminder send ('Podsetnici poslati za 2026-05-18: 0 poruka (0 grešaka)')",
+    "Admin Dashboard: Button shows loading state (Loader2 spinner) while request pending",
+    "Client BookingPage confirmation: Viber CTA section visible (data-testid='viber-cta-section')",
+    "Client BookingPage confirmation: Viber section has purple border (#7360F2/30) - verified: rgba(115, 96, 242, 0.3)",
+    "Client BookingPage confirmation: Viber section has purple background (#7360F2/5) - verified: rgba(115, 96, 242, 0.05)",
+    "Client BookingPage confirmation: 'Otvori Viber Bot' button visible (data-testid='viber-bot-btn')",
+    "Client BookingPage confirmation: Viber button has min-height 48px - verified: 48px",
+    "Client BookingPage confirmation: Viber button links to viber://pa?chatURI=beautysalonbor",
+    "Client BookingPage confirmation: Viber CTA is between QR section and payment info section (order verified)",
+    "Full booking flow works (create reservation with email, see confirmation with QR + Viber CTA)"
+  ],
+
+  "test_report_links": [
+    "/app/test_reports/iteration_25.json"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "AdminDashboard.jsx lines 606-661: handleSendReminders correctly uses sendingReminders state for loading, calls POST /api/admin/reservations/trigger-reminders, and shows toast with stats",
+    "AdminDashboard.jsx lines 728-737: send-reminders-btn correctly shows Bell icon (idle) and Loader2 animate-spin (loading)",
+    "BookingPage.jsx lines 672-690: Viber CTA section correctly uses border-[#7360F2]/30 bg-[#7360F2]/5 for purple theme",
+    "BookingPage.jsx line 681: Viber button correctly uses settings?.viber_bot_uri with fallback 'beautysalonbor'",
+    "BookingPage.jsx line 684: Viber button has min-h-[48px] class for 48px minimum height"
+  ],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "N/A (frontend only testing requested)",
+    "frontend": "100% (13/13 tests passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_used": {},
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Admin Dashboard 'Podsetnici za sutra' button fully working - triggers POST /api/admin/reservations/trigger-reminders and shows toast with stats. Viber CTA section on booking confirmation page fully implemented with purple theme (#7360F2), 48px button height, and correct viber:// link. Section order is QR -> Viber CTA -> Payment Info. Viber API is MOCKED (no VIBER_TOKEN configured).",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Viber Bot API (VIBER_TOKEN not set)",
+      "SMTP email (no credentials)"
+    ]
+  },
+
+  "feature_verification": {
+    "admin_reminders_button": {
+      "data_testid": "send-reminders-btn",
+      "text": "Podsetnici za sutra",
+      "icon_idle": "Bell",
+      "icon_loading": "Loader2 animate-spin",
+      "api_endpoint": "POST /api/admin/reservations/trigger-reminders",
+      "toast_format": "Podsetnici poslati za {date}: {sent_confirmed + sent_pending} poruka ({errors} grešaka)"
+    },
+    "viber_cta_section": {
+      "data_testid": "viber-cta-section",
+      "title": "Aktivirajte Viber podsetnike",
+      "border_color": "rgba(115, 96, 242, 0.3) - #7360F2/30",
+      "background_color": "rgba(115, 96, 242, 0.05) - #7360F2/5",
+      "button_testid": "viber-bot-btn",
+      "button_text": "Otvori Viber Bot",
+      "button_href": "viber://pa?chatURI=beautysalonbor",
+      "button_min_height": "48px",
+      "section_order": "QR section -> Viber CTA -> Payment info section"
+    }
+  }
+}
