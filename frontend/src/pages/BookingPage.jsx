@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -21,8 +21,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { QRCodeSVG } from "qrcode.react";
 
 const PHONE_PREFIX = "+381";
+
+const transliterateSerbian = (text) => {
+  const map = {
+    'č': 'C', 'Č': 'C', 'ć': 'C', 'Ć': 'C',
+    'š': 'S', 'Š': 'S', 'ž': 'Z', 'Ž': 'Z',
+    'đ': 'Dj', 'Đ': 'DJ',
+  };
+  return text.replace(/[čČćĆšŠžŽđĐ]/g, (m) => map[m] || m).toUpperCase();
+};
+
+const cleanBankAccount = (account) => {
+  return account.replace(/[\s\-]/g, '').padEnd(18, '0').slice(0, 18);
+};
+
+const formatIPSAmount = (amount) => {
+  return `RSD${Number(amount).toFixed(2).replace('.', ',')}`;
+};
+
+const generateIPSQR = (salonSettings, booking) => {
+  const account = cleanBankAccount(salonSettings.bank_account);
+  const name = transliterateSerbian(salonSettings.payment_recipient || salonSettings.salon_name || 'SALON');
+  const amount = formatIPSAmount(booking.total_price);
+  const bookingId = booking.booking_id;
+  const purpose = transliterateSerbian(`Avans za rezervaciju ID ${bookingId}`);
+  const reference = `99${bookingId}`;
+
+  return [
+    'K:PR',
+    'V:01',
+    'C:1',
+    `R:${account}`,
+    `N:${name}`,
+    `I:${amount}`,
+    'SF:289',
+    `S:${purpose}`,
+    `RO:${reference}`,
+  ].join('\n');
+};
 
 function fallbackCopy(text) {
   const ta = document.createElement("textarea");
@@ -430,6 +469,14 @@ const BookingPage = () => {
     const timelineItems = buildTimelineItems();
     const hasTimeline = timelineItems.length > 0;
 
+    const ipsQRString = settings?.bank_account && bookingDetails.total_price > 0
+      ? generateIPSQR(settings, bookingDetails)
+      : null;
+    const ipsAccount = settings?.bank_account ? cleanBankAccount(settings.bank_account) : "";
+    const ipsAccountFormatted = ipsAccount ? `${ipsAccount.slice(0,3)}-${ipsAccount.slice(3,16)}-${ipsAccount.slice(16)}` : "";
+    const ipsAmount = bookingDetails.total_price > 0 ? formatIPSAmount(bookingDetails.total_price) : "";
+    const ipsReference = bookingDetails.booking_id ? `99${bookingDetails.booking_id}` : "";
+
     return (
       <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-[#141416] rounded-2xl border border-[#2A2A2D] p-8 text-center animate-fade-in">
@@ -571,6 +618,37 @@ const BookingPage = () => {
               <span className="text-[#E5E7EB]">Apple / Outlook</span>
             </button>
           </div>
+
+          {/* IPS QR Code Payment */}
+          {ipsQRString && (
+            <div className="bg-[#0A0A0B] rounded-xl p-5 text-center mb-4 border border-[#C5A880]/20" data-testid="ips-qr-section">
+              <h3 className="text-[#C5A880] font-medium mb-2 flex items-center justify-center gap-2">
+                <QrCode className="w-4 h-4" />
+                Brzo plaćanje (IPS QR kod)
+              </h3>
+              <p className="text-[#9CA3AF] text-xs mb-4 leading-relaxed">
+                Skenirajte kod iz vaše mBanking aplikacije.<br />
+                Na telefonu napravite screenshot i otvorite ga u banci.
+              </p>
+              <div className="inline-block bg-white rounded-xl p-4 mb-4" data-testid="ips-qr-code">
+                <QRCodeSVG value={ipsQRString} size={220} level="M" />
+              </div>
+              <div className="text-left space-y-0 mt-2">
+                <div className="flex justify-between min-h-[48px] items-center border-b border-[#2A2A2D]">
+                  <span className="text-[#9CA3AF] text-sm">Račun:</span>
+                  <span className="text-white font-mono text-sm" data-testid="ips-account">{ipsAccountFormatted}</span>
+                </div>
+                <div className="flex justify-between min-h-[48px] items-center border-b border-[#2A2A2D]">
+                  <span className="text-[#9CA3AF] text-sm">Iznos:</span>
+                  <span className="text-[#C5A880] font-medium text-sm" data-testid="ips-amount">{ipsAmount}</span>
+                </div>
+                <div className="flex justify-between min-h-[48px] items-center">
+                  <span className="text-[#9CA3AF] text-sm">Poziv na broj:</span>
+                  <span className="text-white font-mono text-sm" data-testid="ips-reference">{ipsReference}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Payment / Uplatnica Section */}
           <div className="bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">

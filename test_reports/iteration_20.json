@@ -1,0 +1,138 @@
+{
+  "summary": "IPS QR Code Payment feature on BookingPage confirmation screen fully verified. All 16 features tested and passed: QR section appears conditionally (bank_account exists AND total_price > 0), QRCodeSVG renders 220x220px on white background with rounded corners, section title 'Brzo plaćanje (IPS QR kod)' with QrCode icon in amber (#C5A880), instruction text about mBanking scanning, account number in XXX-XXXXXXXXXXXXX-XX format, amount in RSD format with comma (RSD2000,00), reference as 99+bookingID, all fallback text rows have min-height 48px. IPS QR string format verified: uses \\n delimiters, starts with K:PR\\nV:01\\nC:1, contains R: with 18-digit account, I: with RSD comma format, SF:289, RO: with 99+bookingID. Serbian transliteration verified: č/ć→C, š→S, ž→Z, đ→Dj, all uppercase. Full booking flow works end-to-end.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "BookingPage confirmation: IPS QR section appears when bank_account exists and total_price > 0",
+    "BookingPage confirmation: IPS QR section does NOT appear when bank_account is empty/null",
+    "BookingPage confirmation: IPS QR section does NOT appear when total_price is 0",
+    "BookingPage confirmation: QR code SVG rendered (QRCodeSVG component)",
+    "BookingPage confirmation: QR code is 220x220 pixels",
+    "BookingPage confirmation: QR code on white background (bg-white)",
+    "BookingPage confirmation: QR container has rounded corners (rounded-xl)",
+    "BookingPage confirmation: Section title 'Brzo plaćanje (IPS QR kod)' present",
+    "BookingPage confirmation: QrCode icon in title (lucide-react)",
+    "BookingPage confirmation: Title has amber color (#C5A880)",
+    "BookingPage confirmation: Instruction text mentions mBanking scanning",
+    "BookingPage confirmation: Account number displayed in XXX-XXXXXXXXXXXXX-XX format",
+    "BookingPage confirmation: Amount displayed in RSD format with comma (e.g., RSD2000,00)",
+    "BookingPage confirmation: Reference number displayed as 99+bookingID",
+    "BookingPage confirmation: All 3 fallback text rows have min-height 48px",
+    "IPS QR string format: Uses \\n delimiters (not pipes)",
+    "IPS QR string format: Starts with K:PR",
+    "IPS QR string format: Contains V:01",
+    "IPS QR string format: Contains C:1",
+    "IPS QR string format: Contains R: field with 18-digit account",
+    "IPS QR string format: Contains I: field with RSD amount and comma",
+    "IPS QR string format: Contains SF:289",
+    "IPS QR string format: Contains RO: field with 99+bookingID",
+    "IPS QR string format: Name field (N:) is uppercase",
+    "IPS QR string format: Purpose field (S:) is uppercase",
+    "Serbian transliteration: č → C",
+    "Serbian transliteration: ć → C",
+    "Serbian transliteration: š → S",
+    "Serbian transliteration: ž → Z",
+    "Serbian transliteration: đ → Dj",
+    "Serbian transliteration: Đ → DJ",
+    "Serbian transliteration: All output is uppercase",
+    "Full booking flow: Category selection works",
+    "Full booking flow: Service selection works",
+    "Full booking flow: Worker selection works",
+    "Full booking flow: Date selection works",
+    "Full booking flow: Time slot selection works",
+    "Full booking flow: Contact info submission works",
+    "Full booking flow: Booking confirmation successful"
+  ],
+
+  "test_report_links": [
+    "/app/test_reports/iteration_20.json"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "BookingPage.jsx lines 28-34: transliterateSerbian function correctly maps Serbian characters to ASCII uppercase",
+    "BookingPage.jsx lines 37-39: cleanBankAccount strips spaces/dashes, pads to 18 digits, slices to 18",
+    "BookingPage.jsx lines 41-43: formatIPSAmount returns RSD+amount with comma decimal separator",
+    "BookingPage.jsx lines 45-64: generateIPSQR builds NBS-compliant IPS QR string with \\n delimiters",
+    "BookingPage.jsx lines 472-478: QR string computed conditionally when bank_account exists and total_price > 0",
+    "BookingPage.jsx lines 622-651: IPS QR section UI with proper data-testid attributes for testing",
+    "BookingPage.jsx line 634: QRCodeSVG from qrcode.react with size={220} and level='M'"
+  ],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100% (39/39 tests passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_used": {
+    "bank_account": "265-1234567890123-12",
+    "salon_name": "Beauty Studio Bor",
+    "services": "Hair services with 2000 RSD price"
+  },
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "IPS QR Code Payment feature fully implemented and tested. Key implementation: (1) qrcode.react v4.2.0 installed, QRCodeSVG imported, (2) Four helper functions: transliterateSerbian (Serbian→ASCII uppercase), cleanBankAccount (18-digit format), formatIPSAmount (RSD+comma), generateIPSQR (NBS-compliant string), (3) QR section rendered conditionally when settings.bank_account exists AND bookingDetails.total_price > 0, (4) UI has data-testid attributes: ips-qr-section, ips-qr-code, ips-account, ips-amount, ips-reference, (5) QR code is 220x220px on white background with amber title.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["send_viber_notification (logic.py)"],
+    "note": "Viber functions are PLACEHOLDER only - they log but don't send real notifications"
+  },
+
+  "feature_verification": {
+    "ips_qr_section": {
+      "conditional_rendering": "settings?.bank_account && bookingDetails.total_price > 0",
+      "qr_code_size": "220x220 pixels",
+      "qr_code_background": "white (bg-white)",
+      "title": "Brzo plaćanje (IPS QR kod)",
+      "title_color": "#C5A880 (amber)",
+      "title_icon": "QrCode from lucide-react",
+      "instruction_text": "Skenirajte kod iz vaše mBanking aplikacije..."
+    },
+    "ips_qr_string_format": {
+      "delimiter": "\\n (newline)",
+      "fields": ["K:PR", "V:01", "C:1", "R:{18-digit account}", "N:{uppercase name}", "I:{RSD amount with comma}", "SF:289", "S:{uppercase purpose}", "RO:99{bookingID}"]
+    },
+    "serbian_transliteration": {
+      "č/ć": "C",
+      "š": "S",
+      "ž": "Z",
+      "đ": "Dj",
+      "Đ": "DJ",
+      "output": "ALL UPPERCASE"
+    },
+    "fallback_text_rows": {
+      "min_height": "48px",
+      "count": 3,
+      "fields": ["Račun (account)", "Iznos (amount)", "Poziv na broj (reference)"]
+    }
+  },
+
+  "viewport_tests": {
+    "mobile_375x812": {
+      "qr_section_visible": true,
+      "qr_code_rendered": true,
+      "all_text_readable": true,
+      "scrolling_required": true
+    }
+  }
+}
