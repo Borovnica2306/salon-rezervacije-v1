@@ -19,28 +19,30 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Admin Manual Booking (3-step modal + force override)
 - [x] Daily Timeline Grid + Auto-Scroll + Detail Dialog + Archive Tab
 - [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona
-- [x] Touch Targets 48px, Edit Mode, Visual Category Cards
+- [x] Touch Targets 48px, Edit Mode, Visual Category Cards (Unsplash slike)
 - [x] IPS QR Kod Plaćanje — NBS standard, QRCodeSVG
 - [x] Email polje klijenta + Email notifikacija (BackgroundTasks, SMTP, QR CID)
 - [x] Payment Tracking System — 3 statusa (pending → sent_for_verification → confirmed)
-- [x] **Viber Notifikacije** — httpx + Viber Bot API, graceful fallback bez tokena
-- [x] **Lazy Cancel** — Auto-otkazivanje neplaćenih rezervacija posle 3h (UNPAID_CANCEL_HOURS=3)
-- [x] **Daily Reminders** — Admin trigger endpoint, Beograd timezone, 3 tipa poruka
+- [x] Viber Notifikacije — httpx + Viber Bot API, graceful fallback
+- [x] Lazy Cancel — Auto-otkazivanje neplaćenih rezervacija posle 3h
+- [x] Daily Reminders — Admin trigger endpoint, Beograd timezone
+- [x] **Admin "Podsetnici za sutra" dugme** — Bell ikona, loading spinner, toast sa statistikom
+- [x] **Viber CTA na potvrdi** — Ljubičasta kartica, "Otvori Viber Bot" dugme (48px, viber:// link)
 
 ## Architecture
 ```
 /app/backend/
-├── server.py        # App init, CORS, seed
-├── database.py      # MongoDB connection
-├── models.py        # Pydantic schemas
-├── auth.py          # JWT logic
-├── logic.py         # Smart Pairing, IPS QR, Viber, Lazy Cancel, Reminders
-├── routes.py        # API endpoints
+├── server.py, database.py, models.py, auth.py
+├── logic.py     # Smart Pairing, IPS QR, Viber, Lazy Cancel, Reminders
+├── routes.py    # API endpoints
 └── mail_service.py  # SMTP email with QR CID
+
+/app/frontend/src/pages/
+├── BookingPage.jsx      # Client booking + Viber CTA
+└── AdminDashboard.jsx   # Timeline Grid + Reminders button
 ```
 
 ## Backlog
-- Frontend: Dodaj dugme "Pošalji podsetnike" na Admin Dashboard
 - Konfiguracija VIBER_TOKEN (korisnik još nije dao token)
 - Konfiguracija SMTP kredencijala (korisnik odložio)
 - P3: Drag & drop na admin timeline gridu za preraspoređivanje
