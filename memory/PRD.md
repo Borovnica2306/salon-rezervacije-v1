@@ -20,22 +20,13 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Daily Timeline Grid + Auto-Scroll + Detail Dialog + Archive Tab
 - [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona
 - [x] Touch Targets 48px, Edit Mode, Visual Category Cards
-- [x] IPS QR Kod Plaćanje — NBS standard, QRCodeSVG
-- [x] Email polje klijenta + Email notifikacija (BackgroundTasks, SMTP, QR CID)
+- [x] IPS QR Kod Plaćanje — NBS standard, **dot decimal** (RSD2000.00)
+- [x] Email polje + Async email notifikacija (QR in separate try-except)
 - [x] Payment Tracking System — 3 statusa (pending → sent_for_verification → confirmed)
-- [x] Viber Notifikacije + Daily Reminders + Lazy Cancel
+- [x] Viber Notifikacije + Daily Reminders + Lazy Cancel (3h)
 - [x] Admin "Podsetnici za sutra" dugme + Viber CTA na potvrdi
-- [x] **SMTP & Viber Admin Settings** — Bezbedno čuvanje kredencijala u bazi, UI u Podešavanjima
-
-## Architecture
-```
-/app/backend/
-├── server.py, database.py, models.py, auth.py
-├── logic.py         # Smart Pairing, IPS QR, Viber API, Lazy Cancel, Reminders
-├── routes.py        # API endpoints (settings now include SMTP/Viber fields)
-└── mail_service.py  # SMTP email - reads from DB settings first, then env fallback
-```
+- [x] SMTP & Viber Admin Settings — DB-first, env fallback
+- [x] **IPS QR Fix** — dot decimal (RSD2000.00), async email, QR fault-tolerant
 
 ## Backlog
 - P3: Drag & drop na admin timeline gridu za preraspoređivanje
-- Korisnik treba uneti realne SMTP/Viber kredencijale kroz Admin Podešavanja
