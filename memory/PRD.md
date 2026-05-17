@@ -17,19 +17,30 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Standardizacija formata telefona (+381, zero-strip)
 - [x] Striktna per-worker boundary provera radnog vremena
 - [x] Admin Manual Booking (3-step modal + force override)
-- [x] Daily Timeline Grid — Worker kolone, 30-min redovi, obojeni blokovi
-- [x] Auto-Scroll na current_time, Detail Dialog, Archive Tab
+- [x] Daily Timeline Grid + Auto-Scroll + Detail Dialog + Archive Tab
 - [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona
-- [x] Touch Targets 48px, Dalje Button Fix, Edit Mode
-- [x] Visual Category Cards — realistične Unsplash slike sa gradient overlay
-- [x] IPS QR Kod Plaćanje — NBS standard, QRCodeSVG (frontend + backend)
-- [x] Email polje klijenta — obavezan input, regex validacija, čuva se lowercase
-- [x] Email notifikacija — BackgroundTasks, SMTP, HTML template sa QR CID
-- [x] **Payment Tracking System** — 3 statusa (pending → sent_for_verification → confirmed)
-  - Klijent: "Potvrdi uplatu avansa" dugme u Moje Rezervacije
-  - Admin: "Potvrdi uplatu" zeleno dugme u Detail Dialog
-  - Grid blokovi: žuta za čekanje provere, zelena za potvrđeno
+- [x] Touch Targets 48px, Edit Mode, Visual Category Cards
+- [x] IPS QR Kod Plaćanje — NBS standard, QRCodeSVG
+- [x] Email polje klijenta + Email notifikacija (BackgroundTasks, SMTP, QR CID)
+- [x] Payment Tracking System — 3 statusa (pending → sent_for_verification → confirmed)
+- [x] **Viber Notifikacije** — httpx + Viber Bot API, graceful fallback bez tokena
+- [x] **Lazy Cancel** — Auto-otkazivanje neplaćenih rezervacija posle 3h (UNPAID_CANCEL_HOURS=3)
+- [x] **Daily Reminders** — Admin trigger endpoint, Beograd timezone, 3 tipa poruka
+
+## Architecture
+```
+/app/backend/
+├── server.py        # App init, CORS, seed
+├── database.py      # MongoDB connection
+├── models.py        # Pydantic schemas
+├── auth.py          # JWT logic
+├── logic.py         # Smart Pairing, IPS QR, Viber, Lazy Cancel, Reminders
+├── routes.py        # API endpoints
+└── mail_service.py  # SMTP email with QR CID
+```
 
 ## Backlog
-- P1: Viber notifikacije (placeholder u logic.py)
+- Frontend: Dodaj dugme "Pošalji podsetnike" na Admin Dashboard
+- Konfiguracija VIBER_TOKEN (korisnik još nije dao token)
+- Konfiguracija SMTP kredencijala (korisnik odložio)
 - P3: Drag & drop na admin timeline gridu za preraspoređivanje
