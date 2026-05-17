@@ -679,7 +679,7 @@ const BookingPage = () => {
                 Kliknite na dugme ispod da nam pošaljete potvrdu rezervacije direktno na Viber. Podsetićemo Vas 24h pre termina.
               </p>
               <a
-                href={`viber://chat?number=${encodeURIComponent(settings.viber_phone)}&draft=${encodeURIComponent(`Potvrda rezervacije #${bookingDetails.booking_id}`)}`}
+                href={`viber://forward?text=${encodeURIComponent(`Potvrda rezervacije #${bookingDetails.booking_id}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-xl bg-[#7360F2] hover:bg-[#6350E2] text-white font-medium transition-colors"
