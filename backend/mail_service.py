@@ -1,7 +1,6 @@
 import os
 import logging
 import smtplib
-import asyncio
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -159,7 +158,7 @@ def _build_html(
 </html>"""
 
 
-def send_booking_confirmation_email(
+async def send_booking_confirmation_email(
     to_email: str,
     salon_name: str,
     booking_id: str,
@@ -173,10 +172,9 @@ def send_booking_confirmation_email(
     bank_account: str,
     payment_recipient: str,
 ):
-    # Fetch DB settings for SMTP config (sync context in BackgroundTask)
+    # Fetch DB settings for SMTP config
     try:
-        loop = asyncio.get_event_loop()
-        db_settings = loop.run_until_complete(db.settings.find_one({"type": "salon"}))
+        db_settings = await db.settings.find_one({"type": "salon"})
     except Exception:
         db_settings = None
 
@@ -186,12 +184,17 @@ def send_booking_confirmation_email(
         return
 
     try:
-        qr_image_bytes = generate_ips_qr_image(
-            bank_account=bank_account,
-            recipient_name=payment_recipient or salon_name,
-            amount=total_price,
-            booking_id=booking_id,
-        )
+        # QR generation in its own try-except so failure doesn't block email
+        qr_image_bytes = None
+        try:
+            qr_image_bytes = generate_ips_qr_image(
+                bank_account=bank_account,
+                recipient_name=payment_recipient or salon_name,
+                amount=total_price,
+                booking_id=booking_id,
+            )
+        except Exception as qr_err:
+            logger.error(f"QR generation failed for booking #{booking_id}: {qr_err}")
 
         html = _build_html(
             salon_name=salon_name,
@@ -219,10 +222,11 @@ def send_booking_confirmation_email(
         msg_alt.attach(MIMEText(plain, "plain", "utf-8"))
         msg_alt.attach(MIMEText(html, "html", "utf-8"))
 
-        qr_img = MIMEImage(qr_image_bytes, _subtype="png")
-        qr_img.add_header("Content-ID", "<qrcode_image>")
-        qr_img.add_header("Content-Disposition", "inline", filename="qr_code.png")
-        msg.attach(qr_img)
+        if qr_image_bytes:
+            qr_img = MIMEImage(qr_image_bytes, _subtype="png")
+            qr_img.add_header("Content-ID", "<qrcode_image>")
+            qr_img.add_header("Content-Disposition", "inline", filename="qr_code.png")
+            msg.attach(qr_img)
 
         with smtplib.SMTP(smtp_cfg["server"], smtp_cfg["port"], timeout=15) as server:
             server.starttls()

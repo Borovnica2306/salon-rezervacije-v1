@@ -1,0 +1,94 @@
+{
+  "summary": "Completed testing of IPS QR code format fix and SMTP async email fix. All 10 backend tests passed. Frontend IPS QR displays correct dot decimal format (RSD2000.00). Email sending works asynchronously.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: format_ips_amount returns RSD2000.00 (dot decimal, not comma)",
+    "Backend: format_ips_amount always returns exactly 2 decimal places",
+    "Backend: generate_ips_qr_string produces correct NBS structure with K:PR, V:01, C:1, R:, N:, I:, SF:289, S:, RO:",
+    "Backend: generate_ips_qr_string amount line is I:RSD2000.00 (dot decimal)",
+    "Backend: generate_ips_qr_string correctly transliterates Serbian characters (Š→S, Č→C, etc.)",
+    "Backend: generate_ips_qr_image returns valid PNG bytes (>1KB, correct magic bytes)",
+    "Backend: send_booking_confirmation_email is async (coroutine function)",
+    "Backend: _build_html uses format_ips_amount for email HTML (RSD2000.00)",
+    "Backend: POST /api/reservations endpoint exists and works",
+    "Backend: clean_bank_account removes dashes and spaces, pads to 18 chars",
+    "Frontend: formatIPSAmount returns RSD2000.00 (dot decimal)",
+    "Frontend: IPS QR section displays on confirmation page",
+    "Frontend: IPS Amount shows RSD2000.00 (verified in UI)",
+    "Frontend: IPS Account shows formatted bank account (115-0381692422596-18)",
+    "Frontend: IPS Reference shows 99{booking_id} format",
+    "Frontend: IPS QR Code image is present and rendered",
+    "Frontend: Full booking flow works end-to-end",
+    "Integration: Email sent successfully after booking (confirmed in logs)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_ips_qr_format_fix.py",
+    "/app/test_reports/pytest/pytest_results_ips_qr_fix.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Backend logic.py: format_ips_amount correctly uses f'{amount:.2f}' for dot decimal (line 33-34)",
+    "Backend logic.py: generate_ips_qr_string correctly builds NBS-compliant QR string with dot decimal amount",
+    "Backend mail_service.py: send_booking_confirmation_email is now async with 'await db.settings.find_one()'",
+    "Backend mail_service.py: QR generation wrapped in separate try-except so failure doesn't block email",
+    "Backend mail_service.py: _build_html uses format_ips_amount for consistent dot decimal in email",
+    "Frontend BookingPage.jsx: formatIPSAmount uses toFixed(2) without replace('.', ',') - correct dot decimal"
+  ],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "100% (10/10 pytest tests passed)",
+    "frontend": "100% (7/7 UI tests passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "IPS QR format fix verified - both backend and frontend now use dot decimal (RSD2000.00) per NBS standard. SMTP async fix verified - send_booking_confirmation_email is async and QR generation failure doesn't block email. SMTP credentials configured in DB settings (smtp_user: bornaja23@gmail.com). Viber token not configured (MOCKED).",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Viber Bot API (no token configured)",
+      "SMTP email (credentials configured, emails sending successfully)"
+    ]
+  },
+
+  "bug_fix_verification": {
+    "ips_amount_format_fix": {
+      "issue": "IPS amount was using comma (RSD2000,00) but NBS standard requires dot (RSD2000.00)",
+      "backend_fix": "logic.py format_ips_amount uses f'{amount:.2f}' which produces dot decimal",
+      "frontend_fix": "BookingPage.jsx formatIPSAmount uses toFixed(2) without replace('.', ',')",
+      "verified": true,
+      "evidence": "Backend tests pass, Frontend UI shows RSD2000.00"
+    },
+    "smtp_async_fix": {
+      "issue": "SMTP send function was sync with run_until_complete causing issues",
+      "fix": "mail_service.py send_booking_confirmation_email converted to async with 'await db.settings.find_one()'",
+      "qr_isolation": "QR generation wrapped in separate try-except so failure doesn't block email",
+      "verified": true,
+      "evidence": "Backend test confirms function is async (inspect.iscoroutinefunction), logs show emails sent successfully"
+    }
+  }
+}

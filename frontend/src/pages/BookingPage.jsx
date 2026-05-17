@@ -39,7 +39,7 @@ const cleanBankAccount = (account) => {
 };
 
 const formatIPSAmount = (amount) => {
-  return `RSD${Number(amount).toFixed(2).replace('.', ',')}`;
+  return `RSD${Number(amount).toFixed(2)}`;
 };
 
 const generateIPSQR = (salonSettings, booking) => {

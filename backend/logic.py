@@ -31,7 +31,7 @@ def clean_bank_account(account: str) -> str:
 
 
 def format_ips_amount(amount: float) -> str:
-    return f"RSD{amount:,.2f}".replace(',', '_').replace('.', ',').replace('_', '')
+    return f"RSD{amount:.2f}"
 
 
 def generate_ips_qr_string(
