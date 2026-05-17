@@ -652,9 +652,9 @@ const ReservationsPage = () => {
     try {
       const r = await axios.post(`${API}/admin/reservations/trigger-reminders`, {}, { headers });
       const d = r.data;
-      toast.success(`Podsetnici poslati za ${d.date}: ${d.sent_confirmed + d.sent_pending} poruka (${d.errors} grešaka)`);
+      toast.success(`Sutra (${d.date}): ${d.total_reservations} termina (${d.confirmed} potvrđenih, ${d.pending} čeka uplatu)`);
     } catch (e) {
-      toast.error("Greška pri slanju podsetnika");
+      toast.error("Greška pri proveri podsetnika");
     } finally {
       setSendingReminders(false);
     }
@@ -1571,8 +1571,7 @@ const SettingsPage = () => {
     smtp_port: 587,
     smtp_user: "",
     smtp_password: "",
-    viber_token: "",
-    viber_bot_uri: "",
+    viber_phone: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1752,28 +1751,17 @@ const SettingsPage = () => {
 
             {/* Viber Configuration */}
             <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-4">
-              <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">Viber Bot</p>
+              <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">Viber Kontakt</p>
               <div>
-                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Viber Bot Token</label>
+                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Viber broj telefona salona</label>
                 <Input
-                  type="password"
-                  value={settings.viber_token}
-                  onChange={(e) => setSettings({ ...settings, viber_token: e.target.value })}
-                  placeholder="Unesi Viber Auth Token"
+                  value={settings.viber_phone}
+                  onChange={(e) => setSettings({ ...settings, viber_phone: e.target.value })}
+                  placeholder="381692422596"
                   className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
-                  data-testid="settings-viber-token"
+                  data-testid="settings-viber-phone"
                 />
-              </div>
-              <div>
-                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Viber Bot URI</label>
-                <Input
-                  value={settings.viber_bot_uri}
-                  onChange={(e) => setSettings({ ...settings, viber_bot_uri: e.target.value })}
-                  placeholder="beautysalonbor"
-                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
-                  data-testid="settings-viber-bot-uri"
-                />
-                <p className="text-[10px] text-[#6B7280] mt-1">URI za viber://pa?chatURI= link na potvrdi rezervacije</p>
+                <p className="text-[10px] text-[#6B7280] mt-1">Broj bez + i razmaka (npr. 381692422596). Koristi se za viber://chat link na potvrdi.</p>
               </div>
             </div>
           </div>

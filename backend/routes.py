@@ -1005,8 +1005,7 @@ async def get_settings():
         smtp_port=settings.get("smtp_port", 587),
         smtp_user=settings.get("smtp_user", ""),
         smtp_password=settings.get("smtp_password", ""),
-        viber_token=settings.get("viber_token", ""),
-        viber_bot_uri=settings.get("viber_bot_uri", ""),
+        viber_phone=settings.get("viber_phone", ""),
     )
 
 
@@ -1036,8 +1035,7 @@ async def update_settings(update: SettingsUpdate, user: dict = Depends(get_curre
         smtp_port=settings.get("smtp_port", 587),
         smtp_user=settings.get("smtp_user", ""),
         smtp_password=settings.get("smtp_password", ""),
-        viber_token=settings.get("viber_token", ""),
-        viber_bot_uri=settings.get("viber_bot_uri", ""),
+        viber_phone=settings.get("viber_phone", ""),
     )
 
 

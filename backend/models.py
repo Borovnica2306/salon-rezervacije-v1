@@ -112,8 +112,7 @@ class SettingsUpdate(BaseModel):
     smtp_port: Optional[int] = None
     smtp_user: Optional[str] = None
     smtp_password: Optional[str] = None
-    viber_token: Optional[str] = None
-    viber_bot_uri: Optional[str] = None
+    viber_phone: Optional[str] = None
 
 class SettingsResponse(BaseModel):
     salon_name: str
@@ -126,8 +125,7 @@ class SettingsResponse(BaseModel):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    viber_token: str = ""
-    viber_bot_uri: str = ""
+    viber_phone: str = ""
 
 class AvailableSlotsRequest(BaseModel):
     service_worker_pairs: List[ServiceWorkerPair]

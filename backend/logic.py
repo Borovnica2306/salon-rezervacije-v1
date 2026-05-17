@@ -2,8 +2,6 @@ import string
 import random
 import logging
 import io
-import os
-import httpx
 import qrcode
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
@@ -340,60 +338,9 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
     }
 
 
-# ================== VIBER NOTIFICATION ==================
-
-VIBER_API_URL = "https://chatapi.viber.com/pa/send_message"
-
-
-async def send_viber_notification(phone: str, message: str) -> bool:
-    """
-    Send a text message via Viber Bot API.
-    Requires VIBER_TOKEN in salon settings or env.
-    """
-    token = os.environ.get("VIBER_TOKEN", "")
-    if not token:
-        settings = await db.settings.find_one({"type": "salon"})
-        token = settings.get("viber_token", "") if settings else ""
-
-    if not token:
-        logger.warning(f"[VIBER] Token not configured, skipping message to {phone}")
-        return False
-
-    try:
-        payload = {
-            "receiver": phone,
-            "min_api_version": 1,
-            "sender": {"name": "Beauty Salon"},
-            "type": "text",
-            "text": message,
-        }
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                VIBER_API_URL,
-                json=payload,
-                headers={"X-Viber-Auth-Token": token},
-            )
-            data = resp.json()
-            if data.get("status") == 0:
-                logger.info(f"[VIBER] Message sent to {phone}")
-                return True
-            else:
-                logger.warning(f"[VIBER] API error for {phone}: {data}")
-                return False
-    except Exception as e:
-        logger.error(f"[VIBER] Failed to send to {phone}: {e}")
-        return False
-
-
-async def send_booking_confirmation_viber(phone: str, booking_id: str, date: str, time: str, services: List[str]) -> bool:
-    service_list = ", ".join(services)
-    message = f"Potvrda rezervacije #{booking_id}\nDatum: {date}\nVreme: {time}\nUsluge: {service_list}"
-    return await send_viber_notification(phone, message)
-
-
-async def send_booking_reminder_viber(phone: str, booking_id: str, date: str, time: str) -> bool:
-    message = f"Podsetnik: Vaš termin #{booking_id} je sutra {date} u {time}."
-    return await send_viber_notification(phone, message)
+# ================== VIBER DIRECT CHAT ==================
+# Viber Bot API removed (Viber changed pricing model).
+# Instead, we use direct viber://chat links with the salon phone number.
 
 
 # ================== LAZY CANCEL (STALE UNPAID) ==================
@@ -437,10 +384,8 @@ async def cancel_stale_unpaid_reservations() -> int:
 
 async def process_daily_reminders() -> dict:
     """
-    Send Viber reminders for tomorrow's reservations.
-    - confirmed payment → friendly reminder
-    - pending payment → urgent warning
-    Returns counts of sent messages.
+    Count tomorrow's reservations by payment status.
+    Viber Bot API removed — reminders now serve as a dashboard summary only.
     """
     belgrade_tz = timezone(timedelta(hours=2))
     tomorrow = (datetime.now(belgrade_tz) + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -450,63 +395,23 @@ async def process_daily_reminders() -> dict:
         "status": {"$ne": "cancelled"},
     }).to_list(500)
 
-    sent_confirmed = 0
-    sent_pending = 0
-    errors = 0
+    confirmed_count = 0
+    pending_count = 0
 
     for r in reservations:
-        phone = r.get("client_phone", "")
-        time_str = r.get("time", "")
-        booking_id = r.get("booking_id", "")
         payment = r.get("payment_status", "pending")
-
-        if not phone:
-            continue
-
-        try:
-            if payment in ("confirmed", "paid"):
-                msg = (
-                    f"Podsetnik: Sutra u {time_str} imate zakazan tretman u salonu. "
-                    f"Radujemo se Vašem dolasku! (ID: #{booking_id})"
-                )
-                ok = await send_viber_notification(phone, msg)
-                if ok:
-                    sent_confirmed += 1
-                else:
-                    errors += 1
-            elif payment == "pending":
-                msg = (
-                    f"Upozorenje: Vaš termin za sutra u {time_str} još uvek nije potvrđen "
-                    f"uplatom avansa. Molimo Vas uplatite u što kraćem roku kako termin "
-                    f"ne bi bio otkazan. (ID: #{booking_id})"
-                )
-                ok = await send_viber_notification(phone, msg)
-                if ok:
-                    sent_pending += 1
-                else:
-                    errors += 1
-            elif payment == "sent_for_verification":
-                msg = (
-                    f"Podsetnik: Vaš termin za sutra u {time_str} čeka potvrdu uplate. "
-                    f"Salon će proveriti vašu uplatu. (ID: #{booking_id})"
-                )
-                ok = await send_viber_notification(phone, msg)
-                if ok:
-                    sent_confirmed += 1
-                else:
-                    errors += 1
-        except Exception as e:
-            logger.error(f"[REMINDER] Error for {phone}: {e}")
-            errors += 1
+        if payment in ("confirmed", "paid", "sent_for_verification"):
+            confirmed_count += 1
+        else:
+            pending_count += 1
 
     logger.info(
         f"[REMINDERS] Tomorrow={tomorrow}: "
-        f"confirmed={sent_confirmed}, pending={sent_pending}, errors={errors}"
+        f"total={len(reservations)}, confirmed={confirmed_count}, pending={pending_count}"
     )
     return {
         "date": tomorrow,
         "total_reservations": len(reservations),
-        "sent_confirmed": sent_confirmed,
-        "sent_pending": sent_pending,
-        "errors": errors,
+        "confirmed": confirmed_count,
+        "pending": pending_count,
     }

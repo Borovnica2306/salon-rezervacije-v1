@@ -1,0 +1,87 @@
+{
+  "summary": "Verified Viber Bot API removal and viber_phone settings replacement. All 8 backend tests passed. Frontend Viber CTA shows 'Pišite nam na Viber' with viber://chat link. Admin settings shows 'Viber broj telefona salona' input. Reminders button shows summary toast (not sent count).",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: No httpx import in logic.py",
+    "Backend: No Viber Bot API functions (send_viber_message, viber_bot_uri, viber_token) in logic.py",
+    "Backend: process_daily_reminders returns summary counts only (confirmed, pending), not sent_confirmed/sent_pending",
+    "Backend: Settings model has viber_phone field (not viber_token/viber_bot_uri)",
+    "Backend: GET /api/settings returns viber_phone field",
+    "Backend: PUT /api/settings accepts and saves viber_phone",
+    "Backend: trigger-reminders returns {date, total_reservations, confirmed, pending} (not sent_confirmed/sent_pending/errors)",
+    "Backend: viber_phone in DB is correctly set to 381692422596",
+    "Frontend: Viber CTA section shows 'Pišite nam na Viber' heading",
+    "Frontend: Viber CTA does NOT show old 'Aktivirajte Viber podsetnike' text",
+    "Frontend: Viber button links to viber://chat?number=381692422596&draft=Potvrda%20rezervacije%20%23{ID}",
+    "Frontend: Viber CTA only shows when viber_phone is configured in settings",
+    "Frontend: Admin settings shows 'VIBER KONTAKT' section with 'Viber broj telefona salona' input",
+    "Frontend: Admin settings does NOT have old Viber Bot Token field",
+    "Frontend: Admin settings does NOT have old Viber Bot URI field",
+    "Frontend: Reminders button toast shows 'Sutra (date): X termina (Y potvrđenih, Z čeka uplatu)'"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_viber_removal.py",
+    "/app/test_reports/pytest/pytest_results_viber_removal.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Backend logic.py line 341-343: Viber Bot API comment correctly states removal reason (Viber changed pricing)",
+    "Backend logic.py line 385-417: process_daily_reminders correctly returns summary counts only",
+    "Backend models.py line 115, 128: viber_phone field correctly replaces viber_token/viber_bot_uri",
+    "Backend routes.py line 1008, 1038: Settings endpoints correctly return viber_phone",
+    "Frontend BookingPage.jsx line 672-692: Viber CTA section with correct viber://chat link format",
+    "Frontend AdminDashboard.jsx line 1752-1764: Settings page shows 'Viber broj telefona salona' input"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_viber_removal.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (8/8 pytest tests passed)",
+    "frontend": "100% (All Viber CTA and Admin settings tests passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Viber Bot API completely removed. viber_phone=381692422596 in DB. Viber CTA uses viber://chat?number={phone}&draft={message} format. process_daily_reminders returns {date, total_reservations, confirmed, pending} - no longer sends messages, just counts. SMTP may be configured for email notifications.",
+
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+
+  "viber_removal_verification": {
+    "backend_changes": {
+      "logic.py": "Viber Bot API functions removed, process_daily_reminders simplified to return counts only",
+      "models.py": "viber_phone replaces viber_token/viber_bot_uri in SettingsUpdate/SettingsResponse",
+      "routes.py": "Settings endpoints return viber_phone field"
+    },
+    "frontend_changes": {
+      "BookingPage.jsx": "Viber CTA shows 'Pišite nam na Viber' with viber://chat link",
+      "AdminDashboard.jsx": "Settings shows 'Viber broj telefona salona' input instead of token/URI"
+    },
+    "verified": true
+  }
+}
