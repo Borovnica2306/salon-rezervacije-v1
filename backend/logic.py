@@ -31,7 +31,7 @@ def clean_bank_account(account: str) -> str:
 
 
 def format_ips_amount(amount: float) -> str:
-    return f"RSD{amount:.2f}"
+    return f"RSD{amount:,.2f}".replace(',', '_').replace('.', ',').replace('_', '')
 
 
 def generate_ips_qr_string(
@@ -46,7 +46,7 @@ def generate_ips_qr_string(
     purpose = transliterate_serbian(f"Avans za rezervaciju ID {booking_id}")
     reference = f"99{booking_id}"
 
-    return '\n'.join([
+    return '|'.join([
         'K:PR',
         'V:01',
         'C:1',

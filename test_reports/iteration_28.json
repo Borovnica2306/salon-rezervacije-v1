@@ -1,0 +1,103 @@
+{
+  "summary": "Verified IPS QR code format fix - both backend and frontend now use COMMA decimal (RSD2000,00) per NBS standard and PIPE separator (not newline). All 10 backend tests passed. Frontend displays correct format. Email sent to client_email from form.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: format_ips_amount returns RSD2000,00 (COMMA decimal per NBS standard)",
+    "Backend: format_ips_amount has no thousands separator (RSD10000,00 not RSD10,000,00)",
+    "Backend: generate_ips_qr_string uses PIPE '|' separator (not newline)",
+    "Backend: generate_ips_qr_string has 8 pipes for 9 fields",
+    "Backend: generate_ips_qr_string matches NBS format: K:PR|V:01|C:1|R:...|N:...|I:RSD...|SF:289|S:...|RO:...",
+    "Backend: generate_ips_qr_string amount field is I:RSD3596,13 (comma decimal)",
+    "Backend: generate_ips_qr_image returns valid PNG bytes (>1KB, correct magic bytes)",
+    "Backend: clean_bank_account removes dashes/spaces, pads to 18 chars",
+    "Backend: transliterate_serbian converts Š→S, Č→C, Đ→DJ, Ž→Z correctly",
+    "Backend: POST /api/reservations accepts client_email field",
+    "Backend: Email sent to client_email from form (verified in logs: ipstest5685091@example.com)",
+    "Frontend: formatIPSAmount returns RSD2000,00 (comma decimal)",
+    "Frontend: generateIPSQR uses pipe '|' join",
+    "Frontend: IPS QR section displays on confirmation page",
+    "Frontend: IPS Amount shows RSD2000,00 (verified in UI screenshot)",
+    "Frontend: IPS Account shows formatted bank account (115-0381692422596-18)",
+    "Frontend: IPS Reference shows 99{booking_id} format (994K9Q)",
+    "Frontend: QR Code image is present and rendered",
+    "Frontend: Full booking flow works end-to-end"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_ips_qr_comma_decimal_fix.py",
+    "/app/test_reports/pytest/pytest_results_ips_comma_decimal.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Backend logic.py line 34: format_ips_amount correctly uses f\"RSD{amount:,.2f}\".replace(',', '_').replace('.', ',').replace('_', '') for comma decimal",
+    "Backend logic.py line 49: generate_ips_qr_string correctly uses '|'.join([...]) for pipe separator",
+    "Backend routes.py line 496: to_email=client_email - email sent to client's email from form",
+    "Frontend BookingPage.jsx line 42: formatIPSAmount uses toFixed(2).replace('.', ',') for comma decimal",
+    "Frontend BookingPage.jsx line 63: generateIPSQR uses .join('|') for pipe separator"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_ips_qr_comma_decimal_fix.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (10/10 pytest tests passed)",
+    "frontend": "100% (Full booking flow with IPS QR verification passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "IPS QR format fix verified - COMMA decimal (RSD2000,00) and PIPE separator per NBS standard. Previous iteration 27 incorrectly stated DOT decimal was correct - this was wrong. NBS standard requires COMMA decimal. Email correctly sent to client_email from form. Viber token not configured (MOCKED).",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Viber Bot API (no token configured)"
+    ]
+  },
+
+  "bug_fix_verification": {
+    "ips_separator_fix": {
+      "issue": "IPS QR string was using newline '\\n' separator instead of pipe '|'",
+      "backend_fix": "logic.py line 49: '|'.join([...]) instead of '\\n'.join([...])",
+      "frontend_fix": "BookingPage.jsx line 63: .join('|') instead of .join('\\n')",
+      "verified": true,
+      "evidence": "Backend test confirms no newlines, 8 pipes present. QR string: K:PR|V:01|C:1|R:...|N:...|I:RSD2000,00|SF:289|S:...|RO:..."
+    },
+    "ips_amount_format_fix": {
+      "issue": "IPS amount was using DOT decimal (RSD2000.00) but NBS standard requires COMMA decimal (RSD2000,00)",
+      "backend_fix": "logic.py line 34: f\"RSD{amount:,.2f}\".replace(',', '_').replace('.', ',').replace('_', '')",
+      "frontend_fix": "BookingPage.jsx line 42: toFixed(2).replace('.', ',')",
+      "verified": true,
+      "evidence": "Backend test: format_ips_amount(2000) == 'RSD2000,00'. Frontend UI shows 'RSD2000,00'"
+    },
+    "email_recipient_fix": {
+      "issue": "Email was being sent to wrong address",
+      "fix": "routes.py line 496: to_email=client_email (from reservation form)",
+      "verified": true,
+      "evidence": "Backend logs show: 'Confirmation email sent to ipstest5685091@example.com for booking #4K9Q'"
+    }
+  },
+
+  "nbs_reference_format": "K:PR|V:01|C:1|R:845000000040484987|N:JP EPS BEOGRAD|I:RSD3596,13|SF:289|S:...|RO:..."
+}
