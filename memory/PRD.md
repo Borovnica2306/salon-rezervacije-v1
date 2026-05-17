@@ -12,7 +12,7 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Booking ID, Uplatnica, Payment Status toggle
 - [x] Blacklist + Limit 3/dan + "Moje rezervacije" (24h otkazivanje)
 - [x] Master Category Switch (7 kategorija)
-- [x] Modularna arhitektura (server, database, models, auth, logic, routes, mail_service)
+- [x] Modularna arhitektura
 - [x] Vizuelni Timeline + Add to Calendar (Google + ICS)
 - [x] Standardizacija formata telefona (+381, zero-strip)
 - [x] Striktna per-worker boundary provera radnog vremena
@@ -20,13 +20,11 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Daily Timeline Grid + Auto-Scroll + Detail Dialog + Archive Tab
 - [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona
 - [x] Touch Targets 48px, Edit Mode, Visual Category Cards
-- [x] IPS QR Kod Plaćanje — NBS standard, **dot decimal** (RSD2000.00)
-- [x] Email polje + Async email notifikacija (QR in separate try-except)
-- [x] Payment Tracking System — 3 statusa (pending → sent_for_verification → confirmed)
+- [x] **IPS QR Kod** — NBS standard: pipe `|` separator, comma decimal (RSD2000,00)
+- [x] Email polje + Async email notifikacija (QR fault-tolerant)
+- [x] Payment Tracking System — 3 statusa
 - [x] Viber Notifikacije + Daily Reminders + Lazy Cancel (3h)
-- [x] Admin "Podsetnici za sutra" dugme + Viber CTA na potvrdi
 - [x] SMTP & Viber Admin Settings — DB-first, env fallback
-- [x] **IPS QR Fix** — dot decimal (RSD2000.00), async email, QR fault-tolerant
 
 ## Backlog
 - P3: Drag & drop na admin timeline gridu za preraspoređivanje
