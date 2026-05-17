@@ -19,30 +19,23 @@ Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radn
 - [x] Admin Manual Booking (3-step modal + force override)
 - [x] Daily Timeline Grid + Auto-Scroll + Detail Dialog + Archive Tab
 - [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona
-- [x] Touch Targets 48px, Edit Mode, Visual Category Cards (Unsplash slike)
+- [x] Touch Targets 48px, Edit Mode, Visual Category Cards
 - [x] IPS QR Kod Plaćanje — NBS standard, QRCodeSVG
 - [x] Email polje klijenta + Email notifikacija (BackgroundTasks, SMTP, QR CID)
 - [x] Payment Tracking System — 3 statusa (pending → sent_for_verification → confirmed)
-- [x] Viber Notifikacije — httpx + Viber Bot API, graceful fallback
-- [x] Lazy Cancel — Auto-otkazivanje neplaćenih rezervacija posle 3h
-- [x] Daily Reminders — Admin trigger endpoint, Beograd timezone
-- [x] **Admin "Podsetnici za sutra" dugme** — Bell ikona, loading spinner, toast sa statistikom
-- [x] **Viber CTA na potvrdi** — Ljubičasta kartica, "Otvori Viber Bot" dugme (48px, viber:// link)
+- [x] Viber Notifikacije + Daily Reminders + Lazy Cancel
+- [x] Admin "Podsetnici za sutra" dugme + Viber CTA na potvrdi
+- [x] **SMTP & Viber Admin Settings** — Bezbedno čuvanje kredencijala u bazi, UI u Podešavanjima
 
 ## Architecture
 ```
 /app/backend/
 ├── server.py, database.py, models.py, auth.py
-├── logic.py     # Smart Pairing, IPS QR, Viber, Lazy Cancel, Reminders
-├── routes.py    # API endpoints
-└── mail_service.py  # SMTP email with QR CID
-
-/app/frontend/src/pages/
-├── BookingPage.jsx      # Client booking + Viber CTA
-└── AdminDashboard.jsx   # Timeline Grid + Reminders button
+├── logic.py         # Smart Pairing, IPS QR, Viber API, Lazy Cancel, Reminders
+├── routes.py        # API endpoints (settings now include SMTP/Viber fields)
+└── mail_service.py  # SMTP email - reads from DB settings first, then env fallback
 ```
 
 ## Backlog
-- Konfiguracija VIBER_TOKEN (korisnik još nije dao token)
-- Konfiguracija SMTP kredencijala (korisnik odložio)
 - P3: Drag & drop na admin timeline gridu za preraspoređivanje
+- Korisnik treba uneti realne SMTP/Viber kredencijale kroz Admin Podešavanja
