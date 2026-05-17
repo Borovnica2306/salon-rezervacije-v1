@@ -490,6 +490,8 @@ async def create_reservation(reservation: ReservationCreate, background_tasks: B
     payment_recipient = settings_doc.get("payment_recipient", "") if settings_doc else ""
     client_email = reservation.client_email.strip().lower()
 
+    logger.info(f"[BOOKING] #{booking_id} created for {reservation.client_name}, email from form: {client_email}")
+
     if client_email and bank_account:
         background_tasks.add_task(
             send_booking_confirmation_email,

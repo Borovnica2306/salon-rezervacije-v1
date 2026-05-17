@@ -172,6 +172,8 @@ async def send_booking_confirmation_email(
     bank_account: str,
     payment_recipient: str,
 ):
+    logger.info(f"[EMAIL] Preparing to send booking #{booking_id} confirmation to: {to_email}")
+
     # Fetch DB settings for SMTP config
     try:
         db_settings = await db.settings.find_one({"type": "salon"})
@@ -233,7 +235,7 @@ async def send_booking_confirmation_email(
             server.login(smtp_cfg["user"], smtp_cfg["password"])
             server.sendmail(smtp_cfg["user"], to_email, msg.as_string())
 
-        logger.info(f"Confirmation email sent to {to_email} for booking #{booking_id}")
+        logger.info(f"[EMAIL] SUCCESS: Sent from {smtp_cfg['user']} to {to_email} for booking #{booking_id}")
 
     except Exception as e:
-        logger.error(f"Failed to send confirmation email to {to_email}: {e}")
+        logger.error(f"[EMAIL] FAILED: Could not send to {to_email} for booking #{booking_id}: {type(e).__name__}: {e}")
