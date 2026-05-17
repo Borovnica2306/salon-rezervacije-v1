@@ -836,6 +836,41 @@ async def update_payment_status(reservation_id: str, user: dict = Depends(get_cu
     return {"payment_status": new_status}
 
 
+@api_router.patch("/reservations/{reservation_id}/report-payment")
+async def client_report_payment(reservation_id: str):
+    """Client reports they have sent the advance payment."""
+    reservation = await db.reservations.find_one({"_id": ObjectId(reservation_id), "status": {"$ne": "cancelled"}})
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Rezervacija nije pronađena.")
+
+    current = reservation.get("payment_status", "pending")
+    if current == "confirmed":
+        raise HTTPException(status_code=400, detail="Uplata je već potvrđena.")
+
+    await db.reservations.update_one(
+        {"_id": ObjectId(reservation_id)},
+        {"$set": {"payment_status": "sent_for_verification"}}
+    )
+    return {"payment_status": "sent_for_verification"}
+
+
+@api_router.patch("/admin/reservations/{reservation_id}/confirm-payment")
+async def admin_confirm_payment(reservation_id: str, user: dict = Depends(get_current_user)):
+    """Admin confirms the advance payment has been received."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    reservation = await db.reservations.find_one({"_id": ObjectId(reservation_id), "status": {"$ne": "cancelled"}})
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Rezervacija nije pronađena.")
+
+    await db.reservations.update_one(
+        {"_id": ObjectId(reservation_id)},
+        {"$set": {"payment_status": "confirmed"}}
+    )
+    return {"payment_status": "confirmed"}
+
+
 # ================== BLACKLIST ENDPOINTS ==================
 
 @api_router.get("/blacklist")
@@ -901,6 +936,7 @@ async def get_client_reservations(request: ClientReservationsRequest):
             "total_duration": r.get("total_duration", 0),
             "total_price": r.get("total_price", 0),
             "status": r["status"],
+            "payment_status": r.get("payment_status", "pending"),
             "can_cancel": can_client_cancel(r["date"], r["time"])
         })
 

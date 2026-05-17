@@ -329,6 +329,17 @@ const BookingPage = () => {
     }
   };
 
+  const reportPayment = async (reservationId) => {
+    try {
+      await axios.patch(`${API}/reservations/${reservationId}/report-payment`);
+      toast.success("Uplata prijavljena! Salon će proveriti.");
+      searchMyReservations();
+    } catch (error) {
+      const message = error.response?.data?.detail || "Greška pri prijavi uplate";
+      toast.error(message);
+    }
+  };
+
   const closeMyReservations = () => {
     setShowMyReservations(false);
     setLookupPhone(PHONE_PREFIX);
@@ -785,7 +796,7 @@ const BookingPage = () => {
                     className="bg-[#0A0A0B] rounded-xl border border-[#2A2A2D] p-4"
                     data-testid={`my-reservation-${res.id}`}
                   >
-                    <div className="flex justify-between items-start mb-3">
+                    <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="text-[#C5A880] font-medium">
                           {res.date} u {res.time}
@@ -798,6 +809,32 @@ const BookingPage = () => {
                         {res.total_price?.toLocaleString()} RSD
                       </span>
                     </div>
+
+                    {/* Payment status badge */}
+                    <div className="mb-3">
+                      {res.payment_status === "confirmed" && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-600/20 text-green-400" data-testid={`payment-badge-${res.id}`}>
+                          <Check className="w-3 h-3" /> Uplata potvrđena
+                        </span>
+                      )}
+                      {res.payment_status === "sent_for_verification" && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400" data-testid={`payment-badge-${res.id}`}>
+                          <Clock className="w-3 h-3" /> Uplata u obradi - čeka se provera salona
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Report payment button */}
+                    {res.payment_status === "pending" && (
+                      <Button
+                        onClick={() => reportPayment(res.id)}
+                        className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black font-medium min-h-[48px] mb-2"
+                        data-testid={`report-payment-${res.id}`}
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Potvrdi uplatu avansa
+                      </Button>
+                    )}
                     
                     {res.can_cancel ? (
                       <Button

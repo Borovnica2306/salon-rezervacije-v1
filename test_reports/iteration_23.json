@@ -1,0 +1,109 @@
+{
+  "summary": "Payment tracking system fully tested. All 10 backend tests passed. Frontend client-side 'Moje rezervacije' shows 3 payment states correctly. Admin dashboard grid blocks colored correctly (amber for sent_for_verification, green for confirmed). Admin detail dialog shows 'Potvrdi uplatu' button for sent_for_verification status. Full flow tested: create reservation → report payment → admin confirm payment.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: PATCH /api/reservations/{id}/report-payment changes status to sent_for_verification",
+    "Backend: PATCH /api/reservations/{id}/report-payment returns 404 for invalid ID",
+    "Backend: PATCH /api/reservations/{id}/report-payment returns 400 if already confirmed",
+    "Backend: PATCH /api/admin/reservations/{id}/confirm-payment changes status to confirmed (requires admin token)",
+    "Backend: PATCH /api/admin/reservations/{id}/confirm-payment returns 403/401 without auth",
+    "Backend: PATCH /api/admin/reservations/{id}/confirm-payment returns 404 for invalid ID",
+    "Backend: POST /api/my-reservations response includes payment_status field",
+    "Backend: my-reservations shows sent_for_verification status after client reports payment",
+    "Backend: my-reservations shows confirmed status after admin confirms payment",
+    "Backend: GET /api/reservations (admin) includes payment_status field",
+    "Frontend Client: 'Potvrdi uplatu avansa' button visible when payment_status is pending",
+    "Frontend Client: After clicking report payment, badge shows 'Uplata u obradi - čeka se provera salona' (amber)",
+    "Frontend Client: Toast message 'Uplata prijavljena! Salon će proveriti.' appears after reporting",
+    "Frontend Admin: Grid blocks with sent_for_verification status have yellow/amber border (#F59E0B)",
+    "Frontend Admin: Grid blocks with confirmed status have green border (#22C55E)",
+    "Frontend Admin: Detail dialog shows 'Čeka proveru' status button for sent_for_verification",
+    "Frontend Admin: Detail dialog shows green 'Potvrdi uplatu' button when status is sent_for_verification",
+    "Frontend Admin: Clicking 'Potvrdi uplatu' in detail dialog changes status to confirmed",
+    "Frontend Admin: Toast message 'Uplata potvrđena' appears after confirming payment",
+    "Frontend Admin: Archive table shows payment status badges (Čeka, Čeka proveru, Plaćeno)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_payment_tracking.py",
+    "/app/test_reports/pytest/pytest_results_payment_tracking.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "routes.py lines 839-854: client_report_payment endpoint correctly checks for cancelled reservations and already confirmed payments",
+    "routes.py lines 857-871: admin_confirm_payment endpoint properly requires admin/super_admin role",
+    "routes.py line 939: my-reservations correctly includes payment_status field in response",
+    "AdminDashboard.jsx lines 799-808: 'Potvrdi uplatu' button correctly conditionally rendered for sent_for_verification status",
+    "AdminDashboard.jsx lines 854: blockColor logic correctly uses #F59E0B for isVerifying and #22C55E for isPaid",
+    "BookingPage.jsx lines 815-825: Payment status badges correctly show 3 states with appropriate colors"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_payment_tracking.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all UI checks passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_used": {
+    "service_id": "69d549f035e38a4c2c9f0226",
+    "worker_id": "69d54b0635e38a4c2c9f022e"
+  },
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Payment tracking system is complete with 3 statuses: pending, sent_for_verification, confirmed. Client can report payment via 'Potvrdi uplatu avansa' button in 'Moje rezervacije'. Admin can confirm payment via green 'Potvrdi uplatu' button in detail dialog. Grid blocks are colored: amber (#F59E0B) for sent_for_verification, green (#22C55E) for confirmed. The existing handleTogglePayment toggle (PUT /payment-status) still works for backward compatibility.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "SMTP email sending (no credentials in .env, logs warning and skips)",
+      "send_viber_notification (logic.py placeholder)"
+    ]
+  },
+
+  "feature_verification": {
+    "client_report_payment": {
+      "endpoint": "PATCH /api/reservations/{id}/report-payment",
+      "auth_required": false,
+      "changes_status_to": "sent_for_verification",
+      "frontend_button": "data-testid='report-payment-{id}' with text 'Potvrdi uplatu avansa'"
+    },
+    "admin_confirm_payment": {
+      "endpoint": "PATCH /api/admin/reservations/{id}/confirm-payment",
+      "auth_required": true,
+      "changes_status_to": "confirmed",
+      "frontend_button": "data-testid='confirm-payment-{id}' with text 'Potvrdi uplatu'"
+    },
+    "grid_block_colors": {
+      "pending": "Original color (e.g., #C5A880)",
+      "sent_for_verification": "#F59E0B (amber/yellow)",
+      "confirmed": "#22C55E (green)"
+    },
+    "payment_status_badges": {
+      "pending": "Gold 'Potvrdi uplatu avansa' button",
+      "sent_for_verification": "Amber badge 'Uplata u obradi - čeka se provera salona'",
+      "confirmed": "Green badge 'Uplata potvrđena'"
+    }
+  }
+}
