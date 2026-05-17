@@ -1,14 +1,76 @@
 import string
 import random
 import logging
+import io
+import qrcode
 from datetime import datetime, timezone, timedelta
-from typing import List
+from typing import List, Optional
 from bson import ObjectId
 from database import db, MASTER_CATEGORIES
 
 logger = logging.getLogger(__name__)
 
-# ================== TIME UTILITIES ==================
+# ================== SERBIAN TRANSLITERATION ==================
+
+_SERBIAN_MAP = {
+    'č': 'C', 'Č': 'C', 'ć': 'C', 'Ć': 'C',
+    'š': 'S', 'Š': 'S', 'ž': 'Z', 'Ž': 'Z',
+    'đ': 'Dj', 'Đ': 'DJ',
+}
+
+def transliterate_serbian(text: str) -> str:
+    for src, dst in _SERBIAN_MAP.items():
+        text = text.replace(src, dst)
+    return text.upper()
+
+
+def clean_bank_account(account: str) -> str:
+    return account.replace(' ', '').replace('-', '').ljust(18, '0')[:18]
+
+
+def format_ips_amount(amount: float) -> str:
+    return f"RSD{amount:,.2f}".replace(',', '_').replace('.', ',').replace('_', '')
+
+
+def generate_ips_qr_string(
+    bank_account: str,
+    recipient_name: str,
+    amount: float,
+    booking_id: str,
+) -> str:
+    account = clean_bank_account(bank_account)
+    name = transliterate_serbian(recipient_name)
+    ips_amount = format_ips_amount(amount)
+    purpose = transliterate_serbian(f"Avans za rezervaciju ID {booking_id}")
+    reference = f"99{booking_id}"
+
+    return '\n'.join([
+        'K:PR',
+        'V:01',
+        'C:1',
+        f'R:{account}',
+        f'N:{name}',
+        f'I:{ips_amount}',
+        'SF:289',
+        f'S:{purpose}',
+        f'RO:{reference}',
+    ])
+
+
+def generate_ips_qr_image(
+    bank_account: str,
+    recipient_name: str,
+    amount: float,
+    booking_id: str,
+) -> bytes:
+    qr_string = generate_ips_qr_string(bank_account, recipient_name, amount, booking_id)
+    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
+    qr.add_data(qr_string)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
 def time_to_minutes(time_str: str) -> int:
     h, m = map(int, time_str.split(":"))

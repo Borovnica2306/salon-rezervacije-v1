@@ -1,6 +1,6 @@
 import jwt
 import logging
-from fastapi import APIRouter, HTTPException, Request, Response, Depends
+from fastapi import APIRouter, HTTPException, Request, Response, Depends, BackgroundTasks
 from bson import ObjectId
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -22,6 +22,7 @@ from logic import (
     generate_booking_id, get_enabled_categories, can_client_cancel,
     get_available_slots_multi,
 )
+from mail_service import send_booking_confirmation_email
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +311,7 @@ async def get_slots(request: AvailableSlotsRequest):
 
 
 @api_router.post("/reservations", response_model=ReservationResponse)
-async def create_reservation(reservation: ReservationCreate):
+async def create_reservation(reservation: ReservationCreate, background_tasks: BackgroundTasks):
     phone = normalize_phone(reservation.client_phone.strip())
 
     # Check if phone is blacklisted
@@ -479,6 +480,30 @@ async def create_reservation(reservation: ReservationCreate):
     }
 
     result = await db.reservations.insert_one(doc)
+
+    # Send confirmation email in background
+    settings_doc = await db.settings.find_one({"type": "salon"})
+    salon_name = settings_doc.get("salon_name", "Beauty Salon") if settings_doc else "Beauty Salon"
+    bank_account = settings_doc.get("bank_account", "") if settings_doc else ""
+    payment_recipient = settings_doc.get("payment_recipient", "") if settings_doc else ""
+    client_email = reservation.client_email.strip().lower()
+
+    if client_email and bank_account:
+        background_tasks.add_task(
+            send_booking_confirmation_email,
+            to_email=client_email,
+            salon_name=salon_name,
+            booking_id=booking_id,
+            client_name=reservation.client_name,
+            date=reservation.date,
+            time=reservation.time,
+            end_time=end_time,
+            service_worker_pairs=service_worker_pairs,
+            total_price=total_price,
+            total_duration=actual_duration,
+            bank_account=bank_account,
+            payment_recipient=payment_recipient,
+        )
 
     return ReservationResponse(
         id=str(result.inserted_id),
