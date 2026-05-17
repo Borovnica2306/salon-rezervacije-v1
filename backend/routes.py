@@ -991,8 +991,6 @@ async def get_settings():
             work_start="09:00",
             work_end="21:00",
             advance_instructions="Uplata avansa je obavezna 24h pre termina. Instrukcije za uplatu će vam biti poslate.",
-            bank_account="",
-            payment_recipient=""
         )
     return SettingsResponse(
         salon_name=settings.get("salon_name", "Beauty Salon"),
@@ -1000,7 +998,13 @@ async def get_settings():
         work_end=settings.get("work_end", "21:00"),
         advance_instructions=settings.get("advance_instructions", ""),
         bank_account=settings.get("bank_account", ""),
-        payment_recipient=settings.get("payment_recipient", "")
+        payment_recipient=settings.get("payment_recipient", ""),
+        smtp_server=settings.get("smtp_server", "smtp.gmail.com"),
+        smtp_port=settings.get("smtp_port", 587),
+        smtp_user=settings.get("smtp_user", ""),
+        smtp_password=settings.get("smtp_password", ""),
+        viber_token=settings.get("viber_token", ""),
+        viber_bot_uri=settings.get("viber_bot_uri", ""),
     )
 
 
@@ -1025,7 +1029,13 @@ async def update_settings(update: SettingsUpdate, user: dict = Depends(get_curre
         work_end=settings.get("work_end", "21:00"),
         advance_instructions=settings.get("advance_instructions", ""),
         bank_account=settings.get("bank_account", ""),
-        payment_recipient=settings.get("payment_recipient", "")
+        payment_recipient=settings.get("payment_recipient", ""),
+        smtp_server=settings.get("smtp_server", "smtp.gmail.com"),
+        smtp_port=settings.get("smtp_port", 587),
+        smtp_user=settings.get("smtp_user", ""),
+        smtp_password=settings.get("smtp_password", ""),
+        viber_token=settings.get("viber_token", ""),
+        viber_bot_uri=settings.get("viber_bot_uri", ""),
     )
 
 

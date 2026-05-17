@@ -1567,6 +1567,12 @@ const SettingsPage = () => {
     advance_instructions: "",
     bank_account: "",
     payment_recipient: "",
+    smtp_server: "smtp.gmail.com",
+    smtp_port: 587,
+    smtp_user: "",
+    smtp_password: "",
+    viber_token: "",
+    viber_bot_uri: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1681,6 +1687,94 @@ const SettingsPage = () => {
                 className="bg-[#0A0A0B] border-[#2A2A2D]"
                 data-testid="settings-payment-recipient"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Integrations Section */}
+        <div className="border-t border-[#2A2A2D] pt-6">
+          <h3 className="font-medium mb-4 flex items-center gap-2">
+            <Settings className="w-4 h-4 text-[#C5A880]" />
+            Integracije i Obaveštenja
+          </h3>
+
+          <div className="space-y-5">
+            {/* SMTP Configuration */}
+            <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-4">
+              <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">Email (SMTP)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-[#9CA3AF] mb-1.5 block">SMTP Server</label>
+                  <Input
+                    value={settings.smtp_server}
+                    onChange={(e) => setSettings({ ...settings, smtp_server: e.target.value })}
+                    placeholder="smtp.gmail.com"
+                    className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                    data-testid="settings-smtp-server"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-[#9CA3AF] mb-1.5 block">SMTP Port</label>
+                  <Input
+                    type="number"
+                    value={settings.smtp_port}
+                    onChange={(e) => setSettings({ ...settings, smtp_port: parseInt(e.target.value) || 587 })}
+                    placeholder="587"
+                    className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                    data-testid="settings-smtp-port"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Email za slanje</label>
+                <Input
+                  type="email"
+                  value={settings.smtp_user}
+                  onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })}
+                  placeholder="salon@gmail.com"
+                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                  data-testid="settings-smtp-user"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Lozinka Aplikacije</label>
+                <Input
+                  type="password"
+                  value={settings.smtp_password}
+                  onChange={(e) => setSettings({ ...settings, smtp_password: e.target.value })}
+                  placeholder="16-cifreni Gmail App Password"
+                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                  data-testid="settings-smtp-password"
+                />
+                <p className="text-[10px] text-[#6B7280] mt-1">Generišite na: myaccount.google.com/apppasswords</p>
+              </div>
+            </div>
+
+            {/* Viber Configuration */}
+            <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-4">
+              <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">Viber Bot</p>
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Viber Bot Token</label>
+                <Input
+                  type="password"
+                  value={settings.viber_token}
+                  onChange={(e) => setSettings({ ...settings, viber_token: e.target.value })}
+                  placeholder="Unesi Viber Auth Token"
+                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                  data-testid="settings-viber-token"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Viber Bot URI</label>
+                <Input
+                  value={settings.viber_bot_uri}
+                  onChange={(e) => setSettings({ ...settings, viber_bot_uri: e.target.value })}
+                  placeholder="beautysalonbor"
+                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                  data-testid="settings-viber-bot-uri"
+                />
+                <p className="text-[10px] text-[#6B7280] mt-1">URI za viber://pa?chatURI= link na potvrdi rezervacije</p>
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import os
 import logging
 import smtplib
+import asyncio
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -8,11 +9,23 @@ from email.mime.image import MIMEImage
 from logic import (
     generate_ips_qr_image, clean_bank_account, format_ips_amount,
 )
+from database import db
 
 logger = logging.getLogger(__name__)
 
 
-def _get_smtp_config():
+def _get_smtp_config_sync(db_settings=None):
+    """Get SMTP config from DB settings first, then env fallback."""
+    if db_settings:
+        user = db_settings.get("smtp_user", "")
+        password = db_settings.get("smtp_password", "")
+        if user and password:
+            return {
+                "server": db_settings.get("smtp_server", "smtp.gmail.com"),
+                "port": int(db_settings.get("smtp_port", 587)),
+                "user": user,
+                "password": password,
+            }
     return {
         "server": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
         "port": int(os.environ.get("SMTP_PORT", "587")),
@@ -160,7 +173,14 @@ def send_booking_confirmation_email(
     bank_account: str,
     payment_recipient: str,
 ):
-    smtp_cfg = _get_smtp_config()
+    # Fetch DB settings for SMTP config (sync context in BackgroundTask)
+    try:
+        loop = asyncio.get_event_loop()
+        db_settings = loop.run_until_complete(db.settings.find_one({"type": "salon"}))
+    except Exception:
+        db_settings = None
+
+    smtp_cfg = _get_smtp_config_sync(db_settings)
     if not smtp_cfg["user"] or not smtp_cfg["password"]:
         logger.warning("SMTP credentials not configured, skipping email send")
         return

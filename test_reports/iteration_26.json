@@ -1,0 +1,110 @@
+{
+  "summary": "Completed testing of SMTP and Viber credential management through Admin Settings UI. All 15 features tested and passed. Backend API correctly returns and persists all 6 new fields (smtp_server, smtp_port, smtp_user, smtp_password, viber_token, viber_bot_uri). Frontend Settings page displays 'Integracije i Obaveštenja' section with all required inputs, correct types, and 48px min-height.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: GET /api/settings returns smtp_server field (default: smtp.gmail.com)",
+    "Backend: GET /api/settings returns smtp_port field (default: 587)",
+    "Backend: GET /api/settings returns smtp_user field",
+    "Backend: GET /api/settings returns smtp_password field",
+    "Backend: GET /api/settings returns viber_token field",
+    "Backend: GET /api/settings returns viber_bot_uri field",
+    "Backend: PUT /api/settings accepts and persists SMTP fields",
+    "Backend: PUT /api/settings accepts and persists Viber fields",
+    "Backend: PUT /api/settings requires admin auth (returns 401 for unauthenticated)",
+    "Backend: Saved credentials persist across GET requests",
+    "Frontend: 'Integracije i Obaveštenja' section visible on Settings page",
+    "Frontend: SMTP Server input (data-testid='settings-smtp-server') visible",
+    "Frontend: SMTP Port input (data-testid='settings-smtp-port', type=number) visible",
+    "Frontend: Email za slanje input (data-testid='settings-smtp-user', type=email) visible",
+    "Frontend: Lozinka Aplikacije input (data-testid='settings-smtp-password', type=password) visible",
+    "Frontend: Viber Bot Token input (data-testid='settings-viber-token', type=password) visible",
+    "Frontend: Viber Bot URI input (data-testid='settings-viber-bot-uri') visible",
+    "Frontend: All integration inputs have min-height 48px",
+    "Frontend: Saving settings via 'Sačuvaj Podešavanja' button works (toast shown)",
+    "Frontend: Saved values persist after page reload"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_settings_integration.py",
+    "/app/test_reports/pytest/pytest_results_settings_integration.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Backend models.py: SettingsUpdate and SettingsResponse correctly extended with 6 new optional fields",
+    "Backend routes.py: get_settings and update_settings endpoints correctly handle all new fields with proper defaults",
+    "Backend mail_service.py: _get_smtp_config_sync correctly reads from DB settings first, then falls back to env vars",
+    "Frontend AdminDashboard.jsx: SettingsPage state includes all 6 new fields with correct defaults",
+    "Frontend AdminDashboard.jsx: 'Integracije i Obaveštenja' section properly structured with EMAIL (SMTP) and VIBER BOT subsections",
+    "Frontend AdminDashboard.jsx: All integration inputs have min-h-[48px] class for 48px minimum height",
+    "Frontend AdminDashboard.jsx: Password fields (smtp_password, viber_token) correctly use type='password' for masking"
+  ],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "100% (7/7 pytest tests passed)",
+    "frontend": "100% (13/13 UI tests passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Settings API extended with 6 new fields for SMTP and Viber credential management. All fields are optional with defaults (smtp_server='smtp.gmail.com', smtp_port=587, others empty). Frontend Settings page has 'Integracije i Obaveštenja' section with EMAIL (SMTP) and VIBER BOT subsections. mail_service.py reads SMTP config from DB settings first, then falls back to env vars. SMTP and Viber APIs are MOCKED (no real credentials configured).",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "SMTP email (credentials stored but not tested with real server)",
+      "Viber Bot API (token stored but not tested with real API)"
+    ]
+  },
+
+  "feature_verification": {
+    "backend_settings_api": {
+      "get_endpoint": "GET /api/settings",
+      "put_endpoint": "PUT /api/settings (requires admin auth)",
+      "new_fields": ["smtp_server", "smtp_port", "smtp_user", "smtp_password", "viber_token", "viber_bot_uri"],
+      "defaults": {
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "smtp_user": "",
+        "smtp_password": "",
+        "viber_token": "",
+        "viber_bot_uri": ""
+      }
+    },
+    "frontend_settings_page": {
+      "section_title": "Integracije i Obaveštenja",
+      "smtp_fields": {
+        "smtp_server": {"testid": "settings-smtp-server", "type": "text", "min_height": "48px"},
+        "smtp_port": {"testid": "settings-smtp-port", "type": "number", "min_height": "48px"},
+        "smtp_user": {"testid": "settings-smtp-user", "type": "email", "min_height": "48px"},
+        "smtp_password": {"testid": "settings-smtp-password", "type": "password", "min_height": "48px"}
+      },
+      "viber_fields": {
+        "viber_token": {"testid": "settings-viber-token", "type": "password", "min_height": "48px"},
+        "viber_bot_uri": {"testid": "settings-viber-bot-uri", "type": "text", "min_height": "48px"}
+      },
+      "save_button": {"testid": "save-settings-btn", "text": "Sačuvaj Podešavanja"}
+    }
+  }
+}
