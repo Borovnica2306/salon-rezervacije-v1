@@ -1,0 +1,91 @@
+{
+  "summary": "Email field feature in BookingPage Step 4 tested and verified. Found and fixed CRITICAL BUG: clientEmail state was not declared (ReferenceError). After fix, all 12 features tested and passed: email input visible with Mail icon, type='email', placeholder 'primer@mail.com', invalid email shows red error 'Unesite validnu email adresu', confirm button disabled when email empty/invalid, enabled when valid email+name+phone provided. Backend: POST /api/reservations accepts client_email, returns it in response, returns 422 if missing, stores lowercase. GET /api/reservations returns client_email (empty string for old reservations). Full booking flow works end-to-end with email. IPS QR code still appears on confirmation page.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "BookingPage Step 4: Email input field visible with data-testid='client-email-input'",
+    "BookingPage Step 4: Email input has type='email'",
+    "BookingPage Step 4: Email input has placeholder 'primer@mail.com'",
+    "BookingPage Step 4: Mail icon visible near email input",
+    "BookingPage Step 4: Invalid email shows red error text 'Unesite validnu email adresu'",
+    "BookingPage Step 4: Confirm button disabled when email is empty",
+    "BookingPage Step 4: Confirm button disabled when email is invalid format",
+    "BookingPage Step 4: Confirm button enabled when valid email + name + phone provided",
+    "Backend POST /api/reservations: Accepts client_email field",
+    "Backend POST /api/reservations: Returns client_email in response (lowercase)",
+    "Backend POST /api/reservations: Returns 422 if client_email missing",
+    "Backend POST /api/reservations: Stores email lowercase in DB",
+    "Backend POST /api/reservations: Trims whitespace from email",
+    "Backend GET /api/reservations: Returns client_email field (empty string for old reservations)",
+    "Backend POST /api/admin/reservations: Does NOT require client_email (intentional)",
+    "Full booking flow: Complete booking with email field works end-to-end",
+    "IPS QR code still appears on confirmation page after booking with email"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_email_field.py",
+    "/app/test_reports/pytest/pytest_results_email_field.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "FIXED: BookingPage.jsx line 94 - Added missing clientEmail state declaration: const [clientEmail, setClientEmail] = useState('')",
+    "BookingPage.jsx line 132-134: isValidEmail helper uses regex /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/ for validation",
+    "BookingPage.jsx line 246: handleSubmit validates isValidEmail(clientEmail) before submission",
+    "BookingPage.jsx line 264: client_email sent as clientEmail.trim().toLowerCase() in POST body",
+    "BookingPage.jsx line 291: resetBooking correctly resets clientEmail to empty string",
+    "BookingPage.jsx line 1318: Confirm button disabled condition includes !isValidEmail(clientEmail)",
+    "models.py line 79: ReservationCreate.client_email is required str field",
+    "models.py line 100: ReservationResponse.client_email has default '' for backward compatibility",
+    "routes.py line 473: Backend stores email as reservation.client_email.strip().lower()",
+    "routes.py line 754: GET /api/reservations uses r.get('client_email', '') for old reservations"
+  ],
+
+  "updated_files": [
+    "/app/frontend/src/pages/BookingPage.jsx"
+  ],
+
+  "success_rate": {
+    "backend": "100% (6/6 tests passed)",
+    "frontend": "100% (11/11 UI checks passed)"
+  },
+
+  "test_credentials": {
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_used": {
+    "service_id": "69d549f035e38a4c2c9f0226",
+    "worker_id": "69d54b0635e38a4c2c9f022e"
+  },
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Email field feature fully implemented and tested. Key fix applied: clientEmail state was missing from BookingPage.jsx useState declarations (line 94). The email field is required for client bookings (ReservationCreate) but NOT for admin bookings (AdminReservationCreate) - this is intentional. Email is stored lowercase and trimmed. Old reservations without client_email field return empty string. IPS QR code payment feature continues to work correctly.",
+
+  "bug_fixed": {
+    "description": "ReferenceError: clientEmail is not defined",
+    "root_cause": "clientEmail state variable was used throughout BookingPage.jsx but never declared with useState",
+    "fix_applied": "Added 'const [clientEmail, setClientEmail] = useState(\"\")' at line 94",
+    "file": "/app/frontend/src/pages/BookingPage.jsx",
+    "line": 94
+  },
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["send_viber_notification (logic.py)"],
+    "note": "Viber functions are PLACEHOLDER only - they log but don't send real notifications"
+  }
+}

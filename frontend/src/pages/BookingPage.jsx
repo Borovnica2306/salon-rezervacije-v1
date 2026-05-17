@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode, Mail } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -91,6 +91,7 @@ const BookingPage = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState(PHONE_PREFIX);
+  const [clientEmail, setClientEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [blacklistError, setBlacklistError] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
@@ -128,6 +129,10 @@ const BookingPage = () => {
   };
 
   const getE164Phone = (phone) => phone;
+
+  const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
   // Calculate totals
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0) + Math.max(0, selectedServices.length - 1) * 15;
@@ -238,8 +243,8 @@ const BookingPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!clientName.trim() || clientPhone.length < 12) {
-      toast.error("Molimo unesite ime i validan broj telefona");
+    if (!clientName.trim() || clientPhone.length < 12 || !isValidEmail(clientEmail)) {
+      toast.error("Molimo unesite ime, validan email i broj telefona");
       return;
     }
 
@@ -256,6 +261,7 @@ const BookingPage = () => {
         time: selectedTime,
         client_name: clientName,
         client_phone: getE164Phone(clientPhone),
+        client_email: clientEmail.trim().toLowerCase(),
       });
       
       setBookingDetails(response.data);
@@ -282,6 +288,7 @@ const BookingPage = () => {
     setSelectedTime(null);
     setClientName("");
     setClientPhone(PHONE_PREFIX);
+    setClientEmail("");
     setBookingComplete(false);
     setBookingDetails(null);
     setBlacklistError(false);
@@ -1163,6 +1170,24 @@ const BookingPage = () => {
                 </div>
                 <p className="text-xs text-[#9CA3AF] mt-1">Format: +381 i zatim broj bez nule</p>
               </div>
+
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-2 block">Email Adresa</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
+                  <Input
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    placeholder="primer@mail.com"
+                    className="pl-12 bg-[#141416] border-[#2A2A2D] focus:border-[#C5A880] h-14"
+                    data-testid="client-email-input"
+                  />
+                </div>
+                {clientEmail && !isValidEmail(clientEmail) && (
+                  <p className="text-xs text-red-400 mt-1">Unesite validnu email adresu</p>
+                )}
+              </div>
             </div>
 
             {/* Blacklist Error */}
@@ -1290,7 +1315,7 @@ const BookingPage = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !clientName.trim() || clientPhone.length < 12}
+                disabled={isSubmitting || !clientName.trim() || clientPhone.length < 12 || !isValidEmail(clientEmail)}
                 className="flex-1 h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-50"
                 data-testid="confirm-booking-btn"
               >
