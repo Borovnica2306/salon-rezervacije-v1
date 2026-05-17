@@ -20,7 +20,8 @@ from auth import (
 from logic import (
     time_to_minutes, minutes_to_time, normalize_phone,
     generate_booking_id, get_enabled_categories, can_client_cancel,
-    get_available_slots_multi,
+    get_available_slots_multi, cancel_stale_unpaid_reservations,
+    process_daily_reminders,
 )
 from mail_service import send_booking_confirmation_email
 
@@ -306,6 +307,7 @@ async def delete_worker(worker_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.post("/reservations/available-slots")
 async def get_slots(request: AvailableSlotsRequest):
+    await cancel_stale_unpaid_reservations()
     pairs = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in request.service_worker_pairs]
     return await get_available_slots_multi(pairs, request.date)
 
@@ -747,6 +749,8 @@ async def get_reservations(
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    await cancel_stale_unpaid_reservations()
+
     query = {"status": {"$ne": "cancelled"}}
     if date:
         query["date"] = date
@@ -869,6 +873,15 @@ async def admin_confirm_payment(reservation_id: str, user: dict = Depends(get_cu
         {"$set": {"payment_status": "confirmed"}}
     )
     return {"payment_status": "confirmed"}
+
+
+@api_router.post("/admin/reservations/trigger-reminders")
+async def trigger_reminders(user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    result = await process_daily_reminders()
+    return result
 
 
 # ================== BLACKLIST ENDPOINTS ==================
