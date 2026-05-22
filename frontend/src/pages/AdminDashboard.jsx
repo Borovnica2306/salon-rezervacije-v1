@@ -591,6 +591,7 @@ const SLOT_HEIGHT = 48;
 const COLORS = ["#C5A880", "#7C9EB2", "#A8C686", "#D4A574", "#B294BB", "#86C1B9", "#DCA68B"];
 
 const ReservationsPage = () => {
+  const { user } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
