@@ -9,7 +9,7 @@ import {
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
   Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard,
-  SlidersHorizontal, Copy, Bell, Loader2
+  SlidersHorizontal, Copy, Bell, Loader2, Download
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -670,6 +670,36 @@ const ReservationsPage = () => {
     try { await axios.delete(`${API}/blacklist/${encodeURIComponent(phone)}`, { headers }); toast.success("Odblokirano"); fetchBlacklist(); } catch (e) { toast.error("Greška"); }
   };
 
+  const handleExportCSV = () => {
+    const all = [...activeReservations, ...archivedReservations];
+    if (all.length === 0) { toast.error("Nema podataka za export"); return; }
+    const header = "Booking ID,Datum,Vreme,Kraj,Klijent,Telefon,Email,Usluge,Radnik,Ukupna cena,Status,Placanje,Kreiran";
+    const rows = all.map(r => [
+      r.booking_id || "",
+      r.date || "",
+      r.time || "",
+      r.end_time || "",
+      `"${(r.client_name || "").replace(/"/g, '""')}"`,
+      r.client_phone || "",
+      r.client_email || "",
+      `"${(r.service_names || []).join(", ").replace(/"/g, '""')}"`,
+      `"${(r.service_worker_pairs || []).map(p => p.worker_name).join(", ").replace(/"/g, '""')}"`,
+      r.total_price || 0,
+      r.status || "",
+      r.payment_status || "",
+      r.created_at || "",
+    ].join(","));
+    const csv = "\uFEFF" + header + "\n" + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rezervacije_${format(selectedDate, "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exportovano ${all.length} rezervacija`);
+  };
+
   const workStart = settings ? ttm(settings.work_start) : 540;
   const workEnd = settings ? ttm(settings.work_end) : 1260;
   const timeSlots = [];
@@ -745,13 +775,27 @@ const ReservationsPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-[#0A0A0B] rounded-lg p-1 w-fit" data-testid="view-tabs">
-        <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
-          <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
-        </button>
-        <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
-          <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
-        </button>
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="flex gap-1 bg-[#0A0A0B] rounded-lg p-1 w-fit" data-testid="view-tabs">
+          <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
+            <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
+          </button>
+          <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
+            <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
+          </button>
+        </div>
+        {user?.role === "super_admin" && (
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            size="sm"
+            className="border-[#2A2A2D] hover:bg-[#141416] text-[#9CA3AF] hover:text-white"
+            data-testid="export-csv-btn"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            Export CSV
+          </Button>
+        )}
       </div>
 
       {/* Cancel Dialog */}
