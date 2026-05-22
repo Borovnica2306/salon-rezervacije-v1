@@ -89,6 +89,7 @@ const BookingPage = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [dateSlotCounts, setDateSlotCounts] = useState({});
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState(PHONE_PREFIX);
   const [clientEmail, setClientEmail] = useState("");
@@ -197,6 +198,32 @@ const BookingPage = () => {
       setAvailableSlots([]);
     }
   };
+
+  const fetchDateAvailability = async () => {
+    if (!allServicesHaveWorkers) return;
+    const pairs = selectedServices.map(s => ({
+      service_id: s.id,
+      worker_id: serviceWorkerMap[s.id]
+    }));
+    const counts = {};
+    const requests = dates.map(d => {
+      const key = format(d, "yyyy-MM-dd");
+      return axios.post(`${API}/reservations/available-slots`, {
+        service_worker_pairs: pairs,
+        date: key,
+      }).then(r => { counts[key] = (r.data.slots || []).length; })
+        .catch(() => { counts[key] = 0; });
+    });
+    await Promise.all(requests);
+    setDateSlotCounts(counts);
+  };
+
+  useEffect(() => {
+    if (step === 3 && allServicesHaveWorkers) {
+      setDateSlotCounts({});
+      fetchDateAvailability();
+    }
+  }, [step, allServicesHaveWorkers]);
 
   const handleServiceToggle = (service) => {
     setSelectedServices(prev => {
@@ -1134,19 +1161,26 @@ const BookingPage = () => {
               <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
                 {dates.map((date) => {
                   const isSelected = selectedDate && isSameDay(date, selectedDate);
+                  const dateKey = format(date, "yyyy-MM-dd");
+                  const slotCount = dateSlotCounts[dateKey];
+                  const isFullyBooked = slotCount === 0 && slotCount !== undefined;
                   return (
                     <button
                       key={date.toISOString()}
                       onClick={() => {
+                        if (isFullyBooked) return;
                         setSelectedDate(date);
                         setSelectedTime(null);
                       }}
+                      disabled={isFullyBooked}
                       className={`flex-shrink-0 w-16 py-3 rounded-xl border text-center transition-all ${
-                        isSelected
+                        isFullyBooked
+                          ? "border-[#2A2A2D] bg-[#0A0A0B] opacity-40 cursor-not-allowed"
+                          : isSelected
                           ? "border-[#C5A880] bg-[#C5A880]/10"
                           : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
                       }`}
-                      data-testid={`date-${format(date, "yyyy-MM-dd")}`}
+                      data-testid={`date-${dateKey}`}
                     >
                       <p className="text-xs text-[#9CA3AF] uppercase">
                         {format(date, "EEE", { locale: sr })}
