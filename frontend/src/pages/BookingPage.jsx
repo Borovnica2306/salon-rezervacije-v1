@@ -695,15 +695,15 @@ const BookingPage = () => {
             </div>
           )}
 
-          {/* Viber Direct Chat CTA */}
+          {/* Viber & WhatsApp CTA */}
           {settings?.viber_phone && (
-            <div className="rounded-xl p-5 mb-4 text-left border border-[#7360F2]/30 bg-[#7360F2]/5" data-testid="viber-cta-section">
-              <h3 className="text-[#7360F2] font-medium mb-2 flex items-center gap-2">
-                <MessageCircle className="w-4 h-4" />
-                Pišite nam na Viber
+            <div className="rounded-xl p-5 mb-4 text-left border border-[#2A2A2D] bg-[#141416] space-y-3" data-testid="messaging-cta-section">
+              <h3 className="text-white font-medium mb-1 flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-[#C5A880]" />
+                Pošaljite nam potvrdu
               </h3>
-              <p className="text-[#9CA3AF] text-xs leading-relaxed mb-4">
-                Kliknite na dugme ispod da nam pošaljete potvrdu rezervacije direktno na Viber. Podsetićemo Vas 24h pre termina.
+              <p className="text-[#9CA3AF] text-xs leading-relaxed mb-3">
+                Pošaljite potvrdu rezervacije direktno salonu putem Viber-a ili WhatsApp-a.
               </p>
               <a
                 href={`viber://forward?text=${encodeURIComponent(`Potvrda rezervacije #${bookingDetails.booking_id}`)}`}
@@ -713,7 +713,17 @@ const BookingPage = () => {
                 data-testid="viber-chat-btn"
               >
                 <MessageCircle className="w-5 h-5" />
-                Otvori Viber Chat
+                Otvori Viber
+              </a>
+              <a
+                href={`https://wa.me/${settings.viber_phone}?text=${encodeURIComponent(`Potvrda rezervacije #${bookingDetails.booking_id}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-xl bg-[#25D366] hover:bg-[#1EBE59] text-white font-medium transition-colors"
+                data-testid="whatsapp-chat-btn"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Otvori WhatsApp
               </a>
             </div>
           )}
