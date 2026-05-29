@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
-import { API } from "../App";
+import { API, useTenant, getTenantHeaders } from "../App";
 import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode, Mail, MessageCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -75,6 +75,8 @@ function fallbackCopy(text) {
 }
 
 const BookingPage = () => {
+  const tenant = useTenant();
+  const tHeaders = getTenantHeaders(tenant?.tenant_id);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -165,10 +167,10 @@ const BookingPage = () => {
   const fetchData = async () => {
     try {
       const [servicesRes, workersRes, settingsRes, categoriesRes] = await Promise.all([
-        axios.get(`${API}/services`),
-        axios.get(`${API}/workers`),
-        axios.get(`${API}/settings`),
-        axios.get(`${API}/categories`),
+        axios.get(`${API}/services`, { headers: tHeaders }),
+        axios.get(`${API}/workers`, { headers: tHeaders }),
+        axios.get(`${API}/settings`, { headers: tHeaders }),
+        axios.get(`${API}/categories`, { headers: tHeaders }),
       ]);
       setServices(servicesRes.data);
       setWorkers(workersRes.data);
@@ -191,7 +193,7 @@ const BookingPage = () => {
       const response = await axios.post(`${API}/reservations/available-slots`, {
         service_worker_pairs: pairs,
         date: format(selectedDate, "yyyy-MM-dd"),
-      });
+      }, { headers: tHeaders });
       setAvailableSlots(response.data.slots || []);
     } catch (error) {
       console.error("Error fetching slots:", error);
@@ -211,7 +213,7 @@ const BookingPage = () => {
       return axios.post(`${API}/reservations/available-slots`, {
         service_worker_pairs: pairs,
         date: key,
-      }).then(r => { counts[key] = (r.data.slots || []).length; })
+      }, { headers: tHeaders }).then(r => { counts[key] = (r.data.slots || []).length; })
         .catch(() => { counts[key] = 0; });
     });
     await Promise.all(requests);
@@ -289,7 +291,7 @@ const BookingPage = () => {
         client_name: clientName,
         client_phone: getE164Phone(clientPhone),
         client_email: clientEmail.trim().toLowerCase(),
-      });
+      }, { headers: tHeaders });
       
       setBookingDetails(response.data);
       setBookingComplete(true);
@@ -333,7 +335,7 @@ const BookingPage = () => {
     try {
       const response = await axios.post(`${API}/my-reservations`, {
         phone: getE164Phone(lookupPhone),
-      });
+      }, { headers: tHeaders });
       setMyReservations(response.data);
     } catch (error) {
       toast.error("Greška pri pretraživanju");
@@ -347,7 +349,7 @@ const BookingPage = () => {
     try {
       await axios.put(`${API}/my-reservations/${reservationId}/cancel`, {
         phone: lookupPhone,
-      });
+      }, { headers: tHeaders });
       toast.success("Rezervacija je uspešno otkazana");
       searchMyReservations();
     } catch (error) {
@@ -358,7 +360,7 @@ const BookingPage = () => {
 
   const reportPayment = async (reservationId) => {
     try {
-      await axios.patch(`${API}/reservations/${reservationId}/report-payment`);
+      await axios.patch(`${API}/reservations/${reservationId}/report-payment`, {}, { headers: tHeaders });
       toast.success("Uplata prijavljena! Salon će proveriti.");
       searchMyReservations();
     } catch (error) {

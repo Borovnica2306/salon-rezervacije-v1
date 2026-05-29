@@ -105,8 +105,9 @@ async def generate_booking_id() -> str:
     return ''.join(random.choices(chars, k=6))
 
 
-async def get_enabled_categories() -> List[str]:
-    configs = await db.categories_config.find().to_list(100)
+async def get_enabled_categories(tenant_id: str = "") -> List[str]:
+    query = {"tenant_id": tenant_id} if tenant_id else {}
+    configs = await db.categories_config.find(query).to_list(100)
     if not configs:
         return list(MASTER_CATEGORIES.keys())
     return [c["category"] for c in configs if c.get("enabled", True)]
@@ -129,7 +130,7 @@ def can_client_cancel(date_str: str, time_str: str) -> bool:
 SOCIAL_BUFFER = 15
 
 
-async def get_available_slots_multi(service_worker_pairs: List[dict], date: str) -> dict:
+async def get_available_slots_multi(service_worker_pairs: List[dict], date: str, tenant_id: str = "") -> dict:
     """
     Get available time slots for SEQUENTIAL service/worker pairs.
     Each worker must be available for their service in sequence.
@@ -142,7 +143,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
 
     # Get service durations
     service_ids = [p["service_id"] for p in service_worker_pairs]
-    service_docs = await db.services.find({"_id": {"$in": [ObjectId(s) for s in service_ids]}, "active": True}).to_list(100)
+    service_docs = await db.services.find({"_id": {"$in": [ObjectId(s) for s in service_ids]}, "active": True, "tenant_id": tenant_id}).to_list(100)
     if not service_docs:
         return {"slots": []}
 
@@ -150,7 +151,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
 
     # Get unique workers
     worker_ids = list(set(p["worker_id"] for p in service_worker_pairs))
-    workers = await db.workers.find({"_id": {"$in": [ObjectId(w) for w in worker_ids]}, "active": True}).to_list(100)
+    workers = await db.workers.find({"_id": {"$in": [ObjectId(w) for w in worker_ids]}, "active": True, "tenant_id": tenant_id}).to_list(100)
     worker_map = {str(w["_id"]): w for w in workers}
 
     # Parse date for day of week check
@@ -165,14 +166,15 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
             return {"slots": []}
 
     # Get settings
-    settings = await db.settings.find_one({"type": "salon"})
+    settings = await db.settings.find_one({"type": "salon", "tenant_id": tenant_id})
     default_start = settings.get("work_start", "09:00") if settings else "09:00"
     default_end = settings.get("work_end", "21:00") if settings else "21:00"
 
     # Get existing reservations for the date
     reservations = await db.reservations.find({
         "date": date,
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tenant_id,
     }).to_list(1000)
 
     # Build worker -> blocked time ranges from existing reservations
@@ -348,7 +350,7 @@ async def get_available_slots_multi(service_worker_pairs: List[dict], date: str)
 UNPAID_CANCEL_HOURS = 3
 
 
-async def cancel_stale_unpaid_reservations() -> int:
+async def cancel_stale_unpaid_reservations(tenant_id: str = "") -> int:
     """
     Cancel reservations where payment_status is 'pending'
     and created_at is older than UNPAID_CANCEL_HOURS.
@@ -382,7 +384,7 @@ async def cancel_stale_unpaid_reservations() -> int:
 
 # ================== DAILY REMINDERS ==================
 
-async def process_daily_reminders() -> dict:
+async def process_daily_reminders(tenant_id: str = "") -> dict:
     """
     Count tomorrow's reservations by payment status.
     Viber Bot API removed — reminders now serve as a dashboard summary only.
@@ -390,10 +392,14 @@ async def process_daily_reminders() -> dict:
     belgrade_tz = timezone(timedelta(hours=2))
     tomorrow = (datetime.now(belgrade_tz) + timedelta(days=1)).strftime("%Y-%m-%d")
 
-    reservations = await db.reservations.find({
+    reminder_query = {
         "date": tomorrow,
         "status": {"$ne": "cancelled"},
-    }).to_list(500)
+    }
+    if tenant_id:
+        reminder_query["tenant_id"] = tenant_id
+
+    reservations = await db.reservations.find(reminder_query).to_list(500)
 
     confirmed_count = 0
     pending_count = 0

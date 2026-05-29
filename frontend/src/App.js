@@ -1,9 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 import { createContext, useContext, useState, useEffect, lazy, Suspense } from "react";
 import axios from "axios";
 
-// Lazy load pages for faster initial load
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -11,7 +10,6 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
-// Loading component
 const PageLoader = () => (
   <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
     <div className="text-center">
@@ -23,8 +21,59 @@ const PageLoader = () => (
 
 // Auth Context
 const AuthContext = createContext(null);
-
 export const useAuth = () => useContext(AuthContext);
+
+// Tenant Context
+const TenantContext = createContext(null);
+export const useTenant = () => useContext(TenantContext);
+
+export const TenantProvider = ({ children }) => {
+  const { slug } = useParams();
+  const [tenant, setTenant] = useState(null);
+  const [tenantLoading, setTenantLoading] = useState(true);
+
+  useEffect(() => {
+    if (!slug) {
+      setTenantLoading(false);
+      return;
+    }
+    const fetchTenant = async () => {
+      try {
+        const res = await axios.get(`${API}/tenants/by-slug/${slug}`);
+        setTenant(res.data);
+      } catch {
+        setTenant(null);
+      } finally {
+        setTenantLoading(false);
+      }
+    };
+    fetchTenant();
+  }, [slug]);
+
+  if (tenantLoading) return <PageLoader />;
+  if (!tenant && slug) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center text-white">
+        <div className="text-center">
+          <h1 className="text-2xl mb-2">Salon nije pronađen</h1>
+          <p className="text-[#9CA3AF]">"{slug}" ne postoji.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <TenantContext.Provider value={tenant}>
+      {children}
+    </TenantContext.Provider>
+  );
+};
+
+// Axios interceptor to inject tenant header
+export const getTenantHeaders = (tenantId) => {
+  if (!tenantId) return {};
+  return { "X-Tenant-ID": tenantId };
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -46,7 +95,7 @@ export const AuthProvider = ({ children }) => {
         withCredentials: true,
       });
       setUser(response.data);
-    } catch (error) {
+    } catch {
       localStorage.removeItem("access_token");
       setUser(null);
     } finally {
@@ -82,20 +131,16 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const { slug } = useParams();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
-        <div className="animate-pulse text-[#C5A880]">Učitavanje...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to={`/${slug}/admin/login`} replace />;
   }
 
   return children;
@@ -118,14 +163,17 @@ function App() {
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<BookingPage />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/" element={<Navigate to="/beauty-studio-bor" replace />} />
+              <Route path="/:slug" element={<TenantProvider><BookingPage /></TenantProvider>} />
+              <Route path="/:slug/admin/login" element={<TenantProvider><AdminLogin /></TenantProvider>} />
               <Route
-                path="/admin/*"
+                path="/:slug/admin/*"
                 element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
+                  <TenantProvider>
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  </TenantProvider>
                 }
               />
             </Routes>

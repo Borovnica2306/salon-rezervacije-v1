@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useAuth } from "../App";
+import { useAuth, useTenant } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Mail, Lock, Scissors } from "lucide-react";
@@ -11,11 +11,12 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { slug } = useParams();
   const { login, user } = useAuth();
+  const tenant = useTenant();
 
-  // Redirect if already logged in
   if (user) {
-    navigate("/admin", { replace: true });
+    navigate(`/${slug}/admin`, { replace: true });
     return null;
   }
 
@@ -30,7 +31,7 @@ const AdminLogin = () => {
     try {
       await login(email, password);
       toast.success("Uspešna prijava!");
-      navigate("/admin");
+      navigate(`/${slug}/admin`);
     } catch (error) {
       const detail = error.response?.data?.detail;
       let message = "Greška pri prijavi";

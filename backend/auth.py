@@ -23,10 +23,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def create_access_token(user_id: str, email: str) -> str:
+def create_access_token(user_id: str, email: str, tenant_id: str = "", role: str = "") -> str:
     payload = {
         "sub": user_id,
         "email": email,
+        "tenant_id": tenant_id,
+        "role": role,
         "exp": datetime.now(timezone.utc) + timedelta(hours=24),
         "type": "access"
     }

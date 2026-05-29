@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
-import { API, useAuth } from "../App";
+import { API, useAuth, useTenant, getTenantHeaders } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { 
@@ -36,22 +36,25 @@ const AdminDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const tenant = useTenant();
+  const { slug } = useParams();
+  const basePath = `/${slug}/admin`;
 
   const handleLogout = async () => {
     await logout();
-    navigate("/admin/login");
+    navigate(`/${slug}/admin/login`);
   };
 
   const baseNavItems = [
-    { path: "/admin", label: "Rezervacije", icon: Calendar },
-    { path: "/admin/blacklist", label: "Crna Lista", icon: Shield },
-    { path: "/admin/employees", label: "Radnici", icon: Users },
-    { path: "/admin/services", label: "Usluge", icon: Scissors },
-    { path: "/admin/settings", label: "Podešavanja", icon: Settings },
+    { path: basePath, label: "Rezervacije", icon: Calendar },
+    { path: `${basePath}/blacklist`, label: "Crna Lista", icon: Shield },
+    { path: `${basePath}/employees`, label: "Radnici", icon: Users },
+    { path: `${basePath}/services`, label: "Usluge", icon: Scissors },
+    { path: `${basePath}/settings`, label: "Podešavanja", icon: Settings },
   ];
 
   const navItems = user?.role === "super_admin"
-    ? [...baseNavItems, { path: "/admin/system", label: "System Config", icon: SlidersHorizontal }]
+    ? [...baseNavItems, { path: `${basePath}/system`, label: "System Config", icon: SlidersHorizontal }]
     : baseNavItems;
 
   return (
@@ -157,6 +160,7 @@ const AdminDashboard = () => {
 
 // ==================== MANUAL BOOKING MODAL ====================
 const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate }) => {
+  const tenant = useTenant();
   const [step, setStep] = useState(1); // 1:services, 2:date/time, 3:client
   const [services, setServices] = useState([]);
   const [selectedPairs, setSelectedPairs] = useState([]); // [{service, worker}]
@@ -172,7 +176,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
   const [showForceConfirm, setShowForceConfirm] = useState(false);
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   // Temp state for adding a pair
   const [tempServiceId, setTempServiceId] = useState("");
@@ -592,6 +596,7 @@ const COLORS = ["#C5A880", "#7C9EB2", "#A8C686", "#D4A574", "#B294BB", "#86C1B9"
 
 const ReservationsPage = () => {
   const { user } = useAuth();
+  const tenant = useTenant();
   const [reservations, setReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -607,7 +612,7 @@ const ReservationsPage = () => {
   const [sendingReminders, setSendingReminders] = useState(false);
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
   const gridRef = React.useRef(null);
 
   useEffect(() => { fetchWorkers(); fetchSettings(); }, []);
@@ -980,6 +985,7 @@ const ReservationsPage = () => {
 };
 // Employees Page
 const EmployeesPage = () => {
+  const tenant = useTenant();
   const [employees, setEmployees] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -997,7 +1003,7 @@ const EmployeesPage = () => {
   });
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
     fetchData();
@@ -1336,6 +1342,7 @@ const EmployeesPage = () => {
   );
 };
 const ServicesPage = () => {
+  const tenant = useTenant();
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1350,7 +1357,7 @@ const ServicesPage = () => {
   });
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
     fetchServices();
@@ -1605,6 +1612,7 @@ const ServicesPage = () => {
 
 // Settings Page
 const SettingsPage = () => {
+  const tenant = useTenant();
   const [settings, setSettings] = useState({
     salon_name: "",
     work_start: "09:00",
@@ -1622,7 +1630,7 @@ const SettingsPage = () => {
   const [saving, setSaving] = useState(false);
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
     fetchSettings();
@@ -1827,13 +1835,14 @@ const SettingsPage = () => {
 
 // Blacklist Page
 const BlacklistPage = () => {
+  const tenant = useTenant();
   const [blacklist, setBlacklist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newPhone, setNewPhone] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
     fetchBlacklist();
@@ -1999,11 +2008,12 @@ export default AdminDashboard;
 
 // System Config Page (Super-Admin only)
 const SystemConfigPage = () => {
+  const tenant = useTenant();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("access_token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
     fetchConfig();

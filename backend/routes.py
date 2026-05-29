@@ -1,6 +1,6 @@
 import jwt
 import logging
-from fastapi import APIRouter, HTTPException, Request, Response, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Request, Response, Depends, BackgroundTasks, Header
 from bson import ObjectId
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -24,25 +24,81 @@ from logic import (
     process_daily_reminders,
 )
 from mail_service import send_booking_confirmation_email
+from tenant import resolve_tenant_by_slug, check_tenant_access
 
 logger = logging.getLogger(__name__)
 
 api_router = APIRouter(prefix="/api")
 
 
+async def _get_tid(request: Request) -> str:
+    """Extract tenant_id from X-Tenant-ID header."""
+    tid = request.headers.get("X-Tenant-ID", "")
+    if not tid:
+        raise HTTPException(status_code=400, detail="Missing X-Tenant-ID header")
+    return tid
+
+
+async def _get_tid_optional(request: Request) -> str:
+    """Extract tenant_id, return empty string if missing."""
+    return request.headers.get("X-Tenant-ID", "")
+
+
+# ================== TENANT RESOLUTION ==================
+
+@api_router.get("/tenants/by-slug/{slug}")
+async def get_tenant_by_slug(slug: str):
+    tenant = await db.tenants.find_one({"slug": slug})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Salon not found")
+    return {
+        "tenant_id": tenant["tenant_id"],
+        "slug": tenant["slug"],
+        "name": tenant["name"],
+        "enabled_features": tenant.get("enabled_features", {}),
+    }
+
+
+# ================== SUPER ADMIN: TENANT MANAGEMENT ==================
+
+@api_router.get("/super/tenants")
+async def list_tenants(user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+    tenants = await db.tenants.find({}, {"_id": 0}).to_list(100)
+    return tenants
+
+
+@api_router.put("/super/tenants/{tenant_id}/features")
+async def update_tenant_features(tenant_id: str, features: dict, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"enabled_features": features}}
+    )
+    updated = await db.tenants.find_one({"tenant_id": tenant_id}, {"_id": 0})
+    return updated
+
+
 # ================== CATEGORIES CONFIG ENDPOINTS ==================
 
 @api_router.get("/categories")
-async def get_categories():
-    enabled = await get_enabled_categories()
+async def get_categories(request: Request):
+    tid = await _get_tid(request)
+    enabled = await get_enabled_categories(tid)
     return [{"key": k, "label": MASTER_CATEGORIES[k]} for k in enabled if k in MASTER_CATEGORIES]
 
 
 @api_router.get("/categories/config")
-async def get_categories_config(user: dict = Depends(get_current_user)):
+async def get_categories_config(request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") != "super_admin":
-        raise HTTPException(status_code=403, detail="Super-Admin access required")
-    configs = await db.categories_config.find({}, {"_id": 0}).to_list(100)
+        check_tenant_access(user, tid)
+    configs = await db.categories_config.find({"tenant_id": tid}, {"_id": 0}).to_list(100)
     config_map = {c["category"]: c["enabled"] for c in configs}
     return [
         {"key": k, "label": v, "enabled": config_map.get(k, True)}
@@ -51,14 +107,17 @@ async def get_categories_config(user: dict = Depends(get_current_user)):
 
 
 @api_router.put("/categories/config")
-async def update_category_config(toggle: CategoryToggle, user: dict = Depends(get_current_user)):
+async def update_category_config(toggle: CategoryToggle, request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
     if user.get("role") != "super_admin":
-        raise HTTPException(status_code=403, detail="Super-Admin access required")
+        check_tenant_access(user, tid)
     if toggle.category not in MASTER_CATEGORIES:
         raise HTTPException(status_code=400, detail="Nepoznata kategorija")
     await db.categories_config.update_one(
-        {"category": toggle.category},
-        {"$set": {"category": toggle.category, "enabled": toggle.enabled}},
+        {"category": toggle.category, "tenant_id": tid},
+        {"$set": {"category": toggle.category, "enabled": toggle.enabled, "tenant_id": tid}},
         upsert=True
     )
     return {"category": toggle.category, "enabled": toggle.enabled}
@@ -75,7 +134,9 @@ async def login(request: LoginRequest, response: Response):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     user_id = str(user["_id"])
-    access_token = create_access_token(user_id, email)
+    tenant_id = user.get("tenant_id", "")
+    role = user.get("role", "admin")
+    access_token = create_access_token(user_id, email, tenant_id, role)
     refresh_token = create_refresh_token(user_id)
 
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
@@ -85,7 +146,8 @@ async def login(request: LoginRequest, response: Response):
         "id": user_id,
         "email": user["email"],
         "name": user["name"],
-        "role": user["role"],
+        "role": role,
+        "tenant_id": tenant_id,
         "access_token": access_token
     }
 
@@ -106,7 +168,10 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 @api_router.get("/services", response_model=List[ServiceResponse])
 async def get_services(active_only: bool = True, request: Request = None):
-    query = {"active": True} if active_only else {}
+    tid = request.headers.get("X-Tenant-ID", "") if request else ""
+    query = {"tenant_id": tid}
+    if active_only:
+        query["active"] = True
 
     try:
         token = request.cookies.get("access_token") if request else None
@@ -119,15 +184,11 @@ async def get_services(active_only: bool = True, request: Request = None):
             usr = await db.users.find_one({"_id": ObjectId(payload["sub"])})
             if usr and usr.get("role") == "super_admin":
                 pass
-            else:
-                enabled = await get_enabled_categories()
-                query["category"] = {"$in": enabled}
-        else:
-            enabled = await get_enabled_categories()
-            query["category"] = {"$in": enabled}
+            elif usr and usr.get("role") in ("admin",):
+                if "active" in query:
+                    del query["active"]
     except Exception:
-        enabled = await get_enabled_categories()
-        query["category"] = {"$in": enabled}
+        pass
 
     services = await db.services.find(query, {"_id": 1, "name": 1, "category": 1, "duration": 1, "price": 1, "description": 1, "active": 1}).to_list(100)
     return [
@@ -144,9 +205,12 @@ async def get_services(active_only: bool = True, request: Request = None):
 
 
 @api_router.post("/services", response_model=ServiceResponse)
-async def create_service(service: ServiceCreate, user: dict = Depends(get_current_user)):
+async def create_service(service: ServiceCreate, request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
 
     doc = {
         "name": service.name,
@@ -155,10 +219,11 @@ async def create_service(service: ServiceCreate, user: dict = Depends(get_curren
         "price": service.price,
         "description": service.description or "",
         "active": True,
+        "tenant_id": tid,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.services.insert_one(doc)
-    return ServiceResponse(id=str(result.inserted_id), **{k: v for k, v in doc.items() if k not in ["created_at", "_id"]})
+    return ServiceResponse(id=str(result.inserted_id), **{k: v for k, v in doc.items() if k not in ["created_at", "_id", "tenant_id"]})
 
 
 @api_router.put("/services/{service_id}", response_model=ServiceResponse)
@@ -205,8 +270,11 @@ async def delete_service(service_id: str, user: dict = Depends(get_current_user)
 # ================== WORKERS ENDPOINTS ==================
 
 @api_router.get("/workers", response_model=List[WorkerResponse])
-async def get_workers(active_only: bool = True):
-    query = {"active": True} if active_only else {}
+async def get_workers(request: Request, active_only: bool = True):
+    tid = await _get_tid(request)
+    query = {"tenant_id": tid}
+    if active_only:
+        query["active"] = True
     workers = await db.workers.find(query).to_list(100)
     return [
         WorkerResponse(
@@ -224,9 +292,12 @@ async def get_workers(active_only: bool = True):
 
 
 @api_router.post("/workers", response_model=WorkerResponse)
-async def create_worker(worker: WorkerCreate, user: dict = Depends(get_current_user)):
+async def create_worker(worker: WorkerCreate, request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
 
     doc = {
         "name": worker.name,
@@ -237,10 +308,11 @@ async def create_worker(worker: WorkerCreate, user: dict = Depends(get_current_u
         "break_end": worker.break_end,
         "days_off": worker.days_off,
         "active": True,
+        "tenant_id": tid,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     result = await db.workers.insert_one(doc)
-    return WorkerResponse(id=str(result.inserted_id), **{k: v for k, v in doc.items() if k not in ["created_at", "_id"]})
+    return WorkerResponse(id=str(result.inserted_id), **{k: v for k, v in doc.items() if k not in ["created_at", "_id", "tenant_id"]})
 
 
 @api_router.put("/workers/{worker_id}", response_model=WorkerResponse)
@@ -306,18 +378,20 @@ async def delete_worker(worker_id: str, user: dict = Depends(get_current_user)):
 # ================== RESERVATIONS ENDPOINTS ==================
 
 @api_router.post("/reservations/available-slots")
-async def get_slots(request: AvailableSlotsRequest):
-    await cancel_stale_unpaid_reservations()
-    pairs = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in request.service_worker_pairs]
-    return await get_available_slots_multi(pairs, request.date)
+async def get_slots(request_body: AvailableSlotsRequest, request: Request):
+    tid = await _get_tid(request)
+    await cancel_stale_unpaid_reservations(tid)
+    pairs = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in request_body.service_worker_pairs]
+    return await get_available_slots_multi(pairs, request_body.date, tid)
 
 
 @api_router.post("/reservations", response_model=ReservationResponse)
-async def create_reservation(reservation: ReservationCreate, background_tasks: BackgroundTasks):
+async def create_reservation(reservation: ReservationCreate, request: Request, background_tasks: BackgroundTasks):
+    tid = await _get_tid(request)
     phone = normalize_phone(reservation.client_phone.strip())
 
     # Check if phone is blacklisted
-    blacklisted = await db.blacklisted_phones.find_one({"phone": phone})
+    blacklisted = await db.blacklisted_phones.find_one({"phone": phone, "tenant_id": tid})
     if blacklisted:
         logger.info(f"Blocked phone attempted to book: {phone}")
         raise HTTPException(status_code=403, detail="Ovaj broj telefona je blokiran za rezervacije.")
@@ -326,7 +400,8 @@ async def create_reservation(reservation: ReservationCreate, background_tasks: B
     today_count = await db.reservations.count_documents({
         "client_phone": phone,
         "date": reservation.date,
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tid,
     })
     logger.info(f"Phone {phone} has {today_count} reservations for date {reservation.date}")
     if today_count >= 3:
@@ -349,7 +424,8 @@ async def create_reservation(reservation: ReservationCreate, background_tasks: B
     # Get services and calculate totals
     service_docs = await db.services.find({
         "_id": {"$in": [ObjectId(s) for s in service_ids]},
-        "active": True
+        "active": True,
+        "tenant_id": tid
     }).to_list(100)
 
     if len(service_docs) != len(service_ids):
@@ -363,7 +439,8 @@ async def create_reservation(reservation: ReservationCreate, background_tasks: B
     # Get workers
     workers = await db.workers.find({
         "_id": {"$in": [ObjectId(w) for w in worker_ids]},
-        "active": True
+        "active": True,
+        "tenant_id": tid,
     }).to_list(100)
 
     if len(workers) != len(set(worker_ids)):
@@ -412,7 +489,8 @@ async def create_reservation(reservation: ReservationCreate, background_tasks: B
     existing_client_reservations = await db.reservations.find({
         "client_phone": phone,
         "date": reservation.date,
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tid,
     }).to_list(100)
 
     if existing_client_reservations:
@@ -478,13 +556,14 @@ async def create_reservation(reservation: ReservationCreate, background_tasks: B
         "payment_status": "pending",
         "advance_required": True,
         "advance_released": False,
+        "tenant_id": tid,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
     result = await db.reservations.insert_one(doc)
 
     # Send confirmation email in background
-    settings_doc = await db.settings.find_one({"type": "salon"})
+    settings_doc = await db.settings.find_one({"type": "salon", "tenant_id": tid})
     salon_name = settings_doc.get("salon_name", "Beauty Salon") if settings_doc else "Beauty Salon"
     bank_account = settings_doc.get("bank_account", "") if settings_doc else ""
     payment_recipient = settings_doc.get("payment_recipient", "") if settings_doc else ""
@@ -744,6 +823,7 @@ async def admin_create_reservation(
 
 @api_router.get("/reservations", response_model=List[ReservationResponse])
 async def get_reservations(
+    request: Request,
     date: Optional[str] = None,
     worker_id: Optional[str] = None,
     user: dict = Depends(get_current_user)
@@ -751,9 +831,13 @@ async def get_reservations(
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    await cancel_stale_unpaid_reservations()
+    tid = await _get_tid(request)
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
 
-    query = {"status": {"$ne": "cancelled"}}
+    await cancel_stale_unpaid_reservations(tid)
+
+    query = {"status": {"$ne": "cancelled"}, "tenant_id": tid}
     if date:
         query["date"] = date
     if worker_id:
@@ -878,37 +962,40 @@ async def admin_confirm_payment(reservation_id: str, user: dict = Depends(get_cu
 
 
 @api_router.post("/admin/reservations/trigger-reminders")
-async def trigger_reminders(user: dict = Depends(get_current_user)):
+async def trigger_reminders(request: Request, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
-
-    result = await process_daily_reminders()
+    tid = await _get_tid(request)
+    result = await process_daily_reminders(tid)
     return result
 
 
 # ================== BLACKLIST ENDPOINTS ==================
 
 @api_router.get("/blacklist")
-async def get_blacklist(user: dict = Depends(get_current_user)):
+async def get_blacklist(request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    phones = await db.blacklisted_phones.find({}, {"_id": 0}).to_list(1000)
+    phones = await db.blacklisted_phones.find({"tenant_id": tid}, {"_id": 0}).to_list(1000)
     return phones
 
 
 @api_router.post("/blacklist")
-async def add_to_blacklist(phone: str, user: dict = Depends(get_current_user)):
+async def add_to_blacklist(phone: str, request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     phone = normalize_phone(phone.strip())
-    existing = await db.blacklisted_phones.find_one({"phone": phone})
+    existing = await db.blacklisted_phones.find_one({"phone": phone, "tenant_id": tid})
     if existing:
         return {"message": "Phone already blacklisted"}
 
     await db.blacklisted_phones.insert_one({
         "phone": phone,
+        "tenant_id": tid,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     logger.info(f"Phone added to blacklist: {phone}")
@@ -916,27 +1003,30 @@ async def add_to_blacklist(phone: str, user: dict = Depends(get_current_user)):
 
 
 @api_router.delete("/blacklist/{phone}")
-async def remove_from_blacklist(phone: str, user: dict = Depends(get_current_user)):
+async def remove_from_blacklist(phone: str, request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     phone = normalize_phone(phone)
-    await db.blacklisted_phones.delete_one({"phone": phone})
+    await db.blacklisted_phones.delete_one({"phone": phone, "tenant_id": tid})
     return {"message": "Phone removed from blacklist"}
 
 
 # ================== CLIENT RESERVATIONS (by phone) ==================
 
 @api_router.post("/my-reservations")
-async def get_client_reservations(request: ClientReservationsRequest):
-    phone = normalize_phone(request.phone.strip())
+async def get_client_reservations(request_body: ClientReservationsRequest, request: Request):
+    tid = await _get_tid(request)
+    phone = normalize_phone(request_body.phone.strip())
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     reservations = await db.reservations.find({
         "client_phone": phone,
         "date": {"$gte": today},
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tid,
     }).sort([("date", 1), ("time", 1)]).to_list(100)
 
     result = []
@@ -959,13 +1049,15 @@ async def get_client_reservations(request: ClientReservationsRequest):
 
 
 @api_router.put("/my-reservations/{reservation_id}/cancel")
-async def client_cancel_reservation(reservation_id: str, request: ClientReservationsRequest):
-    phone = normalize_phone(request.phone.strip())
+async def client_cancel_reservation(reservation_id: str, request_body: ClientReservationsRequest, request: Request):
+    tid = await _get_tid(request)
+    phone = normalize_phone(request_body.phone.strip())
 
     reservation = await db.reservations.find_one({
         "_id": ObjectId(reservation_id),
         "client_phone": phone,
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tid,
     })
 
     if not reservation:
@@ -985,8 +1077,9 @@ async def client_cancel_reservation(reservation_id: str, request: ClientReservat
 # ================== SETTINGS ENDPOINTS ==================
 
 @api_router.get("/settings", response_model=SettingsResponse)
-async def get_settings():
-    settings = await db.settings.find_one({"type": "salon"})
+async def get_settings(request: Request):
+    tid = request.headers.get("X-Tenant-ID", "")
+    settings = await db.settings.find_one({"type": "salon", "tenant_id": tid})
     if not settings:
         return SettingsResponse(
             salon_name="Beauty Salon",
@@ -1010,20 +1103,24 @@ async def get_settings():
 
 
 @api_router.put("/settings", response_model=SettingsResponse)
-async def update_settings(update: SettingsUpdate, user: dict = Depends(get_current_user)):
+async def update_settings(update: SettingsUpdate, request: Request, user: dict = Depends(get_current_user)):
+    tid = await _get_tid(request)
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
 
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
     update_data["type"] = "salon"
+    update_data["tenant_id"] = tid
 
     await db.settings.update_one(
-        {"type": "salon"},
+        {"type": "salon", "tenant_id": tid},
         {"$set": update_data},
         upsert=True
     )
 
-    settings = await db.settings.find_one({"type": "salon"})
+    settings = await db.settings.find_one({"type": "salon", "tenant_id": tid})
     return SettingsResponse(
         salon_name=settings.get("salon_name", "Beauty Salon"),
         work_start=settings.get("work_start", "09:00"),
