@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { API, useTenant, getTenantHeaders } from "../App";
 import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode, Mail, MessageCircle } from "lucide-react";
+import { PhoneInput, isValidPhone } from "../components/PhoneInput";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -95,7 +96,7 @@ const BookingPage = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [dateSlotCounts, setDateSlotCounts] = useState({});
   const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState(PHONE_PREFIX);
+  const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [blacklistError, setBlacklistError] = useState(false);
@@ -104,34 +105,10 @@ const BookingPage = () => {
 
   // My Reservations state
   const [showMyReservations, setShowMyReservations] = useState(false);
-  const [lookupPhone, setLookupPhone] = useState(PHONE_PREFIX);
+  const [lookupPhone, setLookupPhone] = useState("");
   const [myReservations, setMyReservations] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-
-  // Phone input handler
-  const handlePhoneChange = (value, setter) => {
-    let cleaned = value.replace(/[^\d+]/g, '');
-    if (!cleaned.startsWith('+381')) {
-      const digitsOnly = cleaned.replace(/\D/g, '');
-      let normalizedDigits = digitsOnly;
-      if (normalizedDigits.startsWith('381')) {
-        normalizedDigits = normalizedDigits.substring(3);
-      }
-      if (normalizedDigits.startsWith('0')) {
-        normalizedDigits = normalizedDigits.substring(1);
-      }
-      cleaned = PHONE_PREFIX + normalizedDigits;
-    } else {
-      const afterPrefix = cleaned.substring(4).replace(/\D/g, '');
-      const normalizedAfter = afterPrefix.startsWith('0') ? afterPrefix.substring(1) : afterPrefix;
-      cleaned = PHONE_PREFIX + normalizedAfter;
-    }
-    if (cleaned.length > 13) {
-      cleaned = cleaned.substring(0, 13);
-    }
-    setter(cleaned);
-  };
 
   const getE164Phone = (phone) => phone;
 
@@ -274,8 +251,8 @@ const BookingPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!clientName.trim() || clientPhone.length < 12 || !isValidEmail(clientEmail)) {
-      toast.error("Molimo unesite ime, validan email i broj telefona");
+    if (!clientName.trim() || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)) {
+      toast.error("Molimo unesite ime, validan broj telefona i email adresu");
       return;
     }
 
@@ -318,7 +295,7 @@ const BookingPage = () => {
     setSelectedDate(null);
     setSelectedTime(null);
     setClientName("");
-    setClientPhone(PHONE_PREFIX);
+    setClientPhone("");
     setClientEmail("");
     setBookingComplete(false);
     setBookingDetails(null);
@@ -327,7 +304,7 @@ const BookingPage = () => {
 
   // My Reservations functions
   const searchMyReservations = async () => {
-    if (lookupPhone.length < 12) {
+    if (!isValidPhone(lookupPhone)) {
       toast.error("Unesite validan broj telefona");
       return;
     }
@@ -373,7 +350,7 @@ const BookingPage = () => {
 
   const closeMyReservations = () => {
     setShowMyReservations(false);
-    setLookupPhone(PHONE_PREFIX);
+    setLookupPhone("");
     setMyReservations([]);
     setHasSearched(false);
   };
@@ -818,21 +795,17 @@ const BookingPage = () => {
           
           <div className="space-y-4 mt-4">
             <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
-                <Input
+              <div className="flex-1">
+                <PhoneInput
                   value={lookupPhone}
-                  onChange={(e) => handlePhoneChange(e.target.value, setLookupPhone)}
-                  placeholder="+381641234567"
-                  className="pl-10 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] font-mono"
+                  onChange={setLookupPhone}
                   data-testid="lookup-phone-input"
-                  onKeyDown={(e) => e.key === "Enter" && searchMyReservations()}
                 />
               </div>
               <Button
                 onClick={searchMyReservations}
                 disabled={isSearching}
-                className="bg-[#C5A880] hover:bg-[#B89970] text-black"
+                className="bg-[#C5A880] hover:bg-[#B89970] text-black min-h-[48px]"
                 data-testid="search-reservations-btn"
               >
                 <Search className="w-4 h-4" />
@@ -1266,17 +1239,11 @@ const BookingPage = () => {
 
               <div>
                 <label className="text-sm text-[#9CA3AF] mb-2 block">Broj Telefona</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
-                  <Input
-                    value={clientPhone}
-                    onChange={(e) => handlePhoneChange(e.target.value, setClientPhone)}
-                    placeholder="+381641234567"
-                    className="pl-12 bg-[#141416] border-[#2A2A2D] focus:border-[#C5A880] h-14 font-mono tracking-wide"
-                    data-testid="client-phone-input"
-                  />
-                </div>
-                <p className="text-xs text-[#9CA3AF] mt-1">Format: +381 i zatim broj bez nule</p>
+                <PhoneInput
+                  value={clientPhone}
+                  onChange={setClientPhone}
+                  data-testid="client-phone-input"
+                />
               </div>
 
               <div>
@@ -1423,7 +1390,7 @@ const BookingPage = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !clientName.trim() || clientPhone.length < 12 || !isValidEmail(clientEmail)}
+                disabled={isSubmitting || !clientName.trim() || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)}
                 className="flex-1 h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-50"
                 data-testid="confirm-booking-btn"
               >

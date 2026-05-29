@@ -3,6 +3,7 @@ import { Routes, Route, Link, useLocation, useNavigate, useParams } from "react-
 import { toast } from "sonner";
 import axios from "axios";
 import { API, useAuth, useTenant, getTenantHeaders } from "../App";
+import { PhoneInput } from "../components/PhoneInput";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { 
@@ -1787,18 +1788,16 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Salon Phone (Viber/WhatsApp contact) */}
+        {/* Salon Phone */}
         <div className="border-t border-[#2A2A2D] pt-6">
           <div>
             <label className="text-sm text-[#9CA3AF] mb-1.5 block">Telefon salona (Viber/WhatsApp)</label>
-            <Input
+            <PhoneInput
               value={settings.viber_phone}
-              onChange={(e) => setSettings({ ...settings, viber_phone: e.target.value })}
-              placeholder="381692422596"
-              className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+              onChange={(v) => setSettings({ ...settings, viber_phone: v })}
               data-testid="settings-viber-phone"
             />
-            <p className="text-[10px] text-[#6B7280] mt-1">Broj bez + i razmaka. Koristi se za Viber/WhatsApp dugmad na potvrdi rezervacije.</p>
+            <p className="text-[10px] text-[#6B7280] mt-1">Koristi se za Viber/WhatsApp dugmad na potvrdi rezervacije.</p>
           </div>
         </div>
 
