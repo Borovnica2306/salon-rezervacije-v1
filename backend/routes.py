@@ -1120,6 +1120,17 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
         check_tenant_access(user, tid)
 
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+
+    # Protect sensitive fields - only super_admin can modify
+    PROTECTED_FIELDS = {"smtp_server", "smtp_port", "smtp_user", "smtp_password", "viber_phone"}
+    if user.get("role") != "super_admin":
+        has_protected = PROTECTED_FIELDS & set(update_data.keys())
+        if has_protected:
+            raise HTTPException(status_code=403, detail="Only Super Admin can modify integration settings")
+        # Also strip any protected fields that might have snuck in
+        for f in PROTECTED_FIELDS:
+            update_data.pop(f, None)
+
     update_data["type"] = "salon"
     update_data["tenant_id"] = tid
 

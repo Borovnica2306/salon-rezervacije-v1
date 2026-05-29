@@ -1655,6 +1655,8 @@ const ServicesPage = () => {
 // Settings Page
 const SettingsPage = () => {
   const tenant = useTenant();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
   const [settings, setSettings] = useState({
     salon_name: "",
     work_start: "09:00",
@@ -1785,7 +1787,8 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Integrations Section */}
+        {/* Integrations Section - Super Admin Only */}
+        {isSuperAdmin && (
         <div className="border-t border-[#2A2A2D] pt-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <Settings className="w-4 h-4 text-[#C5A880]" />
@@ -1861,6 +1864,7 @@ const SettingsPage = () => {
             </div>
           </div>
         </div>
+        )}
 
         <Button
           onClick={handleSave}
