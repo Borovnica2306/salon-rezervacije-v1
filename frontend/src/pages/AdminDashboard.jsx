@@ -1028,14 +1028,16 @@ const EmployeesPage = () => {
     }
   };
 
-  // Group services by category
+  // Group ACTIVE services by category
+  const activeServices = services.filter(s => s.active);
   const servicesByCategory = {};
-  services.forEach(s => {
+  activeServices.forEach(s => {
     if (!servicesByCategory[s.category]) servicesByCategory[s.category] = [];
     servicesByCategory[s.category].push(s);
   });
 
   // Derive categories from worker's service list (for edit mode)
+  // A category is checked if the worker has ANY service from that category
   const getCategoriesFromServices = (serviceIds) => {
     const cats = new Set();
     serviceIds.forEach(sid => {
@@ -1045,10 +1047,10 @@ const EmployeesPage = () => {
     return [...cats];
   };
 
-  // Resolve service IDs from selected categories
+  // Resolve service IDs from selected categories (only active services)
   const getServiceIdsFromCategories = (selectedCats) => {
-    return services
-      .filter(s => s.active && selectedCats.includes(s.category))
+    return activeServices
+      .filter(s => selectedCats.includes(s.category))
       .map(s => s.id);
   };
 
