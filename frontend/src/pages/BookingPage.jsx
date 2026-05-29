@@ -1242,6 +1242,7 @@ const BookingPage = () => {
                 <PhoneInput
                   value={clientPhone}
                   onChange={setClientPhone}
+                  showError={clientPhone.length > 0}
                   data-testid="client-phone-input"
                 />
               </div>
@@ -1255,12 +1256,12 @@ const BookingPage = () => {
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
                     placeholder="primer@mail.com"
-                    className="pl-12 bg-[#141416] border-[#2A2A2D] focus:border-[#C5A880] h-14"
+                    className={`pl-12 bg-[#141416] focus:border-[#C5A880] h-14 ${clientEmail && !isValidEmail(clientEmail) ? "border-red-400" : "border-[#2A2A2D]"}`}
                     data-testid="client-email-input"
                   />
                 </div>
                 {clientEmail && !isValidEmail(clientEmail) && (
-                  <p className="text-xs text-red-400 mt-1">Unesite validnu email adresu</p>
+                  <p className="text-xs text-red-400 mt-1" data-testid="email-error">Molimo unesite ispravnu email adresu (npr. ime@gmail.com)</p>
                 )}
               </div>
             </div>
