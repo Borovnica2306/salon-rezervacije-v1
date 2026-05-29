@@ -555,6 +555,14 @@ const BookingPage = () => {
               <span className="text-[#9CA3AF] text-sm">Trajanje:</span>
               <span className="font-medium text-sm">{bookingDetails.total_duration} min</span>
             </div>
+            <div className="flex justify-between mb-3">
+              <span className="text-[#9CA3AF] text-sm">Telefon:</span>
+              <span className="font-medium text-sm">{bookingDetails.client_phone}</span>
+            </div>
+            <div className="flex justify-between mb-3">
+              <span className="text-[#9CA3AF] text-sm">Email:</span>
+              <span className="font-medium text-sm">{bookingDetails.client_email}</span>
+            </div>
             <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
               <span className="text-[#9CA3AF] text-sm">Ukupno:</span>
               <span className="font-semibold text-[#C5A880]">{bookingDetails.total_price?.toLocaleString()} RSD</span>

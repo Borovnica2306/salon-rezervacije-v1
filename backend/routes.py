@@ -55,8 +55,19 @@ async def get_tenant_by_slug(slug: str):
         "tenant_id": tenant["tenant_id"],
         "slug": tenant["slug"],
         "name": tenant["name"],
+        "country": tenant.get("country", "RS"),
+        "city": tenant.get("city", ""),
         "enabled_features": tenant.get("enabled_features", {}),
     }
+
+
+@api_router.get("/tenants/by-country/{country_code}")
+async def get_tenants_by_country(country_code: str):
+    tenants = await db.tenants.find(
+        {"country": country_code.upper()},
+        {"_id": 0, "tenant_id": 1, "slug": 1, "name": 1, "country": 1, "city": 1}
+    ).to_list(100)
+    return tenants
 
 
 # ================== SUPER ADMIN: TENANT MANAGEMENT ==================

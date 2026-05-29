@@ -6,6 +6,7 @@ import axios from "axios";
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -163,7 +164,7 @@ function App() {
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Navigate to="/beauty-studio-bor" replace />} />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/admin" element={<Navigate to="/beauty-studio-bor/admin" replace />} />
               <Route path="/admin/*" element={<Navigate to="/beauty-studio-bor/admin" replace />} />
               <Route path="/:slug" element={<TenantProvider><BookingPage /></TenantProvider>} />

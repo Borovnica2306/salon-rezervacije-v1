@@ -54,6 +54,8 @@ async def startup_event():
             "slug": PRIMARY_TENANT_SLUG,
             "name": "Beauty Studio Bor",
             "owner_email": "bornaja23@gmail.com",
+            "country": "RS",
+            "city": "Bor",
             "enabled_features": {
                 "viber_notifications": True,
                 "ips_qr_payment": True,
@@ -64,6 +66,13 @@ async def startup_event():
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
         logger.info(f"Primary tenant created: {PRIMARY_TENANT_SLUG}")
+    else:
+        # Migrate existing tenant: add country if missing
+        if not existing_tenant.get("country"):
+            await db.tenants.update_one(
+                {"tenant_id": PRIMARY_TENANT_ID},
+                {"$set": {"country": "RS", "city": "Bor"}}
+            )
 
     # ===== SEED SUPER ADMIN =====
     sa_email = "bornaja23@gmail.com"
