@@ -467,7 +467,7 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
 
     # Verify slot is still available and get slot details
     pairs_dict = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in reservation.service_worker_pairs]
-    available = await get_available_slots_multi(pairs_dict, reservation.date)
+    available = await get_available_slots_multi(pairs_dict, reservation.date, tid)
     if reservation.time not in available.get("slots", []):
         raise HTTPException(status_code=400, detail="Izabrani termin više nije dostupan.")
 
@@ -616,11 +616,15 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
 @api_router.post("/admin/reservations", response_model=ReservationResponse)
 async def admin_create_reservation(
     reservation: AdminReservationCreate,
+    request: Request,
     user: dict = Depends(get_current_user)
 ):
     """Admin manual booking - can force-create even with conflicts."""
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
+    tid = await _get_tid(request)
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
 
     phone = normalize_phone(reservation.client_phone.strip())
 
@@ -628,7 +632,8 @@ async def admin_create_reservation(
     today_count = await db.reservations.count_documents({
         "client_phone": phone,
         "date": reservation.date,
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tid,
     })
 
     # Get all service IDs from pairs
@@ -638,7 +643,8 @@ async def admin_create_reservation(
     # Get services and calculate totals
     service_docs = await db.services.find({
         "_id": {"$in": [ObjectId(s) for s in service_ids]},
-        "active": True
+        "active": True,
+        "tenant_id": tid,
     }).to_list(100)
 
     if len(service_docs) != len(service_ids):
@@ -651,7 +657,8 @@ async def admin_create_reservation(
     # Get workers
     workers_list = await db.workers.find({
         "_id": {"$in": [ObjectId(w) for w in worker_ids]},
-        "active": True
+        "active": True,
+        "tenant_id": tid,
     }).to_list(100)
 
     if len(workers_list) != len(set(worker_ids)):
@@ -678,7 +685,7 @@ async def admin_create_reservation(
 
     # Check slot availability
     pairs_dict = [{"service_id": p.service_id, "worker_id": p.worker_id} for p in reservation.service_worker_pairs]
-    available = await get_available_slots_multi(pairs_dict, reservation.date)
+    available = await get_available_slots_multi(pairs_dict, reservation.date, tid)
     slot_available = reservation.time in available.get("slots", [])
 
     slot_detail = available.get("slot_details", {}).get(reservation.time, {})
@@ -727,7 +734,8 @@ async def admin_create_reservation(
     existing_client_reservations = await db.reservations.find({
         "client_phone": phone,
         "date": reservation.date,
-        "status": {"$ne": "cancelled"}
+        "status": {"$ne": "cancelled"},
+        "tenant_id": tid,
     }).to_list(100)
 
     if existing_client_reservations:
@@ -791,6 +799,7 @@ async def admin_create_reservation(
         "advance_required": True,
         "advance_released": False,
         "created_by": "admin",
+        "tenant_id": tid,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
