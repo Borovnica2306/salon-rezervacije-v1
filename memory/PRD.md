@@ -1,41 +1,47 @@
 # Beauty Salon Booking App - PRD
 
 ## Originalni Problem Statement
-Aplikacija za rezervaciju termina u beauty salonu. Klijenti biraju usluge i radnika bez registracije. Admin dashboard za upravljanje. Tamna tema, mobile-first dizajn, PWA.
-
-## Core Requirements — All Completed
-- [x] Multi-step booking wizard (4 koraka)
-- [x] Split-booking sa 15-min Social Buffer + All-or-Nothing
-- [x] Smart Pairing + Anti-Conflict (po telefonu)
-- [x] JWT auth (admin + super_admin) + Multi-Level Admin
-- [x] CRUD za usluge/radnike + Safe Delete + Confirmation dialogs
-- [x] Booking ID, Uplatnica, Payment Status toggle
-- [x] Blacklist + Limit 3/dan + "Moje rezervacije" (24h otkazivanje)
-- [x] Master Category Switch (7 kategorija)
-- [x] Modularna arhitektura
-- [x] Vizuelni Timeline + Add to Calendar (Google + ICS)
-- [x] Standardizacija formata telefona (+381, zero-strip)
-- [x] Striktna per-worker boundary provera radnog vremena
-- [x] Admin Manual Booking (3-step modal + force override)
-- [x] Daily Timeline Grid + Auto-Scroll + Detail Dialog + Archive Tab
-- [x] Mobile Timeline Grid — horizontalni skrol, sticky time kolona
-- [x] Touch Targets 48px, Edit Mode, Visual Category Cards
-- [x] IPS QR Kod — NBS standard: pipe separator, comma decimal
-- [x] Email notifikacija — async SMTP, QR fault-tolerant, DB-first credentials
-- [x] Payment Tracking System — 3 statusa
-- [x] Lazy Cancel — Auto-otkazivanje neplaćenih rezervacija posle 3h
-- [x] Daily Reminders — Admin trigger endpoint (summary counts)
-- [x] SMTP Admin Settings — DB-first, env fallback
-- [x] **Viber Direct Chat** — viber://chat?number={phone}&draft={msg} umesto Bot API
+Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, neograničen broj salona. God Mode za Super Admina.
 
 ## Architecture
 ```
 /app/backend/
-├── server.py, database.py, models.py, auth.py
-├── logic.py         # Smart Pairing, IPS QR, Lazy Cancel, Reminders (NO Viber Bot)
-├── routes.py        # API endpoints
-└── mail_service.py  # Async SMTP email with QR CID
+├── server.py        # App init, tenant seed, data migration
+├── database.py      # MongoDB connection
+├── models.py        # Pydantic schemas
+├── auth.py          # JWT with tenant_id + role
+├── tenant.py        # Tenant resolution + access control
+├── logic.py         # Smart Pairing, IPS QR, Lazy Cancel (tenant-aware)
+├── routes.py        # All endpoints with X-Tenant-ID filter
+└── mail_service.py  # Async SMTP email
+
+/app/frontend/src/
+├── App.js           # TenantProvider, slug routing, AuthProvider
+└── pages/
+    ├── BookingPage.jsx      # /:slug - tenant-aware booking
+    ├── AdminLogin.jsx       # /:slug/admin/login
+    └── AdminDashboard.jsx   # /:slug/admin/* - tenant-aware admin
 ```
 
+## Multitenant System
+- **Tenant ID**: `tenant_bsb_001` (Primary: Beauty Studio Bor)
+- **Slug routing**: `/:slug` for client, `/:slug/admin` for admin
+- **Data isolation**: `tenant_id` field on ALL documents (services, workers, reservations, settings, blacklist, categories)
+- **Auth**: JWT includes `tenant_id` + `role`, admin restricted to own tenant
+- **Super Admin**: `bornaja23@gmail.com` - can access all tenants, manage feature flags
+- **Feature Flags**: `enabled_features` per tenant (viber_notifications, ips_qr_payment, manual_booking, email_notifications, lazy_cancel)
+
+## All Completed Features
+- [x] Multi-step booking wizard, Smart Pairing, Anti-Conflict
+- [x] JWT auth (admin + super_admin) + Multitenant isolation
+- [x] CRUD services/workers/blacklist
+- [x] IPS QR Payment (NBS standard), Email notifications
+- [x] Payment Tracking (3 statuses), Lazy Cancel (3h)
+- [x] Daily Timeline Grid, Manual Booking, Archive
+- [x] Mobile optimized (touch targets, sticky columns)
+- [x] Viber/WhatsApp direct chat links
+- [x] **MULTITENANT** - Slug routing, data isolation, feature flags, God Mode
+
 ## Backlog
-- P3: Drag & drop na admin timeline gridu za preraspoređivanje
+- Super Admin UI for tenant/feature management (currently API-only)
+- P3: Drag & drop on timeline grid
