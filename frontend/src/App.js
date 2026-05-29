@@ -164,6 +164,8 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Navigate to="/beauty-studio-bor" replace />} />
+              <Route path="/admin" element={<Navigate to="/beauty-studio-bor/admin" replace />} />
+              <Route path="/admin/*" element={<Navigate to="/beauty-studio-bor/admin" replace />} />
               <Route path="/:slug" element={<TenantProvider><BookingPage /></TenantProvider>} />
               <Route path="/:slug/admin/login" element={<TenantProvider><AdminLogin /></TenantProvider>} />
               <Route

@@ -54,7 +54,7 @@ const AdminDashboard = () => {
   ];
 
   const navItems = user?.role === "super_admin"
-    ? [...baseNavItems, { path: `${basePath}/system`, label: "System Config", icon: SlidersHorizontal }]
+    ? [...baseNavItems, { path: `${basePath}/system`, label: "Super Admin", icon: SlidersHorizontal }]
     : baseNavItems;
 
   return (
@@ -1360,13 +1360,15 @@ const ServicesPage = () => {
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
-    fetchServices();
-    fetchCategories();
-  }, []);
+    if (tenant?.tenant_id) {
+      fetchServices();
+      fetchCategories();
+    }
+  }, [tenant?.tenant_id]);
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get(`${API}/categories`);
+      const res = await axios.get(`${API}/categories`, { headers });
       setCategories(res.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -2009,14 +2011,17 @@ export default AdminDashboard;
 // System Config Page (Super-Admin only)
 const SystemConfigPage = () => {
   const tenant = useTenant();
+  const { user } = useAuth();
   const [categories, setCategories] = useState([]);
+  const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("features");
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
-    fetchConfig();
+    Promise.all([fetchConfig(), fetchTenants()]).finally(() => setLoading(false));
   }, []);
 
   const fetchConfig = async () => {
@@ -2024,26 +2029,46 @@ const SystemConfigPage = () => {
       const res = await axios.get(`${API}/categories/config`, { headers });
       setCategories(res.data);
     } catch (error) {
-      toast.error("Greška pri učitavanju konfiguracije");
-    } finally {
-      setLoading(false);
+      console.error("Error fetching categories config:", error);
     }
   };
 
-  const handleToggle = async (key, currentEnabled) => {
+  const fetchTenants = async () => {
     try {
-      await axios.put(
-        `${API}/categories/config`,
-        { category: key, enabled: !currentEnabled },
-        { headers }
-      );
-      setCategories(prev =>
-        prev.map(c => c.key === key ? { ...c, enabled: !currentEnabled } : c)
-      );
+      const res = await axios.get(`${API}/super/tenants`, { headers });
+      setTenants(res.data);
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+    }
+  };
+
+  const handleCategoryToggle = async (key, currentEnabled) => {
+    try {
+      await axios.put(`${API}/categories/config`, { category: key, enabled: !currentEnabled }, { headers });
+      setCategories(prev => prev.map(c => c.key === key ? { ...c, enabled: !currentEnabled } : c));
       toast.success(`${categories.find(c => c.key === key)?.label} — ${!currentEnabled ? "uključeno" : "isključeno"}`);
     } catch (error) {
       toast.error("Greška pri promeni konfiguracije");
     }
+  };
+
+  const handleFeatureToggle = async (tenantId, featureKey, currentValue, tenantFeatures) => {
+    const updated = { ...tenantFeatures, [featureKey]: !currentValue };
+    try {
+      await axios.put(`${API}/super/tenants/${tenantId}/features`, updated, { headers });
+      setTenants(prev => prev.map(t => t.tenant_id === tenantId ? { ...t, enabled_features: updated } : t));
+      toast.success(`${featureKey}: ${!currentValue ? "ON" : "OFF"}`);
+    } catch (error) {
+      toast.error("Greška");
+    }
+  };
+
+  const FEATURE_LABELS = {
+    viber_notifications: "Viber/WhatsApp Notifikacije",
+    ips_qr_payment: "IPS QR Plaćanje",
+    manual_booking: "Manual Booking (Admin)",
+    email_notifications: "Email Notifikacije",
+    lazy_cancel: "Auto-otkazivanje (Lazy Cancel)",
   };
 
   if (loading) {
@@ -2059,46 +2084,83 @@ const SystemConfigPage = () => {
   return (
     <div className="animate-fade-in" data-testid="system-config-page">
       <div className="mb-8">
-        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">System Config</h2>
-        <p className="text-[#9CA3AF]">
-          Upravljajte kategorijama usluga. Isključene kategorije se ne prikazuju klijentima niti salon-adminu.
-        </p>
+        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Super Admin Panel</h2>
+        <p className="text-[#9CA3AF]">Upravljanje tenantima, feature flagovima i kategorijama.</p>
       </div>
 
-      <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
-        <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
-          <span className="text-sm text-[#9CA3AF]">Master kategorije</span>
-          <span className="text-xs text-[#C5A880]">{enabledCount} / {categories.length} aktivno</span>
-        </div>
-        <div className="divide-y divide-[#2A2A2D]">
-          {categories.map((cat) => (
-            <div
-              key={cat.key}
-              className={`flex items-center justify-between p-5 transition-colors ${
-                cat.enabled ? "" : "opacity-50"
-              }`}
-              data-testid={`category-row-${cat.key}`}
-            >
-              <div>
-                <span className="font-medium text-base sm:text-lg">{cat.label}</span>
-                <span className="hidden sm:inline ml-3 text-xs text-[#9CA3AF] font-mono">{cat.key}</span>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-[#0A0A0B] rounded-lg p-1 w-fit">
+        <button onClick={() => setActiveTab("features")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "features" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-features">
+          <Shield className="w-4 h-4 inline mr-1.5" />Feature Flags
+        </button>
+        <button onClick={() => setActiveTab("categories")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "categories" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-categories">
+          <Scissors className="w-4 h-4 inline mr-1.5" />Kategorije
+        </button>
+      </div>
+
+      {/* Feature Flags Tab */}
+      {activeTab === "features" && (
+        <div className="space-y-6">
+          {tenants.map((t) => (
+            <div key={t.tenant_id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden" data-testid={`tenant-card-${t.tenant_id}`}>
+              <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-white">{t.name}</h3>
+                  <p className="text-xs text-[#6B7280] font-mono mt-0.5">/{t.slug} &middot; {t.tenant_id}</p>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-full bg-green-600/20 text-green-400">Aktivan</span>
               </div>
-              <Switch
-                checked={cat.enabled}
-                onCheckedChange={() => handleToggle(cat.key, cat.enabled)}
-                className="data-[state=checked]:bg-[#C5A880]"
-                data-testid={`category-toggle-${cat.key}`}
-              />
+              <div className="divide-y divide-[#2A2A2D]">
+                {Object.entries(t.enabled_features || {}).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between p-4" data-testid={`feature-${t.tenant_id}-${key}`}>
+                    <div>
+                      <span className="text-sm text-white">{FEATURE_LABELS[key] || key}</span>
+                      <span className="ml-2 text-[10px] text-[#6B7280] font-mono">{key}</span>
+                    </div>
+                    <Switch
+                      checked={value}
+                      onCheckedChange={() => handleFeatureToggle(t.tenant_id, key, value, t.enabled_features)}
+                      className="data-[state=checked]:bg-[#C5A880]"
+                      data-testid={`feature-toggle-${t.tenant_id}-${key}`}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
+          {tenants.length === 0 && (
+            <div className="text-center py-12 text-[#9CA3AF]">Nema registrovanih salona.</div>
+          )}
         </div>
-      </div>
+      )}
 
-      <div className="mt-6 p-4 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl">
-        <p className="text-sm text-[#9CA3AF]">
-          <strong className="text-[#C5A880]">Napomena:</strong> Isključivanje kategorije sakriva usluge i radnike iz javnog prikaza, ali ih ne briše iz baze podataka. Ponovo uključivanje sve vraća.
-        </p>
-      </div>
+      {/* Categories Tab */}
+      {activeTab === "categories" && (
+        <>
+          <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">Master kategorije</span>
+              <span className="text-xs text-[#C5A880]">{enabledCount} / {categories.length} aktivno</span>
+            </div>
+            <div className="divide-y divide-[#2A2A2D]">
+              {categories.map((cat) => (
+                <div key={cat.key} className={`flex items-center justify-between p-5 transition-colors ${cat.enabled ? "" : "opacity-50"}`} data-testid={`category-row-${cat.key}`}>
+                  <div>
+                    <span className="font-medium text-base sm:text-lg">{cat.label}</span>
+                    <span className="hidden sm:inline ml-3 text-xs text-[#9CA3AF] font-mono">{cat.key}</span>
+                  </div>
+                  <Switch checked={cat.enabled} onCheckedChange={() => handleCategoryToggle(cat.key, cat.enabled)} className="data-[state=checked]:bg-[#C5A880]" data-testid={`category-toggle-${cat.key}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-6 p-4 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl">
+            <p className="text-sm text-[#9CA3AF]">
+              <strong className="text-[#C5A880]">Napomena:</strong> Isključivanje kategorije sakriva usluge iz javnog prikaza, ali ih ne briše iz baze podataka.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 };

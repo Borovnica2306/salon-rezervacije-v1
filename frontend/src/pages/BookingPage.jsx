@@ -7,6 +7,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
 import { sr } from "date-fns/locale";
+import { useParams } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,7 @@ function fallbackCopy(text) {
 
 const BookingPage = () => {
   const tenant = useTenant();
+  const { slug } = useParams();
   const tHeaders = getTenantHeaders(tenant?.tenant_id);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -1433,7 +1435,7 @@ const BookingPage = () => {
           {/* Footer inside bottom bar */}
           <div className="text-center pt-3 border-t border-[#2A2A2D] mt-3">
             <a 
-              href="/admin" 
+              href={`/${slug}/admin`} 
               className="text-[#3A3A3D] text-xs hover:text-[#9CA3AF] transition-colors"
               data-testid="admin-link-footer"
             >
