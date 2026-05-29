@@ -994,13 +994,15 @@ const EmployeesPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [form, setForm] = useState({
     name: "",
-    services: [],
+    categories: [],
     work_start: "09:00",
     work_end: "21:00",
     break_start: "",
     break_end: "",
     days_off: [],
   });
+
+  const [categories, setCategories] = useState([]);
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
@@ -1011,12 +1013,14 @@ const EmployeesPage = () => {
 
   const fetchData = async () => {
     try {
-      const [empRes, servRes] = await Promise.all([
+      const [empRes, servRes, catRes] = await Promise.all([
         axios.get(`${API}/workers?active_only=false`, { headers }),
         axios.get(`${API}/services?active_only=false`, { headers }),
+        axios.get(`${API}/categories`, { headers }),
       ]);
       setEmployees(empRes.data);
       setServices(servRes.data);
+      setCategories(catRes.data);
     } catch (error) {
       toast.error("Greška pri učitavanju");
     } finally {
@@ -1024,10 +1028,34 @@ const EmployeesPage = () => {
     }
   };
 
+  // Group services by category
+  const servicesByCategory = {};
+  services.forEach(s => {
+    if (!servicesByCategory[s.category]) servicesByCategory[s.category] = [];
+    servicesByCategory[s.category].push(s);
+  });
+
+  // Derive categories from worker's service list (for edit mode)
+  const getCategoriesFromServices = (serviceIds) => {
+    const cats = new Set();
+    serviceIds.forEach(sid => {
+      const svc = services.find(s => s.id === sid);
+      if (svc) cats.add(svc.category);
+    });
+    return [...cats];
+  };
+
+  // Resolve service IDs from selected categories
+  const getServiceIdsFromCategories = (selectedCats) => {
+    return services
+      .filter(s => s.active && selectedCats.includes(s.category))
+      .map(s => s.id);
+  };
+
   const resetForm = () => {
     setForm({
       name: "",
-      services: [],
+      categories: [],
       work_start: "09:00",
       work_end: "21:00",
       break_start: "",
@@ -1041,7 +1069,7 @@ const EmployeesPage = () => {
     setEditingEmployee(emp);
     setForm({
       name: emp.name,
-      services: emp.services,
+      categories: getCategoriesFromServices(emp.services || []),
       work_start: emp.work_start,
       work_end: emp.work_end,
       break_start: emp.break_start || "",
@@ -1058,10 +1086,15 @@ const EmployeesPage = () => {
     }
 
     try {
+      const resolvedServices = getServiceIdsFromCategories(form.categories);
       const payload = {
-        ...form,
+        name: form.name,
+        services: resolvedServices,
+        work_start: form.work_start,
+        work_end: form.work_end,
         break_start: form.break_start || null,
         break_end: form.break_end || null,
+        days_off: form.days_off,
       };
 
       if (editingEmployee) {
@@ -1093,12 +1126,12 @@ const EmployeesPage = () => {
     }
   };
 
-  const toggleService = (serviceId) => {
+  const toggleCategory = (catKey) => {
     setForm(prev => ({
       ...prev,
-      services: prev.services.includes(serviceId)
-        ? prev.services.filter(s => s !== serviceId)
-        : [...prev.services, serviceId],
+      categories: prev.categories.includes(catKey)
+        ? prev.categories.filter(c => c !== catKey)
+        : [...prev.categories, catKey],
     }));
   };
 
@@ -1209,23 +1242,28 @@ const EmployeesPage = () => {
               </div>
 
               <div>
-                <label className="text-sm text-[#9CA3AF] mb-2 block">Usluge</label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {services.filter(s => s.active).map((service) => (
-                    <button
-                      key={service.id}
-                      type="button"
-                      onClick={() => toggleService(service.id)}
-                      className={`w-full p-3 rounded-lg text-left text-sm transition-colors ${
-                        form.services.includes(service.id)
-                          ? "bg-[#C5A880]/10 border border-[#C5A880]"
-                          : "bg-[#0A0A0B] border border-[#2A2A2D] hover:border-[#C5A880]/50"
-                      }`}
-                    >
-                      <span className="font-medium">{service.name}</span>
-                      <span className="text-[#9CA3AF] ml-2">({service.duration} min)</span>
-                    </button>
-                  ))}
+                <label className="text-sm text-[#9CA3AF] mb-2 block">Kategorije usluga</label>
+                <div className="space-y-2">
+                  {categories.map((cat) => {
+                    const catServices = servicesByCategory[cat.key] || [];
+                    const isSelected = form.categories.includes(cat.key);
+                    return (
+                      <button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => toggleCategory(cat.key)}
+                        className={`w-full p-3 rounded-lg text-left text-sm transition-colors ${
+                          isSelected
+                            ? "bg-[#C5A880]/10 border border-[#C5A880]"
+                            : "bg-[#0A0A0B] border border-[#2A2A2D] hover:border-[#C5A880]/50"
+                        }`}
+                        data-testid={`category-toggle-${cat.key}`}
+                      >
+                        <span className="font-medium">{cat.label}</span>
+                        <span className="text-[#6B7280] ml-2 text-xs">({catServices.length} usluga)</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1299,7 +1337,7 @@ const EmployeesPage = () => {
               )}
               
               <p className="text-xs text-[#9CA3AF]">
-                {emp.services.length} usluga
+                {getCategoriesFromServices(emp.services || []).map(c => categories.find(cat => cat.key === c)?.label || c).join(", ") || "Bez kategorija"}
               </p>
             </div>
           ))}
