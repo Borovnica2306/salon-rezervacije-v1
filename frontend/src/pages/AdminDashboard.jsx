@@ -1787,6 +1787,21 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {/* Salon Phone (Viber/WhatsApp contact) */}
+        <div className="border-t border-[#2A2A2D] pt-6">
+          <div>
+            <label className="text-sm text-[#9CA3AF] mb-1.5 block">Telefon salona (Viber/WhatsApp)</label>
+            <Input
+              value={settings.viber_phone}
+              onChange={(e) => setSettings({ ...settings, viber_phone: e.target.value })}
+              placeholder="381692422596"
+              className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+              data-testid="settings-viber-phone"
+            />
+            <p className="text-[10px] text-[#6B7280] mt-1">Broj bez + i razmaka. Koristi se za Viber/WhatsApp dugmad na potvrdi rezervacije.</p>
+          </div>
+        </div>
+
         {/* Integrations Section - Super Admin Only */}
         {isSuperAdmin && (
         <div className="border-t border-[#2A2A2D] pt-6">
@@ -1847,21 +1862,7 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            {/* Viber Configuration */}
-            <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-4">
-              <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">Viber Kontakt</p>
-              <div>
-                <label className="text-sm text-[#9CA3AF] mb-1.5 block">Viber broj telefona salona</label>
-                <Input
-                  value={settings.viber_phone}
-                  onChange={(e) => setSettings({ ...settings, viber_phone: e.target.value })}
-                  placeholder="381692422596"
-                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
-                  data-testid="settings-viber-phone"
-                />
-                <p className="text-[10px] text-[#6B7280] mt-1">Broj bez + i razmaka (npr. 381692422596). Koristi se za viber://chat link na potvrdi.</p>
-              </div>
-            </div>
+            {/* Viber Configuration - removed, moved to general section */}
           </div>
         </div>
         )}

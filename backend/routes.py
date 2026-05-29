@@ -1122,7 +1122,7 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
 
     # Protect sensitive fields - only super_admin can modify
-    PROTECTED_FIELDS = {"smtp_server", "smtp_port", "smtp_user", "smtp_password", "viber_phone"}
+    PROTECTED_FIELDS = {"smtp_server", "smtp_port", "smtp_user", "smtp_password"}
     if user.get("role") != "super_admin":
         has_protected = PROTECTED_FIELDS & set(update_data.keys())
         if has_protected:
