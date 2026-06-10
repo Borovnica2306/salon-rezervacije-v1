@@ -95,6 +95,20 @@ async def update_tenant_features(tenant_id: str, features: dict, user: dict = De
     return updated
 
 
+@api_router.put("/super/tenants/{tenant_id}/name")
+async def update_tenant_name(tenant_id: str, body: dict, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name required")
+    await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"name": name}}
+    )
+    return {"name": name}
+
+
 # ================== CATEGORIES CONFIG ENDPOINTS ==================
 
 @api_router.get("/categories")
@@ -1133,7 +1147,7 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
 
     # Protect sensitive fields - only super_admin can modify
-    PROTECTED_FIELDS = {"smtp_server", "smtp_port", "smtp_user", "smtp_password"}
+    PROTECTED_FIELDS = {"smtp_server", "smtp_port", "smtp_user", "smtp_password", "salon_name"}
     if user.get("role") != "super_admin":
         has_protected = PROTECTED_FIELDS & set(update_data.keys())
         if has_protected:

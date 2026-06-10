@@ -1695,7 +1695,20 @@ const SettingsPage = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/settings`, settings, { headers });
+      const payload = { ...settings };
+      if (!isSuperAdmin) {
+        delete payload.smtp_server;
+        delete payload.smtp_port;
+        delete payload.smtp_user;
+        delete payload.smtp_password;
+        delete payload.salon_name;
+      }
+      await axios.put(`${API}/settings`, payload, { headers });
+      // Super admin: sync tenant name
+      if (isSuperAdmin && settings.salon_name) {
+        await axios.put(`${API}/super/tenants/${tenant?.tenant_id}/name`, 
+          { name: settings.salon_name }, { headers }).catch(() => {});
+      }
       toast.success("Podešavanja sačuvana");
     } catch (error) {
       toast.error("Greška pri čuvanju");
@@ -1719,9 +1732,13 @@ const SettingsPage = () => {
             value={settings.salon_name}
             onChange={(e) => setSettings({ ...settings, salon_name: e.target.value })}
             placeholder="Beauty Salon"
-            className="bg-[#0A0A0B] border-[#2A2A2D]"
+            disabled={!isSuperAdmin}
+            className={`bg-[#0A0A0B] border-[#2A2A2D] ${!isSuperAdmin ? "opacity-60 cursor-not-allowed" : ""}`}
             data-testid="settings-salon-name"
           />
+          {!isSuperAdmin && (
+            <p className="text-[10px] text-[#6B7280] mt-1">Za promenu naziva kontaktirajte podršku.</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
