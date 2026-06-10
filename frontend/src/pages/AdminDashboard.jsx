@@ -10,7 +10,7 @@ import {
   Calendar, Users, Scissors, Settings, LogOut, Menu, X,
   Clock, Phone, User, Ban, Check, ChevronLeft, ChevronRight,
   Plus, Edit2, Trash2, DollarSign, Shield, AlertTriangle, CreditCard,
-  SlidersHorizontal, Copy, Bell, Loader2, Download
+  SlidersHorizontal, Copy, Bell, Loader2, Download, Building2
 } from "lucide-react";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { sr } from "date-fns/locale";
@@ -2077,6 +2077,9 @@ const SystemConfigPage = () => {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("features");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newSalon, setNewSalon] = useState({ name: "", email: "", password: "", country: "RS", city: "" });
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
@@ -2124,6 +2127,31 @@ const SystemConfigPage = () => {
     }
   };
 
+  const handleCreateSalon = async () => {
+    if (!newSalon.name.trim() || !newSalon.email.trim() || !newSalon.password.trim()) {
+      toast.error("Sva polja su obavezna"); return;
+    }
+    setCreating(true);
+    try {
+      await axios.post(`${API}/super/tenants`, newSalon, { headers });
+      toast.success(`Salon "${newSalon.name}" kreiran!`);
+      setShowCreateModal(false);
+      setNewSalon({ name: "", email: "", password: "", country: "RS", city: "" });
+      fetchTenants();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Greška pri kreiranju");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const SALON_COUNTRIES = [
+    { code: "RS", name: "Srbija" }, { code: "HR", name: "Hrvatska" },
+    { code: "BA", name: "BiH" }, { code: "ME", name: "Crna Gora" },
+    { code: "DE", name: "Nemačka" }, { code: "AT", name: "Austrija" },
+    { code: "CH", name: "Švajcarska" },
+  ];
+
   const FEATURE_LABELS = {
     viber_notifications: "Viber/WhatsApp Notifikacije",
     ips_qr_payment: "IPS QR Plaćanje",
@@ -2156,6 +2184,9 @@ const SystemConfigPage = () => {
         </button>
         <button onClick={() => setActiveTab("categories")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "categories" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-categories">
           <Scissors className="w-4 h-4 inline mr-1.5" />Kategorije
+        </button>
+        <button onClick={() => setActiveTab("salons")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "salons" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-salons">
+          <Building2 className="w-4 h-4 inline mr-1.5" />Saloni
         </button>
       </div>
 
@@ -2221,6 +2252,69 @@ const SystemConfigPage = () => {
             </p>
           </div>
         </>
+      )}
+
+      {/* Saloni Tab */}
+      {activeTab === "salons" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-[#9CA3AF]">{tenants.length} registrovanih salona</span>
+            <Button onClick={() => setShowCreateModal(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium" data-testid="create-salon-btn">
+              <Plus className="w-4 h-4 mr-1" /> Dodaj novi salon
+            </Button>
+          </div>
+
+          {tenants.map((t) => (
+            <div key={t.tenant_id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-4 flex items-center justify-between" data-testid={`salon-row-${t.tenant_id}`}>
+              <div>
+                <h3 className="font-medium text-white">{t.name}</h3>
+                <p className="text-xs text-[#6B7280] font-mono mt-0.5">/{t.slug} · {t.country || "RS"}{t.city ? ` · ${t.city}` : ""}</p>
+                <p className="text-xs text-[#9CA3AF] mt-0.5">{t.owner_email}</p>
+              </div>
+              <span className="text-xs px-2 py-1 rounded-full bg-green-600/20 text-green-400">Aktivan</span>
+            </div>
+          ))}
+
+          {/* Create Salon Modal */}
+          {showCreateModal && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
+              <div className="bg-[#141416] border border-[#2A2A2D] rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()} data-testid="create-salon-modal">
+                <h3 className="text-lg font-medium">Novi Salon</h3>
+                <div>
+                  <label className="text-sm text-[#9CA3AF] mb-1 block">Naziv salona</label>
+                  <Input value={newSalon.name} onChange={e => setNewSalon({...newSalon, name: e.target.value})} placeholder="Beauty Studio Novi Sad" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-name" />
+                </div>
+                <div>
+                  <label className="text-sm text-[#9CA3AF] mb-1 block">Email vlasnika (admin login)</label>
+                  <Input type="email" value={newSalon.email} onChange={e => setNewSalon({...newSalon, email: e.target.value})} placeholder="vlasnik@salon.com" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-email" />
+                </div>
+                <div>
+                  <label className="text-sm text-[#9CA3AF] mb-1 block">Lozinka</label>
+                  <Input type="password" value={newSalon.password} onChange={e => setNewSalon({...newSalon, password: e.target.value})} placeholder="Minimum 6 karaktera" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-password" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-[#9CA3AF] mb-1 block">Država</label>
+                    <select value={newSalon.country} onChange={e => setNewSalon({...newSalon, country: e.target.value})} className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 text-white min-h-[48px] text-sm" data-testid="new-salon-country">
+                      {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-[#9CA3AF] mb-1 block">Grad</label>
+                    <Input value={newSalon.city} onChange={e => setNewSalon({...newSalon, city: e.target.value})} placeholder="Novi Sad" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-city" />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1 border-[#2A2A2D] min-h-[48px]">Otkaži</Button>
+                  <Button onClick={handleCreateSalon} disabled={creating} className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium min-h-[48px]" data-testid="submit-create-salon">
+                    {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                    Kreiraj
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

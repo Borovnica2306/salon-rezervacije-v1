@@ -109,6 +109,98 @@ async def update_tenant_name(tenant_id: str, body: dict, user: dict = Depends(ge
     return {"name": name}
 
 
+@api_router.post("/super/tenants")
+async def create_tenant(body: dict, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+
+    name = body.get("name", "").strip()
+    email = body.get("email", "").strip().lower()
+    password = body.get("password", "").strip()
+    country = body.get("country", "RS").upper()
+    city = body.get("city", "").strip()
+
+    if not name or not email or not password:
+        raise HTTPException(status_code=400, detail="Name, email and password are required")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    # Generate slug from name
+    import re
+    slug = name.lower().strip()
+    slug = slug.replace("š", "s").replace("č", "c").replace("ć", "c").replace("ž", "z").replace("đ", "dj")
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    slug = re.sub(r'[\s]+', '-', slug).strip('-')
+
+    # Ensure slug is unique
+    existing_slug = await db.tenants.find_one({"slug": slug})
+    if existing_slug:
+        slug = f"{slug}-{str(ObjectId())[:6]}"
+
+    # Ensure email is unique
+    existing_user = await db.users.find_one({"email": email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail=f"User with email {email} already exists")
+
+    # Generate tenant_id
+    tenant_id = f"tenant_{slug.replace('-', '_')[:20]}_{str(ObjectId())[:6]}"
+
+    # Create tenant
+    await db.tenants.insert_one({
+        "tenant_id": tenant_id,
+        "slug": slug,
+        "name": name,
+        "owner_email": email,
+        "country": country,
+        "city": city,
+        "enabled_features": {
+            "viber_notifications": True,
+            "ips_qr_payment": True,
+            "manual_booking": True,
+            "email_notifications": True,
+            "lazy_cancel": True,
+        },
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    # Create admin user for this tenant
+    await db.users.insert_one({
+        "email": email,
+        "password_hash": hash_password(password),
+        "name": name,
+        "role": "admin",
+        "tenant_id": tenant_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    # Seed default settings
+    await db.settings.insert_one({
+        "type": "salon",
+        "tenant_id": tenant_id,
+        "salon_name": name,
+        "work_start": "09:00",
+        "work_end": "21:00",
+        "advance_instructions": "",
+    })
+
+    # Seed categories
+    from database import MASTER_CATEGORIES
+    await db.categories_config.insert_many(
+        [{"category": k, "enabled": True, "tenant_id": tenant_id} for k in MASTER_CATEGORIES]
+    )
+
+    logger.info(f"New tenant created: {slug} ({tenant_id}) by super admin")
+
+    return {
+        "tenant_id": tenant_id,
+        "slug": slug,
+        "name": name,
+        "country": country,
+        "city": city,
+        "admin_email": email,
+    }
+
+
 # ================== CATEGORIES CONFIG ENDPOINTS ==================
 
 @api_router.get("/categories")

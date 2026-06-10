@@ -1,0 +1,102 @@
+{
+  "summary": "Tested new Super Admin 'Saloni' tab and POST /api/super/tenants endpoint. 12/13 backend tests passed, all frontend flows passed including create salon, data isolation, new admin login at new slug, validation, and regular admin access control. Found 1 edge-case bug: tenant_id collision when two salons created with same name within seconds.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/super/tenants",
+        "issue": "tenant_id generation can collide and return 500 (DuplicateKeyError). When two tenants are created with the same name within ~16 seconds, both produce identical tenant_id like 'tenant_test_salon_kragujeva_6a2982' because str(ObjectId())[:6] only uses ObjectId timestamp bytes. Recommendation: use uuid4().hex[:8] or full ObjectId for the suffix instead of slicing ObjectId's timestamp portion.",
+        "priority": "LOW"
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "AdminDashboard - Super Admin > Saloni",
+        "issues": [
+          "Salon row text concatenates 'Bor' (city) and 'bornaja23@gmail.com' (email) without separator on small spaces – rendered as 'Borbornaja23@gmail.com'. The city and owner_email need clearer spacing/line-break. Inspect lines 2271-2272 of AdminDashboard.jsx."
+        ]
+      }
+    ],
+    "console_warnings": [
+      "React warning on AdminLogin: 'Cannot update a component (BrowserRouter) while rendering a different component (AdminLogin)' – non-blocking but indicates a navigate() called during render. Should be moved into useEffect."
+    ]
+  },
+
+  "passed_tests": [
+    "Backend: POST /api/super/tenants requires auth (401/403 without token)",
+    "Backend: Salon admin gets 403 on POST /api/super/tenants",
+    "Backend: Validation - empty name/email/password returns 400",
+    "Backend: Validation - password < 6 chars returns 400",
+    "Backend: Create salon with name='TEST Salon Kragujevac' produces slug='test-salon-kragujevac' and admin_email/tenant_id returned",
+    "Backend: GET /api/super/tenants includes both primary and new tenant",
+    "Backend: Primary tenant (beauty-studio-bor) data unchanged after new tenant creation (data isolation)",
+    "Backend: New tenant resolvable via GET /api/tenants/by-slug/{slug} with default features enabled",
+    "Backend: New admin (kragujevac@test.com) can login and gets distinct tenant_id",
+    "Backend: Duplicate email rejected with 400",
+    "Backend: New tenant has empty workers list (no leakage from primary)",
+    "Frontend: Super admin login at /beauty-studio-bor/admin succeeds",
+    "Frontend: Sidebar 'Super Admin' navigates to SystemConfigPage",
+    "Frontend: 'Saloni' tab shows existing 'Beauty Studio Bor' salon with /beauty-studio-bor slug",
+    "Frontend: 'Dodaj novi salon' opens modal with all 5 fields (name, email, password, country, city)",
+    "Frontend: Empty submit shows 'Sva polja su obavezna' toast",
+    "Frontend: Created 'UI Test Salon Nis 5331' - modal closes, list updates to 2 salons (primary + new)",
+    "Frontend: Feature Flags tab shows 2 tenant cards after creation",
+    "Frontend: Kategorije tab still works (7 categories)",
+    "Frontend: Newly created admin can login at /{new-slug}/admin and reaches dashboard",
+    "Frontend: Regular salon admin (admin@salon.com) does NOT see Super Admin nav item"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_super_tenant_create.py",
+    "/app/test_reports/pytest/pytest_super_tenant.xml"
+  ],
+
+  "action_items": [
+    "(LOW) Fix tenant_id generation in routes.py line 146 to avoid 6-char ObjectId timestamp collision. Suggest: tenant_id = f'tenant_{slug.replace(\"-\",\"_\")[:20]}_{uuid.uuid4().hex[:8]}'",
+    "(LOW) Fix salon row layout (AdminDashboard.jsx line 2271-2272) so city and owner_email don't visually concatenate – add explicit spacing or break.",
+    "(LOW) Fix React setState-in-render warning in AdminLogin – wrap navigate() in useEffect."
+  ],
+
+  "critical_code_review_comments": [
+    "routes.py:146 - tenant_id uses str(ObjectId())[:6] which is the timestamp portion. Two creations within ~16s with same name prefix WILL collide (verified by test_12 returning 500 DuplicateKeyError). Use uuid4 or full ObjectId.",
+    "routes.py:131-138 - Slug generation correctly handles Serbian diacritics and ensures uniqueness via DB lookup. Good.",
+    "routes.py:148-190 - Tenant creation is properly isolated: separate tenants/users/settings/categories_config documents tagged with new tenant_id. Verified no leakage to primary.",
+    "AdminDashboard.jsx:2130-2146 - handleCreateSalon validates required fields client-side and shows server errors via toast. Good UX.",
+    "AdminDashboard.jsx:2079-2089 - SystemConfigPage uses Promise.all for parallel fetches and 'use effect with empty deps'. headers built from useAuth+useTenant – clean.",
+    "Backend: New tenant creation is not transactional. If categories_config.insert_many fails after tenant insert, partial state remains. Consider try/except with rollback for production."
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_super_tenant_create.py"
+  ],
+
+  "success_rate": {
+    "backend": "92% (12/13 pytest tests passed - 1 edge case failure exposed real bug)",
+    "frontend": "100% (all 15 UI test steps passed)"
+  },
+
+  "test_credentials": {
+    "super_admin": "bornaja23@gmail.com / Markonijus23!",
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+
+  "seed_data_creation": "Created and cleaned up test tenants: 'test-salon-kragujevac' (backend test), 'ui-test-salon-nis-5331' (UI test). All test users/settings/categories removed. Primary tenant 'beauty-studio-bor' verified intact.",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "All Saloni-tab features (create, list, validation, isolation, new-admin-login) work correctly end-to-end. Only issue is a tenant_id collision edge case: if two salons share the same first 20 chars of slug AND are created within ~16 seconds of each other, the second POST returns 500. Bug is in /app/backend/routes.py line 146. Frontend has minor: small layout/spacing issue in salon row (lines 2271-2272 of AdminDashboard.jsx) where 'city · owner_email' visually run together. Also a benign React setState-in-render warning in AdminLogin.",
+
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+
+  "rca_of_the_issue": "Bug: POST /api/super/tenants 500 on rapid duplicate-name creation. Root cause: routes.py:146 generates tenant_id = f'tenant_{slug.replace(\"-\",\"_\")[:20]}_{str(ObjectId())[:6]}'. The first 6 hex chars of an ObjectId encode the creation timestamp in seconds. Two ObjectIds generated within the same second share the same first 6 hex chars. Combined with truncated slug prefix [:20] being identical for same-name salons, the resulting tenant_id collides with the unique index 'tenant_id_1' on the tenants collection, throwing DuplicateKeyError that surfaces as 500. Reproduction: POST same name twice within 16s. Mitigation: replace str(ObjectId())[:6] with uuid.uuid4().hex[:8] or use the full str(ObjectId()) for the suffix."
+}
