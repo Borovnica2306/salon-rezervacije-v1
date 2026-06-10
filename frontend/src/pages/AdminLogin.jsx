@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth, useTenant } from "../App";
@@ -15,10 +15,13 @@ const AdminLogin = () => {
   const { login, user } = useAuth();
   const tenant = useTenant();
 
-  if (user) {
-    navigate(`/${slug}/admin`, { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate(`/${slug}/admin`, { replace: true });
+    }
+  }, [user, slug, navigate]);
+
+  if (user) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

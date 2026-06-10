@@ -2269,7 +2269,7 @@ const SystemConfigPage = () => {
               <div>
                 <h3 className="font-medium text-white">{t.name}</h3>
                 <p className="text-xs text-[#6B7280] font-mono mt-0.5">/{t.slug} · {t.country || "RS"}{t.city ? ` · ${t.city}` : ""}</p>
-                <p className="text-xs text-[#9CA3AF] mt-0.5">{t.owner_email}</p>
+                {t.owner_email && <p className="text-xs text-[#9CA3AF] mt-1">{t.owner_email}</p>}
               </div>
               <span className="text-xs px-2 py-1 rounded-full bg-green-600/20 text-green-400">Aktivan</span>
             </div>

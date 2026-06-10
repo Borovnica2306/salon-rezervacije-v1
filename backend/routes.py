@@ -143,7 +143,8 @@ async def create_tenant(body: dict, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=f"User with email {email} already exists")
 
     # Generate tenant_id
-    tenant_id = f"tenant_{slug.replace('-', '_')[:20]}_{str(ObjectId())[:6]}"
+    import uuid
+    tenant_id = f"tenant_{slug.replace('-', '_')[:20]}_{uuid.uuid4().hex[:8]}"
 
     # Create tenant
     await db.tenants.insert_one({

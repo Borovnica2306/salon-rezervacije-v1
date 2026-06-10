@@ -1,7 +1,7 @@
 # Beauty Salon Booking App - PRD
 
 ## Originalni Problem Statement
-Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, neograničen broj salona. God Mode za Super Admina.
+Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, neogranicen broj salona. God Mode za Super Admina.
 
 ## Architecture
 ```
@@ -17,7 +17,10 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 
 /app/frontend/src/
 ├── App.js           # TenantProvider, slug routing, AuthProvider
+├── components/
+│   └── PhoneInput.jsx  # Global country prefix + phone validator
 └── pages/
+    ├── LandingPage.jsx      # / - Hero & Country selector
     ├── BookingPage.jsx      # /:slug - tenant-aware booking
     ├── AdminLogin.jsx       # /:slug/admin/login
     └── AdminDashboard.jsx   # /:slug/admin/* - tenant-aware admin
@@ -40,8 +43,14 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 - [x] Daily Timeline Grid, Manual Booking, Archive
 - [x] Mobile optimized (touch targets, sticky columns)
 - [x] Viber/WhatsApp direct chat links
-- [x] **MULTITENANT** - Slug routing, data isolation, feature flags, God Mode
+- [x] MULTITENANT - Slug routing, data isolation, feature flags, God Mode
+- [x] Global Landing Page with Country selection
+- [x] Super Admin Panel: Feature Flags, Kategorije, Saloni (Tenant Creation)
+- [x] Salon Name edit restricted to Super Admin (immutable slug)
+- [x] PhoneInput with Country Prefix + Email validation
+- [x] CSV Export for Super Admin
 
 ## Backlog
-- Super Admin UI for tenant/feature management (currently API-only)
-- P3: Drag & drop on timeline grid
+- P3: Drag & drop on timeline grid for rescheduling
+- P3: Refactor AdminDashboard.jsx (>2200 lines) into sub-components
+- P3: Refactor routes.py (>1200 lines) into domain modules
