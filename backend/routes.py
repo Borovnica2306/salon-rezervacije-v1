@@ -260,12 +260,20 @@ async def login(request: LoginRequest, response: Response):
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
 
+    # Resolve slug for smart redirect
+    slug = ""
+    if tenant_id:
+        tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"slug": 1})
+        if tenant:
+            slug = tenant["slug"]
+
     return {
         "id": user_id,
         "email": user["email"],
         "name": user["name"],
         "role": role,
         "tenant_id": tenant_id,
+        "slug": slug,
         "access_token": access_token
     }
 
@@ -279,6 +287,12 @@ async def logout(response: Response):
 
 @api_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
+    # Add slug for frontend redirect
+    tenant_id = user.get("tenant_id", "")
+    if tenant_id and not user.get("slug"):
+        tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"slug": 1})
+        if tenant:
+            user["slug"] = tenant["slug"]
     return user
 
 

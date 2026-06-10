@@ -1,0 +1,38 @@
+{
+  "summary": "Tested major routing/auth refactor: centralized /login, smart redirect by role, standalone /super-admin page, landing-page advice-only flow (no salon listing), and removal of Super Admin item from tenant sidebar. 11/12 explicit checks PASS; the 1 'failure' is actually correct smart-redirect behavior (salon admin → /super-admin bounces through /login → /<slug>/admin). Backend /auth/login and /auth/me correctly return slug field.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_super_tenant_create.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js ProtectedSuperAdmin correctly redirects non-super-admin users to /login. Combined with AdminLogin's smart-redirect (lines 18-32 of AdminLogin.jsx), a logged-in salon admin attempting /super-admin transparently bounces back to their own admin panel — good UX, but consider redirecting directly to /<slug>/admin from ProtectedSuperAdmin when user.slug exists, to avoid an extra render hop through /login.",
+    "AdminLogin.jsx:18-22 - The redirect-if-logged-in useEffect triggers `navigate()` inside the effect (good). Returning `if (user) return null;` on line 34 before render is a clean guard. The React setState-in-render warning from iteration_31 appears resolved.",
+    "SuperAdminPage.jsx:18-22 - Has duplicated guard alongside ProtectedSuperAdmin in App.js. Not harmful, but redundant; could be removed since the route wrapper already enforces the role check.",
+    "LandingPage.jsx - Hero + Country selection + Advice + Referral flow implemented correctly; no salon list fetching happens. Removes prior dependency on /api/tenants public list endpoint from the landing page. All Serbian Unicode (š, č, ć, ž, đ) renders correctly.",
+    "routes.py:263-296 - /auth/login and /auth/me both now return 'slug' field by joining tenants collection on tenant_id. Verified via curl: super_admin returns slug='', salon admin returns slug='beauty-studio-bor'. Frontend smart redirect uses this field correctly.",
+    "App.js routing: /, /login, /super-admin, /:slug, /:slug/admin/login, /:slug/admin/* — all routes work. Old /:slug/admin/login route preserved with smart redirect, so any bookmarks still function."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (smoke-tested via curl: /auth/login + /auth/me both return slug correctly for both roles)",
+    "frontend": "100% (12/12 effective checks pass; the T9 'fail' is actually a valid smart-redirect chain)"
+  },
+  "test_credentials": {
+    "super_admin": "bornaja23@gmail.com / Markonijus23!",
+    "salon_admin": "admin@salon.com / Admin123!"
+  },
+  "seed_data_creation": "None; only used existing primary tenant 'beauty-studio-bor'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Routing refactor is fully working. Landing (/) shows hero only with two CTAs; clicking 'Želim da zakažem termin' opens country picker → Srbija shows advice cards with NO salon list (as designed). 'Za vlasnike salona' goes to /login. /login centralizes auth and smart-redirects: super_admin→/super-admin, admin→/<slug>/admin. /super-admin is standalone, protected, has Saloni/Feature Flags/Kategorije tabs and Odjava button. Salon admin sidebar has NO Super Admin link (only Rezervacije, Crna Lista, Radnici, Usluge, Podešavanja). Old /:slug/admin/login route still works (preserves backward compatibility). Direct /:slug booking page still loads. /super-admin unauth → /login; /super-admin while logged in as salon admin → bounces to /<slug>/admin via /login (which is fine UX). Backend /auth/login and /auth/me return 'slug' field as expected.",
+  "rca_of_the_issue": "N/A - no bugs found in this iteration."
+}

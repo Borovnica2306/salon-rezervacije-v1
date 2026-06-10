@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useAuth, useTenant } from "../App";
+import { useAuth } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Mail, Lock, Scissors } from "lucide-react";
+import { Mail, Lock, Scissors, ChevronRight } from "lucide-react";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -13,13 +13,23 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const { slug } = useParams();
   const { login, user } = useAuth();
-  const tenant = useTenant();
 
+  // Smart redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate(`/${slug}/admin`, { replace: true });
+      redirectUser(user);
     }
-  }, [user, slug, navigate]);
+  }, [user]);
+
+  const redirectUser = (userData) => {
+    if (userData.role === "super_admin") {
+      navigate("/super-admin", { replace: true });
+    } else if (userData.slug || slug) {
+      navigate(`/${userData.slug || slug}/admin`, { replace: true });
+    } else {
+      navigate("/", { replace: true });
+    }
+  };
 
   if (user) return null;
 
@@ -32,9 +42,9 @@ const AdminLogin = () => {
 
     setIsLoading(true);
     try {
-      await login(email, password);
+      const data = await login(email, password);
       toast.success("Uspešna prijava!");
-      navigate(`/${slug}/admin`);
+      redirectUser(data);
     } catch (error) {
       const detail = error.response?.data?.detail;
       let message = "Greška pri prijavi";
@@ -56,8 +66,8 @@ const AdminLogin = () => {
           <div className="w-16 h-16 rounded-2xl bg-[#C5A880]/20 flex items-center justify-center mx-auto mb-4">
             <Scissors className="w-8 h-8 text-[#C5A880]" />
           </div>
-          <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Admin Panel</h1>
-          <p className="text-[#9CA3AF]">Prijavite se za pristup dashboardu</p>
+          <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Prijava</h1>
+          <p className="text-[#9CA3AF]">{"Unesite kredencijale za pristup vašem panelu"}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 animate-slide-up">
@@ -70,7 +80,7 @@ const AdminLogin = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@salon.com"
+                  placeholder="vas@email.com"
                   className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] h-14"
                   data-testid="login-email-input"
                 />
@@ -85,7 +95,7 @@ const AdminLogin = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="********"
                   className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] h-14"
                   data-testid="login-password-input"
                 />
@@ -104,8 +114,9 @@ const AdminLogin = () => {
         </form>
 
         <p className="text-center mt-6 text-sm text-[#9CA3AF]">
-          <a href="/" className="hover:text-[#C5A880] transition-colors" data-testid="back-to-booking-link">
-            ← Nazad na rezervacije
+          <a href="/" className="hover:text-[#C5A880] transition-colors flex items-center justify-center gap-1" data-testid="back-to-home-link">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            {"Nazad na početnu"}
           </a>
         </p>
       </div>

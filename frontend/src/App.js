@@ -7,6 +7,7 @@ const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const SuperAdminPage = lazy(() => import("./pages/SuperAdminPage"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -141,8 +142,18 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to={`/${slug}/admin/login`} replace />;
+    return <Navigate to="/login" replace />;
   }
+
+  return children;
+};
+
+const ProtectedSuperAdmin = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "super_admin") return <Navigate to="/login" replace />;
 
   return children;
 };
@@ -165,10 +176,17 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/admin" element={<Navigate to="/beauty-studio-bor/admin" replace />} />
-              <Route path="/admin/*" element={<Navigate to="/beauty-studio-bor/admin" replace />} />
+              <Route path="/login" element={<AdminLogin />} />
+              <Route
+                path="/super-admin"
+                element={
+                  <ProtectedSuperAdmin>
+                    <SuperAdminPage />
+                  </ProtectedSuperAdmin>
+                }
+              />
               <Route path="/:slug" element={<TenantProvider><BookingPage /></TenantProvider>} />
-              <Route path="/:slug/admin/login" element={<TenantProvider><AdminLogin /></TenantProvider>} />
+              <Route path="/:slug/admin/login" element={<AdminLogin />} />
               <Route
                 path="/:slug/admin/*"
                 element={
