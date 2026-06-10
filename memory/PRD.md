@@ -16,23 +16,36 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 └── mail_service.py  # Async SMTP email
 
 /app/frontend/src/
-├── App.js           # TenantProvider, slug routing, AuthProvider
+├── App.js           # AuthProvider, routing (/, /login, /super-admin, /:slug, /:slug/admin/*)
 ├── components/
 │   └── PhoneInput.jsx  # Global country prefix + phone validator
 └── pages/
-    ├── LandingPage.jsx      # / - Hero & Country selector
+    ├── LandingPage.jsx      # / - Hero, Country selection, Advice & Referral
+    ├── AdminLogin.jsx       # /login - Centralized login with smart redirect
+    ├── SuperAdminPage.jsx   # /super-admin - Standalone Super Admin panel
     ├── BookingPage.jsx      # /:slug - tenant-aware booking
-    ├── AdminLogin.jsx       # /:slug/admin/login
-    └── AdminDashboard.jsx   # /:slug/admin/* - tenant-aware admin
+    └── AdminDashboard.jsx   # /:slug/admin/* - tenant admin panel
 ```
 
+## Routing Architecture
+- `/` → Landing Page (Hero → Country Selection → Advice/Referral)
+- `/login` → Centralized login (smart redirect: super_admin→/super-admin, admin→/<slug>/admin)
+- `/super-admin` → Protected standalone Super Admin panel
+- `/:slug` → Client booking page for specific salon
+- `/:slug/admin/login` → Legacy login route (backward compatible, smart redirect)
+- `/:slug/admin/*` → Tenant admin dashboard
+
+## Auth Flow
+- Login returns `slug` field alongside `role` and `tenant_id`
+- Super Admin → redirected to `/super-admin` (standalone page)
+- Salon Admin → redirected to `/<slug>/admin` based on their tenant's slug
+- `/auth/me` also returns `slug` for session restoration
+
 ## Multitenant System
-- **Tenant ID**: `tenant_bsb_001` (Primary: Beauty Studio Bor)
-- **Slug routing**: `/:slug` for client, `/:slug/admin` for admin
-- **Data isolation**: `tenant_id` field on ALL documents (services, workers, reservations, settings, blacklist, categories)
-- **Auth**: JWT includes `tenant_id` + `role`, admin restricted to own tenant
-- **Super Admin**: `bornaja23@gmail.com` - can access all tenants, manage feature flags
-- **Feature Flags**: `enabled_features` per tenant (viber_notifications, ips_qr_payment, manual_booking, email_notifications, lazy_cancel)
+- **Primary Tenant**: Beauty Studio Bor (slug: beauty-studio-bor, id: tenant_bsb_001)
+- **Data isolation**: `tenant_id` field on ALL documents
+- **Super Admin**: bornaja23@gmail.com - manages all tenants via /super-admin
+- **Feature Flags**: per tenant (viber, ips_qr, manual_booking, email, lazy_cancel)
 
 ## All Completed Features
 - [x] Multi-step booking wizard, Smart Pairing, Anti-Conflict
@@ -44,13 +57,15 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 - [x] Mobile optimized (touch targets, sticky columns)
 - [x] Viber/WhatsApp direct chat links
 - [x] MULTITENANT - Slug routing, data isolation, feature flags, God Mode
-- [x] Global Landing Page with Country selection
-- [x] Super Admin Panel: Feature Flags, Kategorije, Saloni (Tenant Creation)
+- [x] Global Landing Page with Country selection → Advice + Referral (no salon listing)
+- [x] Centralized Login (/login) with smart redirect by role
+- [x] Standalone Super Admin Panel (/super-admin) - Saloni, Feature Flags, Kategorije
 - [x] Salon Name edit restricted to Super Admin (immutable slug)
 - [x] PhoneInput with Country Prefix + Email validation
 - [x] CSV Export for Super Admin
+- [x] Tenant Creation via Super Admin Panel with auto-slug generation
 
 ## Backlog
 - P3: Drag & drop on timeline grid for rescheduling
-- P3: Refactor AdminDashboard.jsx (>2200 lines) into sub-components
-- P3: Refactor routes.py (>1200 lines) into domain modules
+- P3: Refactor AdminDashboard.jsx (~2066 lines) into sub-components
+- P3: Refactor routes.py (~1290 lines) into domain modules
