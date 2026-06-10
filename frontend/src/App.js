@@ -8,6 +8,7 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const SuperAdminPage = lazy(() => import("./pages/SuperAdminPage"));
+const SalonGodMode = lazy(() => import("./pages/SalonGodMode"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -182,6 +183,14 @@ function App() {
                 element={
                   <ProtectedSuperAdmin>
                     <SuperAdminPage />
+                  </ProtectedSuperAdmin>
+                }
+              />
+              <Route
+                path="/super-admin/salon/:slug"
+                element={
+                  <ProtectedSuperAdmin>
+                    <SalonGodMode />
                   </ProtectedSuperAdmin>
                 }
               />

@@ -6,10 +6,9 @@ import { API, useAuth } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
-  Shield, Scissors, Building2, Plus, LogOut, Loader2,
+  Shield, Building2, Plus, LogOut, Loader2,
   ChevronRight, Search
 } from "lucide-react";
-import { Switch } from "../components/ui/switch";
 
 const SuperAdminPage = () => {
   const { user, logout } = useAuth();
@@ -51,24 +50,18 @@ const SuperAdminPage = () => {
 
       {/* Content */}
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <SystemConfigPanel />
+        <SalonListPanel />
       </main>
     </div>
   );
 };
 
-// Self-contained System Config Panel
-const SystemConfigPanel = () => {
-  const { user } = useAuth();
-  const [categories, setCategories] = useState([]);
+const SalonListPanel = () => {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("salons");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newSalon, setNewSalon] = useState({ name: "", email: "", password: "", country: "RS", city: "" });
-
-  // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
 
@@ -76,23 +69,8 @@ const SystemConfigPanel = () => {
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
-    Promise.all([fetchConfig(), fetchTenants()]).finally(() => setLoading(false));
+    fetchTenants().finally(() => setLoading(false));
   }, []);
-
-  const fetchConfig = async () => {
-    try {
-      const tenantsRes = await axios.get(`${API}/super/tenants`, { headers });
-      const first = tenantsRes.data[0];
-      if (first) {
-        const res = await axios.get(`${API}/categories/config`, {
-          headers: { ...headers, "X-Tenant-ID": first.tenant_id }
-        });
-        setCategories(res.data);
-      }
-    } catch (error) {
-      console.error("Error fetching categories config:", error);
-    }
-  };
 
   const fetchTenants = async () => {
     try {
@@ -100,31 +78,6 @@ const SystemConfigPanel = () => {
       setTenants(res.data);
     } catch (error) {
       console.error("Error fetching tenants:", error);
-    }
-  };
-
-  const handleCategoryToggle = async (key, currentEnabled) => {
-    const first = tenants[0];
-    if (!first) return;
-    try {
-      await axios.put(`${API}/categories/config`, { category: key, enabled: !currentEnabled }, {
-        headers: { ...headers, "X-Tenant-ID": first.tenant_id }
-      });
-      setCategories(prev => prev.map(c => c.key === key ? { ...c, enabled: !currentEnabled } : c));
-      toast.success(`${categories.find(c => c.key === key)?.label} — ${!currentEnabled ? "uključeno" : "isključeno"}`);
-    } catch (error) {
-      toast.error("Greška pri promeni konfiguracije");
-    }
-  };
-
-  const handleFeatureToggle = async (tenantId, featureKey, currentValue, tenantFeatures) => {
-    const updated = { ...tenantFeatures, [featureKey]: !currentValue };
-    try {
-      await axios.put(`${API}/super/tenants/${tenantId}/features`, updated, { headers });
-      setTenants(prev => prev.map(t => t.tenant_id === tenantId ? { ...t, enabled_features: updated } : t));
-      toast.success(`${featureKey}: ${!currentValue ? "ON" : "OFF"}`);
-    } catch (error) {
-      toast.error("Greška");
     }
   };
 
@@ -153,15 +106,6 @@ const SystemConfigPanel = () => {
     { code: "CH", name: "Švajcarska" },
   ];
 
-  const FEATURE_LABELS = {
-    viber_notifications: "Viber/WhatsApp Notifikacije",
-    ips_qr_payment: "IPS QR Plaćanje",
-    manual_booking: "Manual Booking (Admin)",
-    email_notifications: "Email Notifikacije",
-    lazy_cancel: "Auto-otkazivanje (Lazy Cancel)",
-  };
-
-  // Filtered tenants for Saloni tab
   const filteredTenants = useMemo(() => {
     let result = tenants;
     if (searchQuery.trim()) {
@@ -187,69 +131,54 @@ const SystemConfigPanel = () => {
     );
   }
 
-  const enabledCount = categories.filter(c => c.enabled).length;
-
   return (
-    <div className="animate-fade-in" data-testid="system-config-page">
+    <div className="animate-fade-in" data-testid="salon-list-panel">
       <div className="mb-8">
-        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">{"Upravljanje Platformom"}</h2>
-        <p className="text-[#9CA3AF]">{"Tenanti, feature flagovi i kategorije."}</p>
+        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">{"Upravljanje Salonima"}</h2>
+        <p className="text-[#9CA3AF]">{"Pregled, pretraga i upravljanje salonima na platformi."}</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-[#141416] rounded-lg p-1 w-fit border border-[#2A2A2D]">
-        <button onClick={() => setActiveTab("salons")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "salons" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-salons">
-          <Building2 className="w-4 h-4 inline mr-1.5" />Saloni
-        </button>
-        <button onClick={() => setActiveTab("features")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "features" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-features">
-          <Shield className="w-4 h-4 inline mr-1.5" />Feature Flags
-        </button>
-        <button onClick={() => setActiveTab("categories")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "categories" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-categories">
-          <Scissors className="w-4 h-4 inline mr-1.5" />Kategorije
-        </button>
+      {/* Top row */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm text-[#9CA3AF]">
+          {filteredTenants.length === tenants.length
+            ? `${tenants.length} registrovanih salona`
+            : `${filteredTenants.length} od ${tenants.length} salona`
+          }
+        </span>
+        <Button onClick={() => setShowCreateModal(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium" data-testid="create-salon-btn">
+          <Plus className="w-4 h-4 mr-1" /> {"Dodaj novi salon"}
+        </Button>
       </div>
 
-      {/* Saloni Tab */}
-      {activeTab === "salons" && (
-        <div className="space-y-4">
-          {/* Top row: count + create button */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[#9CA3AF]">
-              {filteredTenants.length === tenants.length
-                ? `${tenants.length} registrovanih salona`
-                : `${filteredTenants.length} od ${tenants.length} salona`
-              }
-            </span>
-            <Button onClick={() => setShowCreateModal(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium" data-testid="create-salon-btn">
-              <Plus className="w-4 h-4 mr-1" /> {"Dodaj novi salon"}
-            </Button>
-          </div>
+      {/* Search & Filter */}
+      <div className="flex gap-3 items-center mb-4" data-testid="salon-filters">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B7280]" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={"Pretraži salone..."}
+            className="pl-10 bg-[#141416] border-[#2A2A2D] h-11 text-sm"
+            data-testid="salon-search-input"
+          />
+        </div>
+        <select
+          value={countryFilter}
+          onChange={e => setCountryFilter(e.target.value)}
+          className="bg-[#141416] border border-[#2A2A2D] rounded-lg px-3 text-white h-11 text-sm min-w-[140px]"
+          data-testid="salon-country-filter"
+        >
+          <option value="">{"Sve zemlje"}</option>
+          {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
+      </div>
 
-          {/* Search & Filter row */}
-          <div className="flex gap-3 items-center" data-testid="salon-filters">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B7280]" />
-              <Input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={"Pretraži salone..."}
-                className="pl-10 bg-[#141416] border-[#2A2A2D] h-11 text-sm"
-                data-testid="salon-search-input"
-              />
-            </div>
-            <select
-              value={countryFilter}
-              onChange={e => setCountryFilter(e.target.value)}
-              className="bg-[#141416] border border-[#2A2A2D] rounded-lg px-3 text-white h-11 text-sm min-w-[140px]"
-              data-testid="salon-country-filter"
-            >
-              <option value="">{"Sve zemlje"}</option>
-              {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-            </select>
-          </div>
-
-          {/* Salon list */}
-          {filteredTenants.map((t) => (
+      {/* Salon list */}
+      <div className="space-y-3">
+        {filteredTenants.map((t) => {
+          const isActive = (t.status || "active") === "active";
+          return (
             <div key={t.tenant_id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-4 flex items-center justify-between group hover:border-[#C5A880]/30 transition-colors" data-testid={`salon-row-${t.tenant_id}`}>
               <div className="min-w-0 flex-1">
                 <h3 className="font-medium text-white">{t.name}</h3>
@@ -258,131 +187,69 @@ const SystemConfigPanel = () => {
               </div>
               <div className="flex items-center gap-3">
                 <a
-                  href={`/${t.slug}/admin`}
+                  href={`/super-admin/salon/${t.slug}`}
                   className="text-xs text-[#C5A880] hover:underline flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#C5A880]/30 hover:bg-[#C5A880]/10 transition-colors"
                   data-testid={`salon-link-${t.tenant_id}`}
                 >
                   Panel <ChevronRight className="w-3 h-3" />
                 </a>
-                <span className="text-xs px-2 py-1 rounded-full bg-green-600/20 text-green-400">Aktivan</span>
+                <span className={`text-xs px-2 py-1 rounded-full ${isActive ? "bg-green-600/20 text-green-400" : "bg-red-600/20 text-red-400"}`}>
+                  {isActive ? "Aktivan" : "Suspendovan"}
+                </span>
               </div>
             </div>
-          ))}
+          );
+        })}
 
-          {filteredTenants.length === 0 && tenants.length > 0 && (
-            <div className="text-center py-12 text-[#6B7280] bg-[#141416] rounded-xl border border-[#2A2A2D]">
-              {"Nema rezultata za zadati filter."}
+        {filteredTenants.length === 0 && tenants.length > 0 && (
+          <div className="text-center py-12 text-[#6B7280] bg-[#141416] rounded-xl border border-[#2A2A2D]">
+            {"Nema rezultata za zadati filter."}
+          </div>
+        )}
+
+        {tenants.length === 0 && (
+          <div className="text-center py-12 text-[#9CA3AF] bg-[#141416] rounded-xl border border-[#2A2A2D]">{"Nema registrovanih salona."}</div>
+        )}
+      </div>
+
+      {/* Create Salon Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
+          <div className="bg-[#141416] border border-[#2A2A2D] rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()} data-testid="create-salon-modal">
+            <h3 className="text-lg font-medium">Novi Salon</h3>
+            <div>
+              <label className="text-sm text-[#9CA3AF] mb-1 block">Naziv salona</label>
+              <Input value={newSalon.name} onChange={e => setNewSalon({...newSalon, name: e.target.value})} placeholder="Beauty Studio Novi Sad" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-name" />
             </div>
-          )}
-
-          {tenants.length === 0 && (
-            <div className="text-center py-12 text-[#9CA3AF] bg-[#141416] rounded-xl border border-[#2A2A2D]">{"Nema registrovanih salona."}</div>
-          )}
-
-          {/* Create Salon Modal */}
-          {showCreateModal && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
-              <div className="bg-[#141416] border border-[#2A2A2D] rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()} data-testid="create-salon-modal">
-                <h3 className="text-lg font-medium">Novi Salon</h3>
-                <div>
-                  <label className="text-sm text-[#9CA3AF] mb-1 block">Naziv salona</label>
-                  <Input value={newSalon.name} onChange={e => setNewSalon({...newSalon, name: e.target.value})} placeholder="Beauty Studio Novi Sad" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-name" />
-                </div>
-                <div>
-                  <label className="text-sm text-[#9CA3AF] mb-1 block">Email vlasnika (admin login)</label>
-                  <Input type="email" value={newSalon.email} onChange={e => setNewSalon({...newSalon, email: e.target.value})} placeholder="vlasnik@salon.com" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-email" />
-                </div>
-                <div>
-                  <label className="text-sm text-[#9CA3AF] mb-1 block">Lozinka</label>
-                  <Input type="password" value={newSalon.password} onChange={e => setNewSalon({...newSalon, password: e.target.value})} placeholder="Minimum 6 karaktera" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-password" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm text-[#9CA3AF] mb-1 block">{"Država"}</label>
-                    <select value={newSalon.country} onChange={e => setNewSalon({...newSalon, country: e.target.value})} className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 text-white min-h-[48px] text-sm" data-testid="new-salon-country">
-                      {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#9CA3AF] mb-1 block">Grad</label>
-                    <Input value={newSalon.city} onChange={e => setNewSalon({...newSalon, city: e.target.value})} placeholder="Novi Sad" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-city" />
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1 border-[#2A2A2D] min-h-[48px]">{"Otkaži"}</Button>
-                  <Button onClick={handleCreateSalon} disabled={creating} className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium min-h-[48px]" data-testid="submit-create-salon">
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-                    Kreiraj
-                  </Button>
-                </div>
+            <div>
+              <label className="text-sm text-[#9CA3AF] mb-1 block">Email vlasnika (admin login)</label>
+              <Input type="email" value={newSalon.email} onChange={e => setNewSalon({...newSalon, email: e.target.value})} placeholder="vlasnik@salon.com" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-email" />
+            </div>
+            <div>
+              <label className="text-sm text-[#9CA3AF] mb-1 block">Lozinka</label>
+              <Input type="password" value={newSalon.password} onChange={e => setNewSalon({...newSalon, password: e.target.value})} placeholder="Minimum 6 karaktera" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-password" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-1 block">{"Država"}</label>
+                <select value={newSalon.country} onChange={e => setNewSalon({...newSalon, country: e.target.value})} className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 text-white min-h-[48px] text-sm" data-testid="new-salon-country">
+                  {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-1 block">Grad</label>
+                <Input value={newSalon.city} onChange={e => setNewSalon({...newSalon, city: e.target.value})} placeholder="Novi Sad" className="bg-[#0A0A0B] border-[#2A2A2D] min-h-[48px]" data-testid="new-salon-city" />
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Feature Flags Tab */}
-      {activeTab === "features" && (
-        <div className="space-y-6">
-          {tenants.map((t) => (
-            <div key={t.tenant_id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden" data-testid={`tenant-card-${t.tenant_id}`}>
-              <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-white">{t.name}</h3>
-                  <p className="text-xs text-[#6B7280] font-mono mt-0.5">/{t.slug} · {t.tenant_id}</p>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-green-600/20 text-green-400">Aktivan</span>
-              </div>
-              <div className="divide-y divide-[#2A2A2D]">
-                {Object.entries(t.enabled_features || {}).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between p-4" data-testid={`feature-${t.tenant_id}-${key}`}>
-                    <div>
-                      <span className="text-sm text-white">{FEATURE_LABELS[key] || key}</span>
-                      <span className="ml-2 text-[10px] text-[#6B7280] font-mono">{key}</span>
-                    </div>
-                    <Switch
-                      checked={value}
-                      onCheckedChange={() => handleFeatureToggle(t.tenant_id, key, value, t.enabled_features)}
-                      className="data-[state=checked]:bg-[#C5A880]"
-                      data-testid={`feature-toggle-${t.tenant_id}-${key}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {tenants.length === 0 && (
-            <div className="text-center py-12 text-[#9CA3AF]">{"Nema registrovanih salona."}</div>
-          )}
-        </div>
-      )}
-
-      {/* Categories Tab */}
-      {activeTab === "categories" && (
-        <>
-          <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
-            <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
-              <span className="text-sm text-[#9CA3AF]">Master kategorije</span>
-              <span className="text-xs text-[#C5A880]">{enabledCount} / {categories.length} aktivno</span>
-            </div>
-            <div className="divide-y divide-[#2A2A2D]">
-              {categories.map((cat) => (
-                <div key={cat.key} className={`flex items-center justify-between p-5 transition-colors ${cat.enabled ? "" : "opacity-50"}`} data-testid={`category-row-${cat.key}`}>
-                  <div>
-                    <span className="font-medium text-base sm:text-lg">{cat.label}</span>
-                    <span className="hidden sm:inline ml-3 text-xs text-[#9CA3AF] font-mono">{cat.key}</span>
-                  </div>
-                  <Switch checked={cat.enabled} onCheckedChange={() => handleCategoryToggle(cat.key, cat.enabled)} className="data-[state=checked]:bg-[#C5A880]" data-testid={`category-toggle-${cat.key}`} />
-                </div>
-              ))}
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1 border-[#2A2A2D] min-h-[48px]">{"Otkaži"}</Button>
+              <Button onClick={handleCreateSalon} disabled={creating} className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium min-h-[48px]" data-testid="submit-create-salon">
+                {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                Kreiraj
+              </Button>
             </div>
           </div>
-          <div className="mt-6 p-4 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl">
-            <p className="text-sm text-[#9CA3AF]">
-              <strong className="text-[#C5A880]">Napomena:</strong> {"Isključivanje kategorije sakriva usluge iz javnog prikaza, ali ih ne briše iz baze podataka."}
-            </p>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

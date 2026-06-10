@@ -109,6 +109,45 @@ async def update_tenant_name(tenant_id: str, body: dict, user: dict = Depends(ge
     return {"name": name}
 
 
+@api_router.put("/super/tenants/{tenant_id}/status")
+async def update_tenant_status(tenant_id: str, body: dict, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    status = body.get("status", "").strip()
+    if status not in ("active", "suspended"):
+        raise HTTPException(status_code=400, detail="Status must be 'active' or 'suspended'")
+    await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"status": status}}
+    )
+    return {"tenant_id": tenant_id, "status": status}
+
+
+@api_router.put("/super/tenants/{tenant_id}/owner-password")
+async def update_owner_password(tenant_id: str, body: dict, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    new_password = body.get("password", "").strip()
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    owner_email = tenant.get("owner_email", "")
+    if not owner_email:
+        raise HTTPException(status_code=400, detail="Tenant has no owner email")
+    result = await db.users.update_one(
+        {"email": owner_email},
+        {"$set": {"password_hash": hash_password(new_password)}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Owner user not found")
+    return {"message": "Password updated", "email": owner_email}
+
+
 @api_router.post("/super/tenants")
 async def create_tenant(body: dict, user: dict = Depends(get_current_user)):
     if user.get("role") != "super_admin":

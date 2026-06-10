@@ -1,0 +1,66 @@
+{
+  "summary": "Tested Super Admin God Mode refactor end-to-end. Backend: 10/10 pytest tests PASS (status toggle, owner-password change, validation, data isolation for feature flags & categories, RBAC, unauthenticated 401). Frontend: 21/21 Playwright assertions PASS (login redirect, salon list with no tabs, search + country filter, Panel link to /super-admin/salon/<slug>, banner + Nazad link, 3 tabs, 5 feature flag toggles with per-salon note, category toggle with 'X / Y aktivno' count, Sistemski podaci: status toggle suspend/aktivacija, owner email display, password change form with show/hide eye toggle, route protection redirects unauth to /login). Discovered ONE CRITICAL SECURITY/DATA ISSUE - see below.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "PUT /api/super/tenants/tenant_bsb_001/owner-password",
+        "issue": "Beauty Studio Bor tenant has owner_email='bornaja23@gmail.com' which is the SUPER ADMIN's own login email. The owner-password endpoint looks up the user by email only (routes.py:142-145), so clicking 'Promeni' on the Beauty Studio Bor God Mode panel silently overwrites the super admin's own password. There is no warning in the UI, no confirmation dialog, and no protection preventing super-admin self-lockout. The endpoint correctly identifies this in its response (returns email='bornaja23@gmail.com'), but the SalonGodMode UI labels the section 'Promena lozinke vlasnika' implying it changes a salon admin's password. RECOMMENDATION: (a) seed/migrate Beauty Studio Bor to use 'admin@salon.com' as owner_email (the test_credentials.md says admin@salon.com / Admin123! is the salon admin, but that user does not own any tenant), OR (b) refuse to change password if owner has role='super_admin' (return 403 with explanation), OR (c) show explicit warning in UI when owner_email equals current super admin's email.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "PUT /api/super/tenants/{tid}/owner-password",
+        "issue": "Endpoint does .strip() on password before length check (routes.py:136-137), so a password like '12345 ' (5 chars + space) passes the >=6 check based on raw length but stored as 5 chars. Low impact but inconsistent. Also the original signup flow at /api/super/tenants uses .strip() the same way, so behavior is at least consistent."
+      },
+      {
+        "endpoint": "GET /api/super/tenants",
+        "issue": "Tenants created before the 'status' feature don't have a 'status' field (Beauty and Spa Mila in DB). UI falls back to 'active' via (t.status || 'active'). Works but consider a one-time migration to backfill status='active' for all existing tenants."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Owner password change on Beauty Studio Bor",
+        "issue": "UI section title 'Promena lozinke vlasnika' / 'Email vlasnika' shows bornaja23@gmail.com (the super admin), giving the false impression that changing this password affects a separate salon admin account. A super admin who tests this feature without reading carefully WILL lock themselves out. No confirmation modal.",
+        "affected_selectors": ["[data-testid=\"new-owner-password-input\"]", "[data-testid=\"change-password-btn\"]", "[data-testid=\"owner-email-display\"]"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_super_god_mode.py",
+    "/app/test_reports/pytest/super_god_mode.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Decouple Beauty Studio Bor's owner_email from super admin's email. Either seed/update tenant_bsb_001.owner_email = 'admin@salon.com' (and create that user if missing) OR add backend guard to refuse owner-password change when target user has role='super_admin'.",
+    "Add UI confirmation dialog before owner-password change with clear warning 'This will change the login password for <email>'.",
+    "Optional: add backfill migration so all tenants have explicit status='active'."
+  ],
+  "critical_code_review_comments": [
+    "routes.py:142-145 - Updating user by email-only is intentional per the spec note, but it exposes a footgun when tenant.owner_email equals the calling super_admin's own email. Add a guard: if target_user['role'] == 'super_admin' and target_user['email'] != caller['email'], allow; if it equals caller's email require a separate 'change my own password' endpoint with old_password confirmation.",
+    "SalonGodMode.jsx:139-148 - loadData() depends only on slug, but uses categories endpoint with X-Tenant-ID header. Fine, but no cleanup if user navigates away during fetch. Minor.",
+    "SalonGodMode.jsx:53-56 - GET /api/categories/config with X-Tenant-ID header works for super admin only because the backend accepts the header override. Confirm backend rejects this header from non-super-admin callers (not tested here).",
+    "SalonGodMode.jsx:105-121 - handlePasswordChange does not require old password or any confirmation; combined with the issue above this is high-risk. At minimum add a confirm() dialog.",
+    "SalonGodMode.jsx:161-168 - 'Nazad na Super Panel' uses <a href> instead of react-router <Link>. Causes full reload; OK because auth via cookie/localStorage survives, but suboptimal.",
+    "SalonGodMode.jsx file size 392 lines is borderline; if more panels are added, split System tab into its own component."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_super_god_mode.py (new file)"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10)",
+    "frontend": "100% (21/21 assertions)"
+  },
+  "test_credentials": {
+    "super_admin": "Bornaja23@gmail.com / Markonijus23! (restored to original after testing)",
+    "salon_admin_per_credentials_md": "admin@salon.com / Admin123! - NOTE: this user is not associated with any tenant in the current DB; tenant_bsb_001.owner_email is the super admin's email"
+  },
+  "seed_data_creation": "None. Test mutates and restores: feature flag ips_qr_payment, first category enabled state, status on tenant_bsb_001, and super-admin password (Markonijus23! -> temp -> back to Markonijus23!). All restored at test end.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 34 added /app/backend/tests/test_super_god_mode.py covering PUT /api/super/tenants/{tid}/status, /owner-password, and data-isolation for features+categories across the 2 tenants (tenant_bsb_001, tenant_beauty_and_spa_mila_b04c3e96). All endpoints work. KEY GOTCHA: tenant_bsb_001.owner_email = bornaja23@gmail.com (super admin), so the 'change owner password' button on Beauty Studio Bor God Mode = change super admin password. Be careful running owner-password tests; always restore. Frontend testids stable: salon-god-mode, god-mode-banner, back-to-super-panel, godmode-tab-features/categories/system, godmode-feature-{key}, godmode-feature-toggle-{key}, godmode-category-toggle-{key}, godmode-categories-panel, godmode-features-panel, godmode-system-panel, toggle-status-btn, owner-email-display, new-owner-password-input, change-password-btn. Login button text is 'Prijavite se' (not 'Prijavi se').",
+  "rca_of_the_issue": "RCA - super admin password mutation via salon owner-password endpoint: (1) Beauty Studio Bor tenant document in MongoDB has owner_email='bornaja23@gmail.com'. (2) The endpoint at routes.py:129 looks up the target user by email only (line 142-143): db.users.update_one({email: tenant.owner_email}, ...). (3) The super admin user document has email='bornaja23@gmail.com' and role='super_admin'. (4) Therefore any super admin clicking 'Promeni' on the Beauty Studio Bor God Mode page overwrites their own password_hash. Reproduction: Login as super admin -> /super-admin -> click 'Panel >' on Beauty Studio Bor -> 'Sistemski podaci' tab -> enter any password >=6 chars -> click 'Promeni'. Result: 200 OK with email=bornaja23@gmail.com. Super admin's old password no longer works. Mitigation applied: explicitly restored Markonijus23! after testing. Permanent fix required from main agent (see action_items)."
+}
