@@ -43,8 +43,14 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate(`/${slug}/admin/login`);
+    if (user?.role === "super_admin") {
+      navigate("/login");
+    } else {
+      navigate(`/${slug}/admin/login`);
+    }
   };
+
+  const isSuperAdminViewing = user?.role === "super_admin";
 
   const baseNavItems = [
     { path: basePath, label: "Rezervacije", icon: Calendar },
@@ -58,6 +64,21 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0B]">
+      {/* Super Admin Banner */}
+      {isSuperAdminViewing && (
+        <div className="bg-[#C5A880]/10 border-b border-[#C5A880]/30 px-4 py-2.5 flex items-center justify-between" data-testid="super-admin-banner">
+          <p className="text-sm text-[#C5A880]">
+            {"Pregledate salon kao Super Admin"}
+          </p>
+          <a
+            href="/super-admin"
+            className="text-sm font-medium text-[#C5A880] hover:text-[#B89970] transition-colors flex items-center gap-1"
+            data-testid="back-to-super-panel-link"
+          >
+            {"Nazad na Super Panel"}
+          </a>
+        </div>
+      )}
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-50 bg-[#0A0A0B]/95 backdrop-blur-md border-b border-[#2A2A2D]">
         <div className="flex items-center justify-between p-4">

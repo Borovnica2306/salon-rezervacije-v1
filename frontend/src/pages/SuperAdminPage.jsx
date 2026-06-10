@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
   Shield, Scissors, Building2, Plus, LogOut, Loader2,
-  ChevronRight
+  ChevronRight, Search
 } from "lucide-react";
 import { Switch } from "../components/ui/switch";
 
@@ -68,6 +68,10 @@ const SystemConfigPanel = () => {
   const [creating, setCreating] = useState(false);
   const [newSalon, setNewSalon] = useState({ name: "", email: "", password: "", country: "RS", city: "" });
 
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
+
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -77,7 +81,6 @@ const SystemConfigPanel = () => {
 
   const fetchConfig = async () => {
     try {
-      // Super admin needs a tenant context for categories; use first tenant
       const tenantsRes = await axios.get(`${API}/super/tenants`, { headers });
       const first = tenantsRes.data[0];
       if (first) {
@@ -101,7 +104,6 @@ const SystemConfigPanel = () => {
   };
 
   const handleCategoryToggle = async (key, currentEnabled) => {
-    // Toggle category on first tenant (master categories)
     const first = tenants[0];
     if (!first) return;
     try {
@@ -159,6 +161,24 @@ const SystemConfigPanel = () => {
     lazy_cancel: "Auto-otkazivanje (Lazy Cancel)",
   };
 
+  // Filtered tenants for Saloni tab
+  const filteredTenants = useMemo(() => {
+    let result = tenants;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(t =>
+        t.name.toLowerCase().includes(q) ||
+        t.slug.toLowerCase().includes(q) ||
+        (t.city || "").toLowerCase().includes(q) ||
+        (t.owner_email || "").toLowerCase().includes(q)
+      );
+    }
+    if (countryFilter) {
+      result = result.filter(t => (t.country || "RS") === countryFilter);
+    }
+    return result;
+  }, [tenants, searchQuery, countryFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -172,8 +192,8 @@ const SystemConfigPanel = () => {
   return (
     <div className="animate-fade-in" data-testid="system-config-page">
       <div className="mb-8">
-        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Upravljanje Platformom</h2>
-        <p className="text-[#9CA3AF]">Tenanti, feature flagovi i kategorije.</p>
+        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">{"Upravljanje Platformom"}</h2>
+        <p className="text-[#9CA3AF]">{"Tenanti, feature flagovi i kategorije."}</p>
       </div>
 
       {/* Tabs */}
@@ -192,24 +212,54 @@ const SystemConfigPanel = () => {
       {/* Saloni Tab */}
       {activeTab === "salons" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-[#9CA3AF]">{tenants.length} registrovanih salona</span>
+          {/* Top row: count + create button */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[#9CA3AF]">
+              {filteredTenants.length === tenants.length
+                ? `${tenants.length} registrovanih salona`
+                : `${filteredTenants.length} od ${tenants.length} salona`
+              }
+            </span>
             <Button onClick={() => setShowCreateModal(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium" data-testid="create-salon-btn">
-              <Plus className="w-4 h-4 mr-1" /> Dodaj novi salon
+              <Plus className="w-4 h-4 mr-1" /> {"Dodaj novi salon"}
             </Button>
           </div>
 
-          {tenants.map((t) => (
+          {/* Search & Filter row */}
+          <div className="flex gap-3 items-center" data-testid="salon-filters">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B7280]" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={"Pretraži salone..."}
+                className="pl-10 bg-[#141416] border-[#2A2A2D] h-11 text-sm"
+                data-testid="salon-search-input"
+              />
+            </div>
+            <select
+              value={countryFilter}
+              onChange={e => setCountryFilter(e.target.value)}
+              className="bg-[#141416] border border-[#2A2A2D] rounded-lg px-3 text-white h-11 text-sm min-w-[140px]"
+              data-testid="salon-country-filter"
+            >
+              <option value="">{"Sve zemlje"}</option>
+              {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
+          </div>
+
+          {/* Salon list */}
+          {filteredTenants.map((t) => (
             <div key={t.tenant_id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-4 flex items-center justify-between group hover:border-[#C5A880]/30 transition-colors" data-testid={`salon-row-${t.tenant_id}`}>
               <div className="min-w-0 flex-1">
                 <h3 className="font-medium text-white">{t.name}</h3>
                 <p className="text-xs text-[#6B7280] font-mono mt-0.5">/{t.slug} · {t.country || "RS"}{t.city ? ` · ${t.city}` : ""}</p>
                 {t.owner_email && <p className="text-xs text-[#9CA3AF] mt-1">{t.owner_email}</p>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <a
                   href={`/${t.slug}/admin`}
-                  className="text-xs text-[#C5A880] hover:underline hidden sm:flex items-center gap-1"
+                  className="text-xs text-[#C5A880] hover:underline flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#C5A880]/30 hover:bg-[#C5A880]/10 transition-colors"
                   data-testid={`salon-link-${t.tenant_id}`}
                 >
                   Panel <ChevronRight className="w-3 h-3" />
@@ -219,8 +269,14 @@ const SystemConfigPanel = () => {
             </div>
           ))}
 
+          {filteredTenants.length === 0 && tenants.length > 0 && (
+            <div className="text-center py-12 text-[#6B7280] bg-[#141416] rounded-xl border border-[#2A2A2D]">
+              {"Nema rezultata za zadati filter."}
+            </div>
+          )}
+
           {tenants.length === 0 && (
-            <div className="text-center py-12 text-[#9CA3AF] bg-[#141416] rounded-xl border border-[#2A2A2D]">Nema registrovanih salona.</div>
+            <div className="text-center py-12 text-[#9CA3AF] bg-[#141416] rounded-xl border border-[#2A2A2D]">{"Nema registrovanih salona."}</div>
           )}
 
           {/* Create Salon Modal */}
@@ -242,7 +298,7 @@ const SystemConfigPanel = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-sm text-[#9CA3AF] mb-1 block">Država</label>
+                    <label className="text-sm text-[#9CA3AF] mb-1 block">{"Država"}</label>
                     <select value={newSalon.country} onChange={e => setNewSalon({...newSalon, country: e.target.value})} className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 text-white min-h-[48px] text-sm" data-testid="new-salon-country">
                       {SALON_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                     </select>
@@ -253,7 +309,7 @@ const SystemConfigPanel = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1 border-[#2A2A2D] min-h-[48px]">Otkaži</Button>
+                  <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1 border-[#2A2A2D] min-h-[48px]">{"Otkaži"}</Button>
                   <Button onClick={handleCreateSalon} disabled={creating} className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium min-h-[48px]" data-testid="submit-create-salon">
                     {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
                     Kreiraj
@@ -296,7 +352,7 @@ const SystemConfigPanel = () => {
             </div>
           ))}
           {tenants.length === 0 && (
-            <div className="text-center py-12 text-[#9CA3AF]">Nema registrovanih salona.</div>
+            <div className="text-center py-12 text-[#9CA3AF]">{"Nema registrovanih salona."}</div>
           )}
         </div>
       )}
@@ -323,7 +379,7 @@ const SystemConfigPanel = () => {
           </div>
           <div className="mt-6 p-4 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl">
             <p className="text-sm text-[#9CA3AF]">
-              <strong className="text-[#C5A880]">Napomena:</strong> Isključivanje kategorije sakriva usluge iz javnog prikaza, ali ih ne briše iz baze podataka.
+              <strong className="text-[#C5A880]">Napomena:</strong> {"Isključivanje kategorije sakriva usluge iz javnog prikaza, ali ih ne briše iz baze podataka."}
             </p>
           </div>
         </>
