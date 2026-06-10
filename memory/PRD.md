@@ -22,30 +22,25 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 └── pages/
     ├── LandingPage.jsx      # / - Hero, Country selection, Advice & Referral
     ├── AdminLogin.jsx       # /login - Centralized login with smart redirect
-    ├── SuperAdminPage.jsx   # /super-admin - Standalone Super Admin panel
+    ├── SuperAdminPage.jsx   # /super-admin - Standalone Super Admin panel (Search, Filters)
     ├── BookingPage.jsx      # /:slug - tenant-aware booking
-    └── AdminDashboard.jsx   # /:slug/admin/* - tenant admin panel
+    └── AdminDashboard.jsx   # /:slug/admin/* - tenant admin panel + Super Admin banner
 ```
 
 ## Routing Architecture
-- `/` → Landing Page (Hero → Country Selection → Advice/Referral)
+- `/` → Landing Page (Hero → Country Selection → Advice/Referral, no salon listing)
 - `/login` → Centralized login (smart redirect: super_admin→/super-admin, admin→/<slug>/admin)
-- `/super-admin` → Protected standalone Super Admin panel
+- `/super-admin` → Protected standalone Super Admin panel with Search & Country filters
 - `/:slug` → Client booking page for specific salon
 - `/:slug/admin/login` → Legacy login route (backward compatible, smart redirect)
-- `/:slug/admin/*` → Tenant admin dashboard
+- `/:slug/admin/*` → Tenant admin dashboard (with Super Admin banner if SA is viewing)
 
 ## Auth Flow
 - Login returns `slug` field alongside `role` and `tenant_id`
-- Super Admin → redirected to `/super-admin` (standalone page)
-- Salon Admin → redirected to `/<slug>/admin` based on their tenant's slug
+- Super Admin → redirected to `/super-admin`
+- Salon Admin → redirected to `/<slug>/admin`
 - `/auth/me` also returns `slug` for session restoration
-
-## Multitenant System
-- **Primary Tenant**: Beauty Studio Bor (slug: beauty-studio-bor, id: tenant_bsb_001)
-- **Data isolation**: `tenant_id` field on ALL documents
-- **Super Admin**: bornaja23@gmail.com - manages all tenants via /super-admin
-- **Feature Flags**: per tenant (viber, ips_qr, manual_booking, email, lazy_cancel)
+- Super Admin viewing tenant admin sees banner: "Pregledate salon kao Super Admin. [Nazad na Super Panel]"
 
 ## All Completed Features
 - [x] Multi-step booking wizard, Smart Pairing, Anti-Conflict
@@ -60,6 +55,9 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 - [x] Global Landing Page with Country selection → Advice + Referral (no salon listing)
 - [x] Centralized Login (/login) with smart redirect by role
 - [x] Standalone Super Admin Panel (/super-admin) - Saloni, Feature Flags, Kategorije
+- [x] Super Admin Panel: Search & Country filter on Saloni tab
+- [x] Super Admin Panel: "Panel >" links to navigate to tenant admin dashboards
+- [x] Super Admin Banner in tenant admin: "Pregledate salon kao Super Admin. [Nazad na Super Panel]"
 - [x] Salon Name edit restricted to Super Admin (immutable slug)
 - [x] PhoneInput with Country Prefix + Email validation
 - [x] CSV Export for Super Admin
@@ -67,5 +65,5 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 
 ## Backlog
 - P3: Drag & drop on timeline grid for rescheduling
-- P3: Refactor AdminDashboard.jsx (~2066 lines) into sub-components
+- P3: Refactor AdminDashboard.jsx (~2067 lines) into sub-components
 - P3: Refactor routes.py (~1290 lines) into domain modules
