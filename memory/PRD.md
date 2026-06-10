@@ -16,54 +16,42 @@ Multitenant platforma za rezervaciju termina u beauty salonima. Jedan codebase, 
 └── mail_service.py  # Async SMTP email
 
 /app/frontend/src/
-├── App.js           # AuthProvider, routing (/, /login, /super-admin, /:slug, /:slug/admin/*)
+├── App.js           # AuthProvider, routing
 ├── components/
-│   └── PhoneInput.jsx  # Global country prefix + phone validator
+│   └── PhoneInput.jsx
 └── pages/
-    ├── LandingPage.jsx      # / - Hero, Country selection, Advice & Referral
-    ├── AdminLogin.jsx       # /login - Centralized login with smart redirect
-    ├── SuperAdminPage.jsx   # /super-admin - Standalone Super Admin panel (Search, Filters)
-    ├── BookingPage.jsx      # /:slug - tenant-aware booking
-    └── AdminDashboard.jsx   # /:slug/admin/* - tenant admin panel + Super Admin banner
+    ├── LandingPage.jsx      # / - Hero, Advice & Referral
+    ├── AdminLogin.jsx       # /login - Centralized login
+    ├── SuperAdminPage.jsx   # /super-admin - Salon list only
+    ├── SalonGodMode.jsx     # /super-admin/salon/:slug - God Mode per salon
+    ├── BookingPage.jsx      # /:slug - booking
+    └── AdminDashboard.jsx   # /:slug/admin/* - tenant admin
 ```
 
-## Routing Architecture
-- `/` → Landing Page (Hero → Country Selection → Advice/Referral, no salon listing)
-- `/login` → Centralized login (smart redirect: super_admin→/super-admin, admin→/<slug>/admin)
-- `/super-admin` → Protected standalone Super Admin panel with Search & Country filters
-- `/:slug` → Client booking page for specific salon
-- `/:slug/admin/login` → Legacy login route (backward compatible, smart redirect)
-- `/:slug/admin/*` → Tenant admin dashboard (with Super Admin banner if SA is viewing)
-
-## Auth Flow
-- Login returns `slug` field alongside `role` and `tenant_id`
-- Super Admin → redirected to `/super-admin`
-- Salon Admin → redirected to `/<slug>/admin`
-- `/auth/me` also returns `slug` for session restoration
-- Super Admin viewing tenant admin sees banner: "Pregledate salon kao Super Admin. [Nazad na Super Panel]"
+## Super Admin Flow
+- `/super-admin` → Lista salona sa pretragom/filterom (BEZ Feature Flags/Kategorije tabova)
+- `/super-admin/salon/<slug>` → God Mode panel za specifičan salon:
+  - Feature Flags (per-tenant)
+  - Kategorije (per-tenant)
+  - Sistemski podaci (status, owner email, password change)
+- Stroga izolacija: promene utiču SAMO na taj tenant_id
+- Security guard: password change blokiran za super_admin naloge
 
 ## All Completed Features
 - [x] Multi-step booking wizard, Smart Pairing, Anti-Conflict
-- [x] JWT auth (admin + super_admin) + Multitenant isolation
+- [x] JWT auth + Multitenant isolation
 - [x] CRUD services/workers/blacklist
-- [x] IPS QR Payment (NBS standard), Email notifications
-- [x] Payment Tracking (3 statuses), Lazy Cancel (3h)
+- [x] IPS QR Payment, Email notifications, Payment Tracking, Lazy Cancel
 - [x] Daily Timeline Grid, Manual Booking, Archive
-- [x] Mobile optimized (touch targets, sticky columns)
-- [x] Viber/WhatsApp direct chat links
-- [x] MULTITENANT - Slug routing, data isolation, feature flags, God Mode
-- [x] Global Landing Page with Country selection → Advice + Referral (no salon listing)
-- [x] Centralized Login (/login) with smart redirect by role
-- [x] Standalone Super Admin Panel (/super-admin) - Saloni, Feature Flags, Kategorije
-- [x] Super Admin Panel: Search & Country filter on Saloni tab
-- [x] Super Admin Panel: "Panel >" links to navigate to tenant admin dashboards
-- [x] Super Admin Banner in tenant admin: "Pregledate salon kao Super Admin. [Nazad na Super Panel]"
-- [x] Salon Name edit restricted to Super Admin (immutable slug)
-- [x] PhoneInput with Country Prefix + Email validation
-- [x] CSV Export for Super Admin
-- [x] Tenant Creation via Super Admin Panel with auto-slug generation
+- [x] Mobile optimized, Viber/WhatsApp links
+- [x] MULTITENANT - Slug routing, data isolation, feature flags
+- [x] Landing Page → Advice + Referral (no salon listing)
+- [x] Centralized Login (/login) with smart redirect
+- [x] Super Admin: Salon list with search/filter
+- [x] God Mode Panel per salon (Feature Flags, Kategorije, Sistemski podaci)
+- [x] Salon status (active/suspended), Owner password change with guard
+- [x] Super Admin Banner in tenant admin
 
 ## Backlog
-- P3: Drag & drop on timeline grid for rescheduling
-- P3: Refactor AdminDashboard.jsx (~2067 lines) into sub-components
-- P3: Refactor routes.py (~1290 lines) into domain modules
+- P3: Drag & drop on timeline grid
+- P3: Refactor AdminDashboard.jsx and routes.py

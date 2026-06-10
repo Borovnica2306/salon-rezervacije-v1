@@ -53,7 +53,7 @@ async def startup_event():
             "tenant_id": PRIMARY_TENANT_ID,
             "slug": PRIMARY_TENANT_SLUG,
             "name": "Beauty Studio Bor",
-            "owner_email": "bornaja23@gmail.com",
+            "owner_email": "admin@salon.com",
             "country": "RS",
             "city": "Bor",
             "enabled_features": {
@@ -72,6 +72,20 @@ async def startup_event():
             await db.tenants.update_one(
                 {"tenant_id": PRIMARY_TENANT_ID},
                 {"$set": {"country": "RS", "city": "Bor"}}
+            )
+        # Migrate: fix owner_email if it points to super admin
+        if existing_tenant.get("owner_email") == "bornaja23@gmail.com":
+            admin_email = os.environ.get("ADMIN_EMAIL", "admin@salon.com").lower()
+            await db.tenants.update_one(
+                {"tenant_id": PRIMARY_TENANT_ID},
+                {"$set": {"owner_email": admin_email}}
+            )
+            logger.info(f"Migrated owner_email to {admin_email}")
+        # Migrate: backfill status if missing
+        if not existing_tenant.get("status"):
+            await db.tenants.update_one(
+                {"tenant_id": PRIMARY_TENANT_ID},
+                {"$set": {"status": "active"}}
             )
 
     # ===== SEED SUPER ADMIN =====

@@ -139,6 +139,12 @@ async def update_owner_password(tenant_id: str, body: dict, user: dict = Depends
     owner_email = tenant.get("owner_email", "")
     if not owner_email:
         raise HTTPException(status_code=400, detail="Tenant has no owner email")
+    # Guard: prevent changing super_admin password via this endpoint
+    target_user = await db.users.find_one({"email": owner_email})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Owner user not found")
+    if target_user.get("role") == "super_admin":
+        raise HTTPException(status_code=403, detail="Ne možete menjati lozinku Super Admin naloga kroz ovaj panel")
     result = await db.users.update_one(
         {"email": owner_email},
         {"$set": {"password_hash": hash_password(new_password)}}

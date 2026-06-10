@@ -107,6 +107,10 @@ const SalonGodMode = () => {
       toast.error("Lozinka mora imati najmanje 6 karaktera");
       return;
     }
+    const confirmed = window.confirm(
+      `Da li ste sigurni da želite da promenite lozinku za nalog: ${tenant.owner_email}?`
+    );
+    if (!confirmed) return;
     setChangingPassword(true);
     try {
       await axios.put(`${API}/super/tenants/${tenant.tenant_id}/owner-password`, { password: newPassword }, { headers });
