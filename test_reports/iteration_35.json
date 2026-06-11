@@ -1,0 +1,57 @@
+{
+  "summary": "Tested routing architecture refactor (Landing -> /info, /vlasnici, /login) and the CRITICAL manual booking slots bug fix. Backend: 9/9 pytest assertions PASS (smart-redirect login data, public booking endpoints without auth, admin slots WITH X-Tenant-ID returns 39 slots, admin slots WITHOUT X-Tenant-ID properly rejected with 400 - confirming the original bug RCA). Frontend Playwright: Landing 3-paths (zakazi/vlasnici/uloguj) PASS; /info advice + referral + Nazad PASS; /vlasnici 'Uskoro otvaramo registraciju' + Nazad PASS; header 'Uloguj se' -> /login PASS (flaky on first attempt, succeeds after networkidle); Super Admin login -> /super-admin PASS; God Mode panel (features/categories/system tabs) PASS; Salon Admin login -> /beauty-studio-bor/admin PASS; Public /beauty-studio-bor loads WITHOUT login (booking wizard visible) PASS. CRITICAL: Manual booking modal Step 2 now shows 10 time slots (17:15-19:30) instead of 'Nema dostupnih termina' - X-Tenant-ID header fix CONFIRMED WORKING.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Admin > Nova Rezervacija > Korak 2 (Datum)",
+        "issues": [
+          "Date input uses browser's NATIVE date picker (e.g. 06/11/2026 placeholder via <input type=date>) instead of the shadcn Calendar component used elsewhere. Locale-dependent format (MM/DD/YYYY shown for en-US) is confusing for Serbian users who expect DD.MM.YYYY. Recommend swap to shadcn <Calendar/> with Popover."
+        ]
+      }
+    ],
+    "console_warnings": [
+      {
+        "component": "AdminDashboard.jsx line 387 (ManualBookingModal service <select>)",
+        "issue": "React hydration warning: '<span> cannot be a child of <option>'. The <option> renders a child <span> (likely from i18n/text-wrap helper), which is invalid HTML and causes hydration mismatch on every modal open. Replace the <span> wrapper inside <option> with plain text {s.name} ({s.duration_min} min - {s.price} RSD)."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_routing_and_slots.py",
+    "/app/test_reports/pytest/routing_and_slots.xml"
+  ],
+  "action_items": [
+    "Fix invalid HTML in /app/frontend/src/pages/AdminDashboard.jsx around line 387: remove <span> child from <option>; render plain text only. Same likely applies to the worker <option> below it. This eliminates the hydration error.",
+    "Replace native <input type=date> in ManualBookingModal Korak 2 with shadcn Calendar in a Popover, matching the rest of the design system (Serbian locale, DD.MM.YYYY)."
+  ],
+  "critical_code_review_comments": [
+    "App.js line 201: /:slug route is correctly UNPROTECTED (no ProtectedRoute wrapper) - public booking works. Verified.",
+    "AdminDashboard.jsx line 240-247 (fetchSlots): The fix is in place - axios.post now passes { headers } as 3rd arg, headers includes Authorization + X-Tenant-ID (line 196). Backend test confirms slots return non-empty (39 slots for future date).",
+    "AdminLogin.jsx line 24-32 (redirectUser): correctly branches on role=='super_admin' -> /super-admin, then userData.slug || slug -> /:slug/admin, else /. Backend /api/auth/login returns slug for admin users (routes.py line 311-313). Verified end-to-end.",
+    "LandingPage.jsx: Country selection removed and replaced with 2 main paths + discrete header login - matches spec. data-testids: book-appointment-btn, salon-owners-btn, header-login-btn all stable.",
+    "InfoPage.jsx & OwnersPage.jsx: Use <a href='/'> for Nazad which causes full page reload. Suggest react-router <Link to='/'> for SPA navigation consistency. Minor.",
+    "Previous iteration (34) flagged that tenant_bsb_001.owner_email='bornaja23@gmail.com' (super admin's email) - still an open critical security issue. NOT in scope for this iteration but un-fixed."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_routing_and_slots.py (new file)"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9)",
+    "frontend": "100% on critical paths (8/8 flows; header-login retries succeed after networkidle)"
+  },
+  "test_credentials": {
+    "super_admin": "Bornaja23@gmail.com / Markonijus23!",
+    "salon_admin": "admin@salon.com / Admin123! (working, slug=beauty-studio-bor, tenant_id=tenant_bsb_001)"
+  },
+  "seed_data_creation": "None. Read-only tests except backend's available-slots which only reads.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 35 verified the routing refactor (Landing 3-paths -> /info, /vlasnici, /login) and the X-Tenant-ID header fix for ManualBookingModal.fetchSlots. New backend test: /app/backend/tests/test_routing_and_slots.py (9 tests). Public booking on /:slug works WITHOUT auth (tested: services, workers, available-slots all return data with just X-Tenant-ID header). Admin manual booking Step 2 now returns 10+ time slots. Outstanding issues that need main agent: (a) hydration warning <span> inside <option> in AdminDashboard.jsx ~line 387; (b) native date picker in ManualBookingModal Step 2 should be shadcn Calendar; (c) carry-over from iter 34: tenant_bsb_001.owner_email collision with super admin. Header login button click works but needs networkidle wait before clicking on first page-load - flaky otherwise.",
+  "rca_of_the_issue": "RCA confirmed for the 'Nema dostupnih termina' bug: AdminDashboard.jsx ManualBookingModal.fetchSlots (line 240-255) was calling axios.post(`${API}/reservations/available-slots`, {...body}) without the third config arg, so neither Authorization nor X-Tenant-ID headers were sent. Backend route /api/reservations/available-slots requires X-Tenant-ID and returns HTTP 400 'Missing X-Tenant-ID header' when absent. Axios catch block swallowed the 400 and set availableSlots=[] -> UI rendered 'Nema dostupnih termina'. Fix: third argument { headers } added (headers = {Authorization, X-Tenant-ID} defined at line 196). Verified by backend test test_slots_without_tenant_header_fails (returns 400) and test_slots_with_tenant_header (returns 39 slots). Frontend Playwright confirmed: opening Nova Rezervacija -> selecting Šišanje + Suzana -> Dalje -> Step 2 shows 10 time slots (17:15 through 19:30)."
+}

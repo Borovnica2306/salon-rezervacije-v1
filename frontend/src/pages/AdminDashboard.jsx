@@ -244,7 +244,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
       const res = await axios.post(`${API}/reservations/available-slots`, {
         service_worker_pairs: pairs,
         date,
-      });
+      }, { headers });
       setAvailableSlots(res.data.slots || []);
       setSlotDetails(res.data.slot_details || {});
     } catch {

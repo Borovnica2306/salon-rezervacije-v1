@@ -9,6 +9,8 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const SuperAdminPage = lazy(() => import("./pages/SuperAdminPage"));
 const SalonGodMode = lazy(() => import("./pages/SalonGodMode"));
+const OwnersPage = lazy(() => import("./pages/OwnersPage"));
+const InfoPage = lazy(() => import("./pages/InfoPage"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -178,6 +180,8 @@ function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<AdminLogin />} />
+              <Route path="/vlasnici" element={<OwnersPage />} />
+              <Route path="/info" element={<InfoPage />} />
               <Route
                 path="/super-admin"
                 element={
