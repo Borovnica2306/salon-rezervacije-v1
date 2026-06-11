@@ -1020,6 +1020,7 @@ const EmployeesPage = () => {
   });
 
   const [categories, setCategories] = useState([]);
+  const [salonSettings, setSalonSettings] = useState(null);
 
   const token = localStorage.getItem("access_token");
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
@@ -1030,20 +1031,44 @@ const EmployeesPage = () => {
 
   const fetchData = async () => {
     try {
-      const [empRes, servRes, catRes] = await Promise.all([
+      const [empRes, servRes, catRes, settRes] = await Promise.all([
         axios.get(`${API}/workers?active_only=false`, { headers }),
         axios.get(`${API}/services?active_only=false`, { headers }),
         axios.get(`${API}/categories`, { headers }),
+        axios.get(`${API}/settings`, { headers }),
       ]);
       setEmployees(empRes.data);
       setServices(servRes.data);
       setCategories(catRes.data);
+      setSalonSettings(settRes.data);
     } catch (error) {
       toast.error("Greška pri učitavanju");
     } finally {
       setLoading(false);
     }
   };
+
+  // Generate time options within salon hours (15-min intervals)
+  const salonStart = salonSettings?.work_start || "09:00";
+  const salonEnd = salonSettings?.work_end || "21:00";
+  const salonClosedDays = salonSettings?.closed_days || [];
+
+  const generateTimeOptions = (minTime, maxTime) => {
+    const options = [];
+    const [minH, minM] = minTime.split(":").map(Number);
+    const [maxH, maxM] = maxTime.split(":").map(Number);
+    const startMin = minH * 60 + minM;
+    const endMin = maxH * 60 + maxM;
+    for (let m = startMin; m <= endMin; m += 15) {
+      const h = Math.floor(m / 60);
+      const mi = m % 60;
+      options.push(`${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`);
+    }
+    return options;
+  };
+
+  const startOptions = generateTimeOptions(salonStart, salonEnd);
+  const endOptions = generateTimeOptions(salonStart, salonEnd);
 
   // Group ACTIVE services by category
   const activeServices = services.filter(s => s.active);
@@ -1075,11 +1100,11 @@ const EmployeesPage = () => {
     setForm({
       name: "",
       categories: [],
-      work_start: "09:00",
-      work_end: "21:00",
+      work_start: salonStart,
+      work_end: salonEnd,
       break_start: "",
       break_end: "",
-      days_off: [],
+      days_off: [...salonClosedDays],
     });
     setEditingEmployee(null);
   };
@@ -1196,68 +1221,103 @@ const EmployeesPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-[#9CA3AF] mb-2 block">Početak rada</label>
-                  <Input
-                    type="time"
+                  <label className="text-sm text-[#9CA3AF] mb-2 block">{"Početak rada"}</label>
+                  <select
                     value={form.work_start}
-                    onChange={(e) => setForm({ ...form, work_start: e.target.value })}
-                    className="bg-[#0A0A0B] border-[#2A2A2D]"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm(prev => ({
+                        ...prev,
+                        work_start: val,
+                        work_end: prev.work_end < val ? val : prev.work_end,
+                      }));
+                    }}
+                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
                     data-testid="employee-work-start"
-                  />
+                  >
+                    {startOptions.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="text-sm text-[#9CA3AF] mb-2 block">Kraj rada</label>
-                  <Input
-                    type="time"
+                  <label className="text-sm text-[#9CA3AF] mb-2 block">{"Kraj rada"}</label>
+                  <select
                     value={form.work_end}
                     onChange={(e) => setForm({ ...form, work_end: e.target.value })}
-                    className="bg-[#0A0A0B] border-[#2A2A2D]"
+                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
                     data-testid="employee-work-end"
-                  />
+                  >
+                    {endOptions.filter(t => t >= form.work_start).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+              <p className="text-[10px] text-[#6B7280] -mt-2">
+                {"Ograničeno radnim vremenom salona: "}{salonStart}{" — "}{salonEnd}
+              </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-[#9CA3AF] mb-2 block">Pauza od</label>
-                  <Input
-                    type="time"
+                  <select
                     value={form.break_start}
                     onChange={(e) => setForm({ ...form, break_start: e.target.value })}
-                    className="bg-[#0A0A0B] border-[#2A2A2D]"
+                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
                     data-testid="employee-break-start"
-                  />
+                  >
+                    <option value="">{"—"}</option>
+                    {startOptions.filter(t => t >= form.work_start && t < form.work_end).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm text-[#9CA3AF] mb-2 block">Pauza do</label>
-                  <Input
-                    type="time"
+                  <select
                     value={form.break_end}
                     onChange={(e) => setForm({ ...form, break_end: e.target.value })}
-                    className="bg-[#0A0A0B] border-[#2A2A2D]"
+                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
                     data-testid="employee-break-end"
-                  />
+                  >
+                    <option value="">{"—"}</option>
+                    {startOptions.filter(t => t > (form.break_start || form.work_start) && t <= form.work_end).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div>
                 <label className="text-sm text-[#9CA3AF] mb-2 block">Slobodni dani</label>
                 <div className="flex flex-wrap gap-2">
-                  {dayLabels.map((label, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => toggleDayOff(idx)}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                        form.days_off.includes(idx)
-                          ? "bg-[#C5A880] text-black"
-                          : "bg-[#0A0A0B] border border-[#2A2A2D] text-[#9CA3AF]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  {dayLabels.map((label, idx) => {
+                    const salonClosed = salonClosedDays.includes(idx);
+                    const isOff = form.days_off.includes(idx);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => !salonClosed && toggleDayOff(idx)}
+                        disabled={salonClosed}
+                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          salonClosed
+                            ? "bg-[#0A0A0B] border border-[#2A2A2D] text-[#3A3A3D] cursor-not-allowed line-through"
+                            : isOff
+                              ? "bg-[#C5A880] text-black"
+                              : "bg-[#0A0A0B] border border-[#2A2A2D] text-[#9CA3AF]"
+                        }`}
+                        title={salonClosed ? "Salon je zatvoren ovog dana" : ""}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
+                {salonClosedDays.length > 0 && (
+                  <p className="text-[10px] text-[#6B7280] mt-1">{"Precrtani dani: salon je zatvoren."}</p>
+                )}
               </div>
 
               <div>
