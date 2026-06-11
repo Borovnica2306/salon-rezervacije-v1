@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
   Shield, Building2, Plus, LogOut, Loader2,
-  ChevronRight, Search
+  ChevronRight, Search, Globe
 } from "lucide-react";
 
 const SuperAdminPage = () => {
@@ -185,7 +185,17 @@ const SalonListPanel = () => {
                 <p className="text-xs text-[#6B7280] font-mono mt-0.5">/{t.slug} · {t.country || "RS"}{t.city ? ` · ${t.city}` : ""}</p>
                 {t.owner_email && <p className="text-xs text-[#9CA3AF] mt-1">{t.owner_email}</p>}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/${t.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#9CA3AF] hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#2A2A2D] hover:border-[#9CA3AF]/50 transition-colors"
+                  data-testid={`salon-client-link-${t.tenant_id}`}
+                  title="Otvori klijentski booking u novom tabu"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                </a>
                 <a
                   href={`/super-admin/salon/${t.slug}`}
                   className="text-xs text-[#C5A880] hover:underline flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#C5A880]/30 hover:bg-[#C5A880]/10 transition-colors"
