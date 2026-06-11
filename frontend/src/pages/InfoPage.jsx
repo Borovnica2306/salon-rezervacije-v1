@@ -1,18 +1,18 @@
+import { Link } from "react-router-dom";
 import { Share2, Users, Gift, ChevronLeft } from "lucide-react";
-import { Button } from "../components/ui/button";
 
 const InfoPage = () => {
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white">
       <div className="max-w-lg mx-auto px-6 py-16">
-        <a
-          href="/"
+        <Link
+          to="/"
           className="flex items-center gap-1 text-[#9CA3AF] hover:text-white mb-10 transition-colors text-sm"
           data-testid="info-back-link"
         >
           <ChevronLeft className="w-4 h-4" />
           Nazad
-        </a>
+        </Link>
 
         {/* Advice Card */}
         <div className="bg-[#141416] border border-[#2A2A2D] rounded-xl p-5 space-y-3 mb-5" data-testid="booking-advice-card">

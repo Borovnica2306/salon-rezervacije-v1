@@ -1,22 +1,20 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Scissors, Building2, ChevronRight, LogIn } from "lucide-react";
 
 const LandingPage = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white flex flex-col">
       {/* Header with discrete login */}
-      <header className="px-6 py-4 flex justify-end">
-        <button
-          onClick={() => navigate("/login")}
+      <header className="px-6 py-4 flex justify-end relative z-10">
+        <Link
+          to="/login"
           className="flex items-center gap-1.5 text-[#6B7280] hover:text-[#C5A880] transition-colors text-sm"
           data-testid="header-login-btn"
         >
           <LogIn className="w-4 h-4" />
           {"Uloguj se"}
-        </button>
+        </Link>
       </header>
 
       {/* Hero */}
@@ -33,27 +31,23 @@ const LandingPage = () => {
           </p>
 
           <div className="space-y-3">
-            {/* Put 1: Zakazivanje */}
-            <Button
-              onClick={() => navigate("/info")}
-              className="w-full min-h-[56px] bg-[#C5A880] hover:bg-[#B89970] text-black font-medium text-base rounded-xl"
-              data-testid="book-appointment-btn"
-            >
-              <Scissors className="w-5 h-5 mr-2" />
-              {"Želim da zakažem termin"}
-              <ChevronRight className="w-5 h-5 ml-2" />
-            </Button>
+            <Link to="/info" data-testid="book-appointment-btn">
+              <Button className="w-full min-h-[56px] bg-[#C5A880] hover:bg-[#B89970] text-black font-medium text-base rounded-xl">
+                <Scissors className="w-5 h-5 mr-2" />
+                {"Želim da zakažem termin"}
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
 
-            {/* Put 2: Vlasnici */}
-            <Button
-              onClick={() => navigate("/vlasnici")}
-              variant="outline"
-              className="w-full min-h-[56px] border-[#2A2A2D] hover:bg-[#141416] text-[#9CA3AF] hover:text-white font-medium text-base rounded-xl"
-              data-testid="salon-owners-btn"
-            >
-              <Building2 className="w-5 h-5 mr-2" />
-              {"Za vlasnike salona"}
-            </Button>
+            <Link to="/vlasnici" data-testid="salon-owners-btn">
+              <Button
+                variant="outline"
+                className="w-full min-h-[56px] border-[#2A2A2D] hover:bg-[#141416] text-[#9CA3AF] hover:text-white font-medium text-base rounded-xl"
+              >
+                <Building2 className="w-5 h-5 mr-2" />
+                {"Za vlasnike salona"}
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

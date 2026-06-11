@@ -1,18 +1,18 @@
+import { Link } from "react-router-dom";
 import { Building2, ChevronLeft, Sparkles, BarChart3, Clock, Globe } from "lucide-react";
-import { Button } from "../components/ui/button";
 
 const OwnersPage = () => {
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white">
       <div className="max-w-lg mx-auto px-6 py-16">
-        <a
-          href="/"
+        <Link
+          to="/"
           className="flex items-center gap-1 text-[#9CA3AF] hover:text-white mb-10 transition-colors text-sm"
           data-testid="owners-back-link"
         >
           <ChevronLeft className="w-4 h-4" />
           Nazad
-        </a>
+        </Link>
 
         <div className="text-center mb-10">
           <div className="w-14 h-14 rounded-2xl bg-[#C5A880]/10 border border-[#C5A880]/20 flex items-center justify-center mx-auto mb-5">
