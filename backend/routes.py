@@ -23,7 +23,7 @@ from logic import (
     get_available_slots_multi, cancel_stale_unpaid_reservations,
     process_daily_reminders,
 )
-from mail_service import send_booking_confirmation_email
+from mail_service import send_booking_confirmation_email, PAYMENT_MODE
 from tenant import resolve_tenant_by_slug, check_tenant_access
 
 logger = logging.getLogger(__name__)
@@ -730,7 +730,7 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
         "client_phone": phone,
         "client_email": reservation.client_email.strip().lower(),
         "status": "confirmed",
-        "payment_status": "pending",
+        "payment_status": "pending_pi_payment" if PAYMENT_MODE == "PI_ECOSYSTEM" else "pending",
         "advance_required": True,
         "advance_released": False,
         "tenant_id": tid,
@@ -783,7 +783,7 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
         client_phone=phone,
         client_email=reservation.client_email.strip().lower(),
         status="confirmed",
-        payment_status="pending",
+        payment_status="pending_pi_payment" if PAYMENT_MODE == "PI_ECOSYSTEM" else "pending",
         advance_required=True,
         advance_released=False,
         created_at=doc["created_at"]
@@ -972,7 +972,7 @@ async def admin_create_reservation(
         "client_name": reservation.client_name,
         "client_phone": phone,
         "status": "confirmed",
-        "payment_status": "pending",
+        "payment_status": "pending_pi_payment" if PAYMENT_MODE == "PI_ECOSYSTEM" else "pending",
         "advance_required": True,
         "advance_released": False,
         "created_by": "admin",
@@ -1000,7 +1000,7 @@ async def admin_create_reservation(
         client_phone=phone,
         client_email="",
         status="confirmed",
-        payment_status="pending",
+        payment_status="pending_pi_payment" if PAYMENT_MODE == "PI_ECOSYSTEM" else "pending",
         advance_required=True,
         advance_released=False,
         created_at=doc["created_at"]
