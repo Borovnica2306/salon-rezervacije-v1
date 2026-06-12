@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
-import { API, useAuth } from "../App";
+import { API, useAuth, getToken } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Switch } from "../components/ui/switch";
@@ -29,7 +29,7 @@ const SalonGodMode = () => {
   // Status change
   const [changingStatus, setChangingStatus] = useState(false);
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {

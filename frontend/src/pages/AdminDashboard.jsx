@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Routes, Route, Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
-import { API, useAuth, useTenant, getTenantHeaders } from "../App";
+import { API, useAuth, useTenant, getTenantHeaders, getToken } from "../App";
 import { PhoneInput } from "../components/PhoneInput";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -192,7 +192,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
   const [warnings, setWarnings] = useState([]);
   const [showForceConfirm, setShowForceConfirm] = useState(false);
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   // Temp state for adding a pair
@@ -628,7 +628,7 @@ const ReservationsPage = () => {
   const [selectedRes, setSelectedRes] = useState(null);
   const [sendingReminders, setSendingReminders] = useState(false);
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
   const gridRef = React.useRef(null);
 
@@ -1022,7 +1022,7 @@ const EmployeesPage = () => {
   const [categories, setCategories] = useState([]);
   const [salonSettings, setSalonSettings] = useState(null);
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
@@ -1473,7 +1473,7 @@ const ServicesPage = () => {
     description: "",
   });
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
@@ -1750,7 +1750,7 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {
@@ -1980,7 +1980,7 @@ const BlacklistPage = () => {
   const [newPhone, setNewPhone] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
 
   useEffect(() => {

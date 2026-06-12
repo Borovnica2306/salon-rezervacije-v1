@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
-import { API, useAuth } from "../App";
+import { API, useAuth, getToken } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -65,7 +65,7 @@ const SalonListPanel = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
 
-  const token = localStorage.getItem("access_token");
+  const token = getToken();
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {

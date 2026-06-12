@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { Toaster } from "sonner";
 import { createContext, useContext, useState, useEffect, lazy, Suspense } from "react";
 import axios from "axios";
+import { initAuthStorage, getToken, setToken, removeToken } from "./authStorage";
 
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -14,6 +15,7 @@ const InfoPage = lazy(() => import("./pages/InfoPage"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
+export { getToken } from "./authStorage";
 
 const PageLoader = () => (
   <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
@@ -85,12 +87,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    (async () => {
+      await initAuthStorage();
+      await checkAuth();
+    })();
   }, []);
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getToken();
       if (!token) {
         setLoading(false);
         return;
@@ -101,7 +106,7 @@ export const AuthProvider = ({ children }) => {
       });
       setUser(response.data);
     } catch {
-      localStorage.removeItem("access_token");
+      await removeToken();
       setUser(null);
     } finally {
       setLoading(false);
@@ -114,7 +119,7 @@ export const AuthProvider = ({ children }) => {
       { email, password },
       { withCredentials: true }
     );
-    localStorage.setItem("access_token", response.data.access_token);
+    await setToken(response.data.access_token);
     setUser(response.data);
     return response.data;
   };
@@ -125,7 +130,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.error("Logout error:", e);
     }
-    localStorage.removeItem("access_token");
+    await removeToken();
     setUser(null);
   };
 
