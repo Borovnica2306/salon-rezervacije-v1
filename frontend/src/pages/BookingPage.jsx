@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { QRCodeSVG } from "qrcode.react";
+import { PAYMENT_MODE } from "../config";
 
 const PHONE_PREFIX = "+381";
 
@@ -654,7 +655,7 @@ const BookingPage = () => {
           </div>
 
           {/* IPS QR Code Payment */}
-          {ipsQRString && (
+          {PAYMENT_MODE === 'FIAT_STANDARD' && ipsQRString && (
             <div className="bg-[#0A0A0B] rounded-xl p-5 text-center mb-4 border border-[#C5A880]/20" data-testid="ips-qr-section">
               <h3 className="text-[#C5A880] font-medium mb-2 flex items-center justify-center gap-2">
                 <QrCode className="w-4 h-4" />
@@ -685,7 +686,7 @@ const BookingPage = () => {
           )}
 
           {/* Viber & WhatsApp CTA */}
-          {settings?.viber_phone && (
+          {PAYMENT_MODE === 'FIAT_STANDARD' && settings?.viber_phone && (
             <div className="rounded-xl p-5 mb-4 text-left border border-[#2A2A2D] bg-[#141416] space-y-3" data-testid="messaging-cta-section">
               <h3 className="text-white font-medium mb-1 flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-[#C5A880]" />
@@ -718,6 +719,7 @@ const BookingPage = () => {
           )}
 
           {/* Payment / Uplatnica Section */}
+          {PAYMENT_MODE === 'FIAT_STANDARD' && (
           <div className="bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">
             <h3 className="text-[#C5A880] font-medium mb-3 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -749,6 +751,18 @@ const BookingPage = () => {
               </p>
             </div>
           </div>
+          )}
+
+          {/* PI_ECOSYSTEM clean confirmation */}
+          {PAYMENT_MODE === 'PI_ECOSYSTEM' && (
+          <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-5 mb-6 text-center" data-testid="pi-confirmation-section">
+            <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
+            <h3 className="text-green-400 font-medium mb-1">{"Rezervacija potvrđena"}</h3>
+            <p className="text-[#9CA3AF] text-sm leading-relaxed">
+              {"Vaš termin je uspešno zakazan. Dobićete obaveštenje sa detaljima."}
+            </p>
+          </div>
+          )}
 
           <Button
             onClick={resetBooking}

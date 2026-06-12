@@ -12,6 +12,9 @@ from database import db
 
 logger = logging.getLogger(__name__)
 
+# Payment mode: 'FIAT_STANDARD' or 'PI_ECOSYSTEM'
+PAYMENT_MODE = os.environ.get("PAYMENT_MODE", "PI_ECOSYSTEM")
+
 
 def _get_smtp_config_sync(db_settings=None):
     """Get SMTP config from DB settings first, then env fallback."""
@@ -58,6 +61,61 @@ def _build_html(
           <td style="padding:8px 12px;border-bottom:1px solid #2A2A2D;color:#E5E7EB;font-size:14px;">{s['service_name']}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #2A2A2D;color:#C5A880;font-size:14px;text-align:right;">{s['worker_name']}</td>
         </tr>"""
+
+    # Build QR / payment section only for FIAT_STANDARD
+    qr_and_payment_section = ""
+    if PAYMENT_MODE == "FIAT_STANDARD":
+        qr_and_payment_section = f"""
+  <!-- QR Code Section -->
+  <tr><td style="padding:0 24px 20px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0B;border:1px solid rgba(197,168,128,0.2);border-radius:12px;">
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0 0 4px;color:#C5A880;font-size:15px;font-weight:600;">Brzo plaćanje (IPS QR kod)</p>
+        <p style="margin:0 0 16px;color:#9CA3AF;font-size:12px;">Skenirajte kod iz vaše mBanking aplikacije</p>
+        <div style="display:inline-block;background:#FFFFFF;border-radius:12px;padding:12px;">
+          <img src="cid:qrcode_image" alt="IPS QR kod" width="200" height="200" style="display:block;" />
+        </div>
+      </td></tr>
+      <tr><td style="padding:0 20px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:10px 0;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2A2D;">Račun:</td>
+            <td style="padding:10px 0;color:#FFFFFF;font-size:13px;font-family:monospace;text-align:right;border-top:1px solid #2A2A2D;">{account_fmt}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2A2D;">Iznos:</td>
+            <td style="padding:10px 0;color:#C5A880;font-size:13px;font-weight:600;text-align:right;border-top:1px solid #2A2A2D;">{amount_fmt}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2A2D;">Poziv na broj:</td>
+            <td style="padding:10px 0;color:#FFFFFF;font-size:13px;font-family:monospace;text-align:right;border-top:1px solid #2A2A2D;">{reference}</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:16px 24px 32px;text-align:center;">
+    <p style="margin:0;color:#6B7280;font-size:12px;line-height:1.5;">
+      Molimo pošaljite sliku uplatnice na Viber/Instagram salona radi konačne potvrde termina.
+    </p>
+  </td></tr>"""
+    else:
+        qr_and_payment_section = f"""
+  <!-- Clean confirmation (PI_ECOSYSTEM) -->
+  <tr><td style="padding:0 24px 20px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:12px;">
+      <tr><td style="padding:24px;text-align:center;">
+        <p style="margin:0 0 4px;color:#4ADE80;font-size:16px;font-weight:600;">Rezervacija potvrđena</p>
+        <p style="margin:0;color:#9CA3AF;font-size:13px;">Vaš termin je uspešno zakazan. Dobićete obaveštenje sa detaljima.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="padding:0 24px 32px;text-align:center;">
+    <p style="margin:0;color:#6B7280;font-size:12px;">Hvala vam na poverenju!</p>
+  </td></tr>"""
 
     return f"""<!DOCTYPE html>
 <html lang="sr">
@@ -115,41 +173,7 @@ def _build_html(
     </table>
   </td></tr>
 
-  <!-- QR Code Section -->
-  <tr><td style="padding:0 24px 20px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0B;border:1px solid rgba(197,168,128,0.2);border-radius:12px;">
-      <tr><td style="padding:20px;text-align:center;">
-        <p style="margin:0 0 4px;color:#C5A880;font-size:15px;font-weight:600;">Brzo plaćanje (IPS QR kod)</p>
-        <p style="margin:0 0 16px;color:#9CA3AF;font-size:12px;">Skenirajte kod iz vaše mBanking aplikacije</p>
-        <div style="display:inline-block;background:#FFFFFF;border-radius:12px;padding:12px;">
-          <img src="cid:qrcode_image" alt="IPS QR kod" width="200" height="200" style="display:block;" />
-        </div>
-      </td></tr>
-      <tr><td style="padding:0 20px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="padding:10px 0;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2A2D;">Račun:</td>
-            <td style="padding:10px 0;color:#FFFFFF;font-size:13px;font-family:monospace;text-align:right;border-top:1px solid #2A2A2D;">{account_fmt}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2A2D;">Iznos:</td>
-            <td style="padding:10px 0;color:#C5A880;font-size:13px;font-weight:600;text-align:right;border-top:1px solid #2A2A2D;">{amount_fmt}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2A2D;">Poziv na broj:</td>
-            <td style="padding:10px 0;color:#FFFFFF;font-size:13px;font-family:monospace;text-align:right;border-top:1px solid #2A2A2D;">{reference}</td>
-          </tr>
-        </table>
-      </td></tr>
-    </table>
-  </td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:16px 24px 32px;text-align:center;">
-    <p style="margin:0;color:#6B7280;font-size:12px;line-height:1.5;">
-      Molimo pošaljite sliku uplatnice na Viber/Instagram salona radi konačne potvrde termina.
-    </p>
-  </td></tr>
+  {qr_and_payment_section}
 
 </table>
 </td></tr>
@@ -188,15 +212,16 @@ async def send_booking_confirmation_email(
     try:
         # QR generation in its own try-except so failure doesn't block email
         qr_image_bytes = None
-        try:
-            qr_image_bytes = generate_ips_qr_image(
-                bank_account=bank_account,
-                recipient_name=payment_recipient or salon_name,
-                amount=total_price,
-                booking_id=booking_id,
-            )
-        except Exception as qr_err:
-            logger.error(f"QR generation failed for booking #{booking_id}: {qr_err}")
+        if PAYMENT_MODE == "FIAT_STANDARD":
+            try:
+                qr_image_bytes = generate_ips_qr_image(
+                    bank_account=bank_account,
+                    recipient_name=payment_recipient or salon_name,
+                    amount=total_price,
+                    booking_id=booking_id,
+                )
+            except Exception as qr_err:
+                logger.error(f"QR generation failed for booking #{booking_id}: {qr_err}")
 
         html = _build_html(
             salon_name=salon_name,
