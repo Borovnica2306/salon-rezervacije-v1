@@ -89,6 +89,14 @@ async def startup_event():
                 {"$set": {"status": "active"}}
             )
 
+    # Migrate ALL tenants: backfill theme if missing
+    theme_result = await db.tenants.update_many(
+        {"theme": {"$exists": False}},
+        {"$set": {"theme": "MidnightVelvet"}}
+    )
+    if theme_result.modified_count > 0:
+        logger.info(f"Backfilled theme for {theme_result.modified_count} tenants")
+
     # ===== SEED SUPER ADMIN =====
     sa_email = "bornaja23@gmail.com"
     sa_password = "Markonijus23!"

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
 import { API, useAuth, getToken } from "../App";
+import { THEME_NAMES, THEMES, DEFAULT_THEME } from "../config";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Switch } from "../components/ui/switch";
@@ -28,6 +29,7 @@ const SalonGodMode = () => {
 
   // Status change
   const [changingStatus, setChangingStatus] = useState(false);
+  const [savingTheme, setSavingTheme] = useState(false);
 
   const token = getToken();
   const headers = { Authorization: `Bearer ${token}` };
@@ -121,6 +123,20 @@ const SalonGodMode = () => {
       toast.error(error.response?.data?.detail || "Greška pri promeni lozinke");
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleThemeChange = async (newTheme) => {
+    if (!tenant) return;
+    setSavingTheme(true);
+    try {
+      await axios.put(`${API}/super/tenants/${tenant.tenant_id}/theme`, { theme: newTheme }, { headers });
+      setTenant(prev => ({ ...prev, theme: newTheme }));
+      toast.success(`Tema: ${newTheme}`);
+    } catch (error) {
+      toast.error("Greška pri promeni teme");
+    } finally {
+      setSavingTheme(false);
     }
   };
 
@@ -303,6 +319,44 @@ const SalonGodMode = () => {
                   {changingStatus && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
                   {isActive ? "Suspenduj" : "Aktiviraj"}
                 </Button>
+              </div>
+            </div>
+
+            {/* Theme selector */}
+            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+              <div className="p-4 border-b border-[#2A2A2D]">
+                <h3 className="font-medium text-white">{"Tema salona"}</h3>
+              </div>
+              <div className="p-5">
+                <label className="text-xs text-[#6B7280] block mb-2">{"Izaberite vizuelnu temu"}</label>
+                <div className="flex gap-3 items-center">
+                  <select
+                    value={tenant.theme || DEFAULT_THEME}
+                    onChange={(e) => handleThemeChange(e.target.value)}
+                    disabled={savingTheme}
+                    className="flex-1 bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-11 text-white text-sm focus:border-[#C5A880] focus:outline-none"
+                    data-testid="theme-select"
+                  >
+                    {THEME_NAMES.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  {savingTheme && <Loader2 className="w-4 h-4 animate-spin text-[#C5A880]" />}
+                </div>
+                {/* Color preview */}
+                {(() => {
+                  const t = THEMES[tenant.theme || DEFAULT_THEME] || THEMES[DEFAULT_THEME];
+                  return (
+                    <div className="flex gap-1.5 mt-3">
+                      {Object.entries(t).map(([key, hex]) => (
+                        <div key={key} className="flex flex-col items-center gap-1">
+                          <div className="w-7 h-7 rounded-md border border-[#2A2A2D]" style={{ backgroundColor: hex }} title={`${key}: ${hex}`} />
+                          <span className="text-[9px] text-[#6B7280]">{key.slice(0, 3)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 

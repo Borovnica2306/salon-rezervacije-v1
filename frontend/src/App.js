@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { createContext, useContext, useState, useEffect, lazy, Suspense } from "react";
 import axios from "axios";
 import { initAuthStorage, getToken, setToken, removeToken } from "./authStorage";
+import { applyTheme, DEFAULT_THEME } from "./config";
 
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -48,6 +49,7 @@ export const TenantProvider = ({ children }) => {
       try {
         const res = await axios.get(`${API}/tenants/by-slug/${slug}`);
         setTenant(res.data);
+        applyTheme(res.data.theme || DEFAULT_THEME);
       } catch {
         setTenant(null);
       } finally {

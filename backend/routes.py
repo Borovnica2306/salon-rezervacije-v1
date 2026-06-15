@@ -58,6 +58,7 @@ async def get_tenant_by_slug(slug: str):
         "country": tenant.get("country", "RS"),
         "city": tenant.get("city", ""),
         "enabled_features": tenant.get("enabled_features", {}),
+        "theme": tenant.get("theme", "MidnightVelvet"),
     }
 
 
@@ -107,6 +108,21 @@ async def update_tenant_name(tenant_id: str, body: dict, user: dict = Depends(ge
         {"$set": {"name": name}}
     )
     return {"name": name}
+
+
+@api_router.put("/super/tenants/{tenant_id}/theme")
+async def update_tenant_theme(tenant_id: str, body: dict, user: dict = Depends(get_current_user)):
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin required")
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    theme = body.get("theme", "MidnightVelvet").strip()
+    await db.tenants.update_one(
+        {"tenant_id": tenant_id},
+        {"$set": {"theme": theme}}
+    )
+    return {"tenant_id": tenant_id, "theme": theme}
 
 
 @api_router.put("/super/tenants/{tenant_id}/status")
