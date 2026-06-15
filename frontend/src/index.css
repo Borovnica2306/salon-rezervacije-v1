@@ -28,6 +28,13 @@ code {
 
 @layer base {
     :root {
+        --color-primary: #C5A880;
+        --color-secondary: #B89970;
+        --color-background: #0A0A0B;
+        --color-surface: #141416;
+        --color-text: #FFFFFF;
+        --color-accent: #C5A880;
+
         --background: 0 0% 4%;
         --foreground: 0 0% 100%;
         --card: 0 0% 8%;
