@@ -19,9 +19,9 @@ export const API = `${BACKEND_URL}/api`;
 export { getToken } from "./authStorage";
 
 const PageLoader = () => (
-  <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
+  <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
     <div className="text-center">
-      <div className="w-8 h-8 border-2 border-[#C5A880] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
       <p className="text-[#9CA3AF] text-sm">Učitavanje...</p>
     </div>
   </div>
@@ -62,7 +62,7 @@ export const TenantProvider = ({ children }) => {
   if (tenantLoading) return <PageLoader />;
   if (!tenant && slug) {
     return (
-      <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center text-white">
+      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center text-white">
         <div className="text-center">
           <h1 className="text-2xl mb-2">Salon nije pronađen</h1>
           <p className="text-[#9CA3AF]">"{slug}" ne postoji.</p>
@@ -171,7 +171,7 @@ const ProtectedSuperAdmin = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <div className="App min-h-screen bg-[#0A0A0B]">
+      <div className="App min-h-screen bg-[var(--color-background)]">
         <Toaster
           position="top-center"
           toastOptions={{

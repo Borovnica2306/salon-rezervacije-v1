@@ -63,16 +63,16 @@ const AdminDashboard = () => {
   const navItems = baseNavItems;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B]">
+    <div className="min-h-screen bg-[var(--color-background)]">
       {/* Super Admin Banner */}
       {isSuperAdminViewing && (
-        <div className="bg-[#C5A880]/10 border-b border-[#C5A880]/30 px-4 py-2.5 flex items-center justify-between" data-testid="super-admin-banner">
-          <p className="text-sm text-[#C5A880]">
+        <div className="bg-[var(--color-primary)]/10 border-b border-[var(--color-primary)]/30 px-4 py-2.5 flex items-center justify-between" data-testid="super-admin-banner">
+          <p className="text-sm text-[var(--color-primary)]">
             {"Pregledate salon kao Super Admin"}
           </p>
           <a
             href="/super-admin"
-            className="text-sm font-medium text-[#C5A880] hover:text-[#B89970] transition-colors flex items-center gap-1"
+            className="text-sm font-medium text-[var(--color-primary)] hover:text-[#B89970] transition-colors flex items-center gap-1"
             data-testid="back-to-super-panel-link"
           >
             {"Nazad na Super Panel"}
@@ -80,12 +80,12 @@ const AdminDashboard = () => {
         </div>
       )}
       {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 bg-[#0A0A0B]/95 backdrop-blur-md border-b border-[#2A2A2D]">
+      <header className="lg:hidden sticky top-0 z-50 bg-[var(--color-background)]/95 backdrop-blur-md border-b border-[#2A2A2D]">
         <div className="flex items-center justify-between p-4">
           <h1 className="font-['Cormorant_Garamond'] text-xl font-light">Dashboard</h1>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 hover:bg-[#141416] rounded-lg transition-colors"
+            className="p-2 hover:bg-[var(--color-surface)] rounded-lg transition-colors"
             data-testid="mobile-menu-toggle"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -102,8 +102,8 @@ const AdminDashboard = () => {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
                   location.pathname === item.path
-                    ? "bg-[#C5A880]/10 text-[#C5A880]"
-                    : "hover:bg-[#141416] text-[#9CA3AF]"
+                    ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+                    : "hover:bg-[var(--color-surface)] text-[#9CA3AF]"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -124,7 +124,7 @@ const AdminDashboard = () => {
 
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-[#141416] border-r border-[#2A2A2D]">
+        <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-[var(--color-surface)] border-r border-[#2A2A2D]">
           <div className="p-6 border-b border-[#2A2A2D]">
             <h1 className="font-['Cormorant_Garamond'] text-2xl font-light">Beauty Salon</h1>
             <p className="text-sm text-[#9CA3AF] mt-1">{user?.email}</p>
@@ -137,8 +137,8 @@ const AdminDashboard = () => {
                 to={item.path}
                 className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
                   location.pathname === item.path
-                    ? "bg-[#C5A880]/10 text-[#C5A880]"
-                    : "hover:bg-[#0A0A0B] text-[#9CA3AF]"
+                    ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+                    : "hover:bg-[var(--color-background)] text-[#9CA3AF]"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase()}`}
               >
@@ -329,10 +329,10 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-            <Plus className="w-5 h-5 text-[#C5A880]" />
+            <Plus className="w-5 h-5 text-[var(--color-primary)]" />
             Ručna Rezervacija
           </DialogTitle>
           <DialogDescription className="text-[#9CA3AF]">
@@ -345,7 +345,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
         {/* Step indicator */}
         <div className="flex items-center gap-1 mb-4">
           {[1, 2, 3].map(s => (
-            <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? "bg-[#C5A880]" : "bg-[#2A2A2D]"}`} />
+            <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? "bg-[var(--color-primary)]" : "bg-[#2A2A2D]"}`} />
           ))}
         </div>
 
@@ -356,11 +356,11 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
             {selectedPairs.length > 0 && (
               <div className="space-y-2">
                 {selectedPairs.map((pair, idx) => (
-                  <div key={idx} className="flex items-center justify-between bg-[#0A0A0B] rounded-lg px-3 py-2" data-testid={`manual-pair-${idx}`}>
+                  <div key={idx} className="flex items-center justify-between bg-[var(--color-background)] rounded-lg px-3 py-2" data-testid={`manual-pair-${idx}`}>
                     <div className="text-sm">
                       <span className="text-white">{pair.service.name}</span>
                       <span className="text-[#9CA3AF] mx-1">&rarr;</span>
-                      <span className="text-[#C5A880]">{pair.worker.name}</span>
+                      <span className="text-[var(--color-primary)]">{pair.worker.name}</span>
                       <span className="text-[#6B7280] text-xs ml-2">({pair.service.duration} min)</span>
                     </div>
                     <button onClick={() => removePair(idx)} className="text-[#9CA3AF] hover:text-red-400 p-1" data-testid={`remove-pair-${idx}`}>
@@ -375,7 +375,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
             )}
 
             {/* Add new pair */}
-            <div className="bg-[#0A0A0B] rounded-lg p-3 space-y-3">
+            <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-3">
               <select
                 value={tempServiceId}
                 onChange={e => { setTempServiceId(e.target.value); setTempWorkerId(""); }}
@@ -405,7 +405,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <Button
                 onClick={addPair}
                 disabled={!tempServiceId || !tempWorkerId}
-                className="w-full bg-[#1E1E22] border border-[#2A2A2D] hover:bg-[#2A2A2D] text-[#C5A880] disabled:opacity-40 min-h-[48px]"
+                className="w-full bg-[#1E1E22] border border-[#2A2A2D] hover:bg-[#2A2A2D] text-[var(--color-primary)] disabled:opacity-40 min-h-[48px]"
                 size="sm"
                 data-testid="manual-add-pair-btn"
               >
@@ -416,7 +416,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
             <Button
               onClick={handleNextStep}
               disabled={!canProceedStep1}
-              className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40 min-h-[48px]"
+              className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-40 min-h-[48px]"
               data-testid="manual-step1-next"
             >
               Dalje
@@ -440,7 +440,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
 
             <div>
               <label className="text-xs text-[#9CA3AF] mb-1 block">
-                Dostupni termini {loadingSlots && <span className="text-[#C5A880]">(učitavanje...)</span>}
+                Dostupni termini {loadingSlots && <span className="text-[var(--color-primary)]">(učitavanje...)</span>}
               </label>
               {availableSlots.length > 0 ? (
                 <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
@@ -450,8 +450,8 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                       onClick={() => setSelectedTime(slot)}
                       className={`px-2 py-2 text-xs rounded-lg border transition-colors ${
                         selectedTime === slot
-                          ? "bg-[#C5A880] text-black border-[#C5A880] font-medium"
-                          : "bg-[#1E1E22] border-[#2A2A2D] text-[#E5E7EB] hover:border-[#C5A880]/50"
+                          ? "bg-[var(--color-primary)] text-black border-[var(--color-primary)] font-medium"
+                          : "bg-[#1E1E22] border-[#2A2A2D] text-[#E5E7EB] hover:border-[var(--color-primary)]/50"
                       }`}
                       data-testid={`manual-slot-${slot}`}
                     >
@@ -467,7 +467,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
 
               {/* Show selected slot details */}
               {selectedTime && detail && (
-                <div className="mt-3 bg-[#0A0A0B] rounded-lg p-3 space-y-1">
+                <div className="mt-3 bg-[var(--color-background)] rounded-lg p-3 space-y-1">
                   {detail.time_blocks?.map((b, i) => (
                     <div key={i}>
                       {b.gap > 0 && (
@@ -477,7 +477,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                       )}
                       <div className="flex justify-between text-xs">
                         <span className="text-white">{b.start_time}-{b.end_time} {selectedPairs[i]?.service.name}</span>
-                        <span className="text-[#C5A880]">{selectedPairs[i]?.worker.name}</span>
+                        <span className="text-[var(--color-primary)]">{selectedPairs[i]?.worker.name}</span>
                       </div>
                     </div>
                   ))}
@@ -490,7 +490,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <Button
                 onClick={() => setStep(3)}
                 disabled={!selectedTime}
-                className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40 min-h-[48px]"
+                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-40 min-h-[48px]"
                 data-testid="manual-step2-next"
               >
                 Dalje
@@ -503,12 +503,12 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
         {step === 3 && (
           <div className="space-y-4">
             {/* Summary */}
-            <div className="bg-[#0A0A0B] rounded-lg p-3 text-sm space-y-1">
+            <div className="bg-[var(--color-background)] rounded-lg p-3 text-sm space-y-1">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[#9CA3AF] text-xs uppercase tracking-wider">Pregled</span>
                 <button
                   onClick={() => setStep(1)}
-                  className="flex items-center gap-1 text-xs text-[#C5A880] hover:text-[#B89970] transition-colors"
+                  className="flex items-center gap-1 text-xs text-[var(--color-primary)] hover:text-[#B89970] transition-colors"
                   data-testid="admin-edit-services-link"
                 >
                   <Edit2 className="w-3 h-3" />
@@ -526,7 +526,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <div className="space-y-1 pt-1">
                 {selectedPairs.map((pair, idx) => (
                   <div key={idx} className="flex items-center justify-between">
-                    <span className="text-[#9CA3AF]">{pair.service.name} <span className="text-[#C5A880]">{pair.worker.name}</span></span>
+                    <span className="text-[#9CA3AF]">{pair.service.name} <span className="text-[var(--color-primary)]">{pair.worker.name}</span></span>
                     <button
                       onClick={() => removePairFromReview(idx)}
                       className="w-5 h-5 rounded-full flex items-center justify-center text-[#6B7280] hover:text-red-400 hover:bg-red-400/10 transition-colors"
@@ -539,7 +539,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               </div>
               <div className="flex justify-between border-t border-[#2A2A2D] pt-1 mt-1">
                 <span className="text-[#9CA3AF]">Ukupno:</span>
-                <span className="text-[#C5A880] font-medium">{totalPrice.toLocaleString()} RSD</span>
+                <span className="text-[var(--color-primary)] font-medium">{totalPrice.toLocaleString()} RSD</span>
               </div>
             </div>
 
@@ -594,7 +594,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               <Button
                 onClick={() => handleSubmit(false)}
                 disabled={!clientName.trim() || clientPhone.length < 12 || submitting}
-                className="flex-1 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-40 min-h-[48px]"
+                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-40 min-h-[48px]"
                 data-testid="manual-submit-btn"
               >
                 {submitting ? "Kreiranje..." : "Potvrdi Rezervaciju"}
@@ -782,28 +782,28 @@ const ReservationsPage = () => {
             onClick={handleSendReminders}
             disabled={sendingReminders}
             variant="outline"
-            className="border-[#2A2A2D] hover:bg-[#141416] text-[#9CA3AF] hover:text-white"
+            className="border-[#2A2A2D] hover:bg-[var(--color-surface)] text-[#9CA3AF] hover:text-white"
             data-testid="send-reminders-btn"
           >
             {sendingReminders ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Bell className="w-4 h-4 mr-1.5" />}
             Podsetnici za sutra
           </Button>
-          <Button onClick={() => setManualBookingOpen(true)} className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium" data-testid="admin-new-reservation-btn">
+          <Button onClick={() => setManualBookingOpen(true)} className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" data-testid="admin-new-reservation-btn">
             <Plus className="w-4 h-4 mr-1" /> Nova Rezervacija
           </Button>
-          <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="prev-day-btn"><ChevronLeft className="w-4 h-4" /></Button>
-          <Button variant="outline" onClick={() => setSelectedDate(new Date())} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="today-btn">Danas</Button>
-          <Button variant="outline" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[#141416]" data-testid="next-day-btn"><ChevronRight className="w-4 h-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="prev-day-btn"><ChevronLeft className="w-4 h-4" /></Button>
+          <Button variant="outline" onClick={() => setSelectedDate(new Date())} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="today-btn">Danas</Button>
+          <Button variant="outline" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="next-day-btn"><ChevronRight className="w-4 h-4" /></Button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="flex gap-1 bg-[#0A0A0B] rounded-lg p-1 w-fit" data-testid="view-tabs">
-          <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
+        <div className="flex gap-1 bg-[var(--color-background)] rounded-lg p-1 w-fit" data-testid="view-tabs">
+          <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
             <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
           </button>
-          <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
+          <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
             <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
           </button>
         </div>
@@ -812,7 +812,7 @@ const ReservationsPage = () => {
             onClick={handleExportCSV}
             variant="outline"
             size="sm"
-            className="border-[#2A2A2D] hover:bg-[#141416] text-[#9CA3AF] hover:text-white"
+            className="border-[#2A2A2D] hover:bg-[var(--color-surface)] text-[#9CA3AF] hover:text-white"
             data-testid="export-csv-btn"
           >
             <Download className="w-4 h-4 mr-1.5" />
@@ -823,11 +823,11 @@ const ReservationsPage = () => {
 
       {/* Cancel Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="bg-[#141416] border-[#2A2A2D]">
+        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D]">
           <DialogHeader><DialogTitle className="text-white">Otkazivanje rezervacije</DialogTitle><DialogDescription className="text-[#9CA3AF]">Da li ste sigurni?</DialogDescription></DialogHeader>
           {cancelTarget && (
-            <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-[#9CA3AF]">ID:</span><span className="font-mono text-[#C5A880]">#{cancelTarget.booking_id}</span></div>
+            <div className="bg-[var(--color-background)] rounded-lg p-4 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-[#9CA3AF]">ID:</span><span className="font-mono text-[var(--color-primary)]">#{cancelTarget.booking_id}</span></div>
               <div className="flex justify-between"><span className="text-[#9CA3AF]">Klijent:</span><span className="text-white">{cancelTarget.client_name}</span></div>
               <div className="flex justify-between"><span className="text-[#9CA3AF]">Vreme:</span><span className="text-white">{cancelTarget.time} - {cancelTarget.end_time}</span></div>
               <div className="flex justify-between"><span className="text-[#9CA3AF]">Usluge:</span><span className="text-white">{cancelTarget.service_names?.join(", ")}</span></div>
@@ -842,19 +842,19 @@ const ReservationsPage = () => {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedRes} onOpenChange={(v) => !v && setSelectedRes(null)}>
-        <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-sm">
+        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <span className="font-mono text-[#C5A880] text-sm bg-[#C5A880]/10 px-2 py-0.5 rounded">#{selectedRes?.booking_id}</span>
+              <span className="font-mono text-[var(--color-primary)] text-sm bg-[var(--color-primary)]/10 px-2 py-0.5 rounded">#{selectedRes?.booking_id}</span>
               {selectedRes?.client_name}
             </DialogTitle>
             <DialogDescription className="text-[#9CA3AF]">{selectedRes?.time} - {selectedRes?.end_time} &middot; {selectedRes?.total_duration} min</DialogDescription>
           </DialogHeader>
           {selectedRes && (
             <div className="space-y-3">
-              <div className="bg-[#0A0A0B] rounded-lg p-3 space-y-2 text-sm">
+              <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-[#9CA3AF]">Telefon:</span><span className="text-white">{selectedRes.client_phone}</span></div>
-                <div className="flex justify-between"><span className="text-[#9CA3AF]">Ukupno:</span><span className="text-[#C5A880] font-medium">{selectedRes.total_price?.toLocaleString()} RSD</span></div>
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">Ukupno:</span><span className="text-[var(--color-primary)] font-medium">{selectedRes.total_price?.toLocaleString()} RSD</span></div>
               </div>
               <div className="space-y-1">
                 {selectedRes.worker_time_blocks?.length > 0 ? selectedRes.worker_time_blocks.map((block, idx) => {
@@ -862,15 +862,15 @@ const ReservationsPage = () => {
                   return (
                     <div key={idx}>
                       {block.gap > 0 && idx > 0 && <div className="text-[10px] text-[#6B7280] italic pl-1 py-0.5">☕ Pauza ({block.gap} min)</div>}
-                      <div className="flex justify-between text-xs bg-[#0A0A0B] rounded px-2 py-1.5">
+                      <div className="flex justify-between text-xs bg-[var(--color-background)] rounded px-2 py-1.5">
                         <span className="text-white">{block.start_time}-{block.end_time} {pair?.service_name}</span>
-                        <span className="text-[#C5A880]">{pair?.worker_name}</span>
+                        <span className="text-[var(--color-primary)]">{pair?.worker_name}</span>
                       </div>
                     </div>
                   );
                 }) : selectedRes.service_worker_pairs?.map((pair, idx) => (
-                  <div key={idx} className="flex justify-between text-xs bg-[#0A0A0B] rounded px-2 py-1.5">
-                    <span className="text-white">{pair.service_name}</span><span className="text-[#C5A880]">{pair.worker_name}</span>
+                  <div key={idx} className="flex justify-between text-xs bg-[var(--color-background)] rounded px-2 py-1.5">
+                    <span className="text-white">{pair.service_name}</span><span className="text-[var(--color-primary)]">{pair.worker_name}</span>
                   </div>
                 ))}
               </div>
@@ -907,13 +907,13 @@ const ReservationsPage = () => {
       {activeTab === "grid" && (
         loading ? <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div> :
         workers.length === 0 ? (
-          <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">Nema aktivnih radnika</p></div>
+          <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">Nema aktivnih radnika</p></div>
         ) : (
-          <div className="bg-[#141416] rounded-xl border border-[#2A2A2D]" data-testid="timeline-grid">
+          <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]" data-testid="timeline-grid">
             <div className="overflow-auto max-h-[70vh]" ref={gridRef} data-testid="grid-body">
               {/* Header - sticky top */}
-              <div className="flex sticky top-0 z-20 bg-[#141416] border-b border-[#2A2A2D]">
-                <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D] sticky left-0 z-30 bg-[#141416]">Vreme</div>
+              <div className="flex sticky top-0 z-20 bg-[var(--color-surface)] border-b border-[#2A2A2D]">
+                <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D] sticky left-0 z-30 bg-[var(--color-surface)]">Vreme</div>
                 {workers.map(w => (
                   <div key={w.id} className="flex-1 min-w-[120px] flex-shrink-0 p-2 text-center border-r border-[#2A2A2D] last:border-r-0">
                     <div className="text-xs font-medium text-white truncate">{w.name}</div>
@@ -930,7 +930,7 @@ const ReservationsPage = () => {
                 )}
                 {timeSlots.map((slotMin) => (
                   <div key={slotMin} className="flex border-b border-[#1E1E22]" style={{ height: `${SLOT_HEIGHT}px` }}>
-                    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22] sticky left-0 z-10 bg-[#141416]">{mtt(slotMin)}</div>
+                    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22] sticky left-0 z-10 bg-[var(--color-surface)]">{mtt(slotMin)}</div>
                     {workers.map(w => {
                       const blocks = buildWorkerBlocks(w.id);
                       const cellBlocks = blocks.filter(b => b.startMin >= slotMin && b.startMin < slotMin + 30);
@@ -968,12 +968,12 @@ const ReservationsPage = () => {
       {activeTab === "archive" && (
         <div data-testid="archive-view">
           <div className="mb-4">
-            <Input placeholder="Pretraži po imenu, telefonu, ID-u..." value={archiveSearch} onChange={e => setArchiveSearch(e.target.value)} className="bg-[#141416] border-[#2A2A2D] text-white max-w-sm" data-testid="archive-search" />
+            <Input placeholder="Pretraži po imenu, telefonu, ID-u..." value={archiveSearch} onChange={e => setArchiveSearch(e.target.value)} className="bg-[var(--color-surface)] border-[#2A2A2D] text-white max-w-sm" data-testid="archive-search" />
           </div>
           {filteredArchive.length === 0 ? (
-            <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]"><Clock className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">{isPast ? "Nema rezervacija" : "Nema arhiviranih termina"}</p></div>
+            <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]"><Clock className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">{isPast ? "Nema rezervacija" : "Nema arhiviranih termina"}</p></div>
           ) : (
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-[#2A2A2D] hover:bg-transparent">
@@ -983,11 +983,11 @@ const ReservationsPage = () => {
                 <TableBody>
                   {filteredArchive.sort((a, b) => a.time.localeCompare(b.time)).map(res => (
                     <TableRow key={res.id} className="border-[#2A2A2D] opacity-70 hover:opacity-100 cursor-pointer" onClick={() => setSelectedRes(res)} data-testid={`archive-row-${res.id}`}>
-                      <TableCell><span className="font-mono text-xs text-[#C5A880]">#{res.booking_id}</span></TableCell>
-                      <TableCell><span className="text-sm text-[#C5A880]">{res.time}-{res.end_time}</span></TableCell>
+                      <TableCell><span className="font-mono text-xs text-[var(--color-primary)]">#{res.booking_id}</span></TableCell>
+                      <TableCell><span className="text-sm text-[var(--color-primary)]">{res.time}-{res.end_time}</span></TableCell>
                       <TableCell><span className="text-sm">{res.client_name}</span><br /><span className="text-xs text-[#6B7280]">{res.client_phone}</span></TableCell>
                       <TableCell><span className="text-xs text-[#9CA3AF]">{res.service_names?.join(", ")}</span></TableCell>
-                      <TableCell className="text-right text-sm font-medium text-[#C5A880]">{res.total_price?.toLocaleString()} RSD</TableCell>
+                      <TableCell className="text-right text-sm font-medium text-[var(--color-primary)]">{res.total_price?.toLocaleString()} RSD</TableCell>
                       <TableCell><span className={`px-2 py-1 rounded-full text-[10px] ${res.payment_status === "confirmed" || res.payment_status === "paid" ? "bg-green-600/20 text-green-400" : res.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : "bg-[#2A2A2D] text-[#9CA3AF]"}`}>{res.payment_status === "confirmed" || res.payment_status === "paid" ? "Plaćeno" : res.payment_status === "sent_for_verification" ? "Čeka proveru" : "Čeka"}</span></TableCell>
                     </TableRow>
                   ))}
@@ -1196,12 +1196,12 @@ const EmployeesPage = () => {
         <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Radnici</h2>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button className="bg-[#C5A880] hover:bg-[#B89970] text-black" data-testid="add-employee-btn">
+            <Button className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black" data-testid="add-employee-btn">
               <Plus className="w-4 h-4 mr-2" />
               Dodaj Radnika
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#141416] border-[#2A2A2D] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">
                 {editingEmployee ? "Izmeni Radnika" : "Novi Radnik"}
@@ -1214,7 +1214,7 @@ const EmployeesPage = () => {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Ime radnika"
-                  className="bg-[#0A0A0B] border-[#2A2A2D]"
+                  className="bg-[var(--color-background)] border-[#2A2A2D]"
                   data-testid="employee-name-input"
                 />
               </div>
@@ -1232,7 +1232,7 @@ const EmployeesPage = () => {
                         work_end: prev.work_end < val ? val : prev.work_end,
                       }));
                     }}
-                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
+                    className="w-full bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[var(--color-primary)] focus:outline-none"
                     data-testid="employee-work-start"
                   >
                     {startOptions.map(t => (
@@ -1245,7 +1245,7 @@ const EmployeesPage = () => {
                   <select
                     value={form.work_end}
                     onChange={(e) => setForm({ ...form, work_end: e.target.value })}
-                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
+                    className="w-full bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[var(--color-primary)] focus:outline-none"
                     data-testid="employee-work-end"
                   >
                     {endOptions.filter(t => t >= form.work_start).map(t => (
@@ -1264,7 +1264,7 @@ const EmployeesPage = () => {
                   <select
                     value={form.break_start}
                     onChange={(e) => setForm({ ...form, break_start: e.target.value })}
-                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
+                    className="w-full bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[var(--color-primary)] focus:outline-none"
                     data-testid="employee-break-start"
                   >
                     <option value="">{"—"}</option>
@@ -1278,7 +1278,7 @@ const EmployeesPage = () => {
                   <select
                     value={form.break_end}
                     onChange={(e) => setForm({ ...form, break_end: e.target.value })}
-                    className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[#C5A880] focus:outline-none"
+                    className="w-full bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg px-3 h-10 text-white text-sm focus:border-[var(--color-primary)] focus:outline-none"
                     data-testid="employee-break-end"
                   >
                     <option value="">{"—"}</option>
@@ -1303,10 +1303,10 @@ const EmployeesPage = () => {
                         disabled={salonClosed}
                         className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                           salonClosed
-                            ? "bg-[#0A0A0B] border border-[#2A2A2D] text-[#3A3A3D] cursor-not-allowed line-through"
+                            ? "bg-[var(--color-background)] border border-[#2A2A2D] text-[#3A3A3D] cursor-not-allowed line-through"
                             : isOff
-                              ? "bg-[#C5A880] text-black"
-                              : "bg-[#0A0A0B] border border-[#2A2A2D] text-[#9CA3AF]"
+                              ? "bg-[var(--color-primary)] text-black"
+                              : "bg-[var(--color-background)] border border-[#2A2A2D] text-[#9CA3AF]"
                         }`}
                         title={salonClosed ? "Salon je zatvoren ovog dana" : ""}
                       >
@@ -1333,8 +1333,8 @@ const EmployeesPage = () => {
                         onClick={() => toggleCategory(cat.key)}
                         className={`w-full p-3 rounded-lg text-left text-sm transition-colors ${
                           isSelected
-                            ? "bg-[#C5A880]/10 border border-[#C5A880]"
-                            : "bg-[#0A0A0B] border border-[#2A2A2D] hover:border-[#C5A880]/50"
+                            ? "bg-[var(--color-primary)]/10 border border-[var(--color-primary)]"
+                            : "bg-[var(--color-background)] border border-[#2A2A2D] hover:border-[var(--color-primary)]/50"
                         }`}
                         data-testid={`category-toggle-${cat.key}`}
                       >
@@ -1348,7 +1348,7 @@ const EmployeesPage = () => {
 
               <Button
                 onClick={handleSubmit}
-                className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black"
+                className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black"
                 data-testid="save-employee-btn"
               >
                 {editingEmployee ? "Sačuvaj Izmene" : "Dodaj Radnika"}
@@ -1361,7 +1361,7 @@ const EmployeesPage = () => {
       {loading ? (
         <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div>
       ) : employees.length === 0 ? (
-        <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]">
+        <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]">
           <Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" />
           <p className="text-[#9CA3AF]">Nema radnika</p>
         </div>
@@ -1370,7 +1370,7 @@ const EmployeesPage = () => {
           {employees.map((emp) => (
             <div
               key={emp.id}
-              className={`bg-[#141416] rounded-xl border p-5 ${
+              className={`bg-[var(--color-surface)] rounded-xl border p-5 ${
                 emp.active ? "border-[#2A2A2D]" : "border-red-400/30 opacity-60"
               }`}
               data-testid={`employee-${emp.id}`}
@@ -1392,7 +1392,7 @@ const EmployeesPage = () => {
                     size="icon"
                     variant="ghost"
                     onClick={() => handleEdit(emp)}
-                    className="h-8 w-8 hover:bg-[#0A0A0B]"
+                    className="h-8 w-8 hover:bg-[var(--color-background)]"
                     data-testid={`edit-employee-${emp.id}`}
                   >
                     <Edit2 className="w-4 h-4" />
@@ -1425,7 +1425,7 @@ const EmployeesPage = () => {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-sm">
+        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-400" />
@@ -1439,7 +1439,7 @@ const EmployeesPage = () => {
             <Button
               variant="outline"
               onClick={() => setDeleteConfirm(null)}
-              className="flex-1 border-[#2A2A2D] bg-transparent hover:bg-[#0A0A0B]"
+              className="flex-1 border-[#2A2A2D] bg-transparent hover:bg-[var(--color-background)]"
               data-testid="cancel-delete-btn"
             >
               Otkaži
@@ -1569,12 +1569,12 @@ const ServicesPage = () => {
         <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Usluge</h2>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button className="bg-[#C5A880] hover:bg-[#B89970] text-black" data-testid="add-service-btn">
+            <Button className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black" data-testid="add-service-btn">
               <Plus className="w-4 h-4 mr-2" />
               Dodaj Uslugu
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#141416] border-[#2A2A2D]">
+          <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D]">
             <DialogHeader>
               <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">
                 {editingService ? "Izmeni Uslugu" : "Nova Usluga"}
@@ -1587,7 +1587,7 @@ const ServicesPage = () => {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Naziv usluge"
-                  className="bg-[#0A0A0B] border-[#2A2A2D]"
+                  className="bg-[var(--color-background)] border-[#2A2A2D]"
                   data-testid="service-name-input"
                 />
               </div>
@@ -1602,8 +1602,8 @@ const ServicesPage = () => {
                       onClick={() => setForm({ ...form, category: key })}
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                         form.category === key
-                          ? "bg-[#C5A880] text-black"
-                          : "bg-[#0A0A0B] border border-[#2A2A2D] text-[#9CA3AF]"
+                          ? "bg-[var(--color-primary)] text-black"
+                          : "bg-[var(--color-background)] border border-[#2A2A2D] text-[#9CA3AF]"
                       }`}
                     >
                       {label}
@@ -1619,7 +1619,7 @@ const ServicesPage = () => {
                     type="number"
                     value={form.duration}
                     onChange={(e) => setForm({ ...form, duration: parseInt(e.target.value) || 0 })}
-                    className="bg-[#0A0A0B] border-[#2A2A2D]"
+                    className="bg-[var(--color-background)] border-[#2A2A2D]"
                     data-testid="service-duration-input"
                   />
                 </div>
@@ -1629,7 +1629,7 @@ const ServicesPage = () => {
                     type="number"
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })}
-                    className="bg-[#0A0A0B] border-[#2A2A2D]"
+                    className="bg-[var(--color-background)] border-[#2A2A2D]"
                     data-testid="service-price-input"
                   />
                 </div>
@@ -1641,14 +1641,14 @@ const ServicesPage = () => {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="Kratak opis usluge"
-                  className="bg-[#0A0A0B] border-[#2A2A2D]"
+                  className="bg-[var(--color-background)] border-[#2A2A2D]"
                   data-testid="service-description-input"
                 />
               </div>
 
               <Button
                 onClick={handleSubmit}
-                className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black"
+                className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black"
                 data-testid="save-service-btn"
               >
                 {editingService ? "Sačuvaj Izmene" : "Dodaj Uslugu"}
@@ -1661,7 +1661,7 @@ const ServicesPage = () => {
       {loading ? (
         <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div>
       ) : services.length === 0 ? (
-        <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]">
+        <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]">
           <Scissors className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" />
           <p className="text-[#9CA3AF]">Nema usluga</p>
         </div>
@@ -1678,7 +1678,7 @@ const ServicesPage = () => {
                   {categoryServices.map((service) => (
                     <div
                       key={service.id}
-                      className={`bg-[#141416] rounded-xl border p-4 ${
+                      className={`bg-[var(--color-surface)] rounded-xl border p-4 ${
                         service.active ? "border-[#2A2A2D]" : "border-red-400/30 opacity-60"
                       }`}
                       data-testid={`service-item-${service.id}`}
@@ -1692,7 +1692,7 @@ const ServicesPage = () => {
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-semibold text-[#C5A880] text-sm whitespace-nowrap">
+                          <span className="font-semibold text-[var(--color-primary)] text-sm whitespace-nowrap">
                             {service.price.toLocaleString()} RSD
                           </span>
                           <div className="flex gap-1">
@@ -1700,7 +1700,7 @@ const ServicesPage = () => {
                               size="icon"
                               variant="ghost"
                               onClick={() => handleEdit(service)}
-                              className="h-8 w-8 hover:bg-[#0A0A0B]"
+                              className="h-8 w-8 hover:bg-[var(--color-background)]"
                               data-testid={`edit-service-${service.id}`}
                             >
                               <Edit2 className="w-4 h-4" />
@@ -1801,7 +1801,7 @@ const SettingsPage = () => {
     <div className="animate-fade-in max-w-2xl">
       <h2 className="font-['Cormorant_Garamond'] text-3xl font-light mb-6">Podešavanja</h2>
 
-      <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-6 space-y-6">
+      <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-6 space-y-6">
         <div>
           <label className="text-sm text-[#9CA3AF] mb-2 block">Naziv Salona</label>
           <Input
@@ -1809,7 +1809,7 @@ const SettingsPage = () => {
             onChange={(e) => setSettings({ ...settings, salon_name: e.target.value })}
             placeholder="Beauty Salon"
             disabled={!isSuperAdmin}
-            className={`bg-[#0A0A0B] border-[#2A2A2D] ${!isSuperAdmin ? "opacity-60 cursor-not-allowed" : ""}`}
+            className={`bg-[var(--color-background)] border-[#2A2A2D] ${!isSuperAdmin ? "opacity-60 cursor-not-allowed" : ""}`}
             data-testid="settings-salon-name"
           />
           {!isSuperAdmin && (
@@ -1824,7 +1824,7 @@ const SettingsPage = () => {
               type="time"
               value={settings.work_start}
               onChange={(e) => setSettings({ ...settings, work_start: e.target.value })}
-              className="bg-[#0A0A0B] border-[#2A2A2D]"
+              className="bg-[var(--color-background)] border-[#2A2A2D]"
               data-testid="settings-work-start"
             />
           </div>
@@ -1834,7 +1834,7 @@ const SettingsPage = () => {
               type="time"
               value={settings.work_end}
               onChange={(e) => setSettings({ ...settings, work_end: e.target.value })}
-              className="bg-[#0A0A0B] border-[#2A2A2D]"
+              className="bg-[var(--color-background)] border-[#2A2A2D]"
               data-testid="settings-work-end"
             />
           </div>
@@ -1847,14 +1847,14 @@ const SettingsPage = () => {
             onChange={(e) => setSettings({ ...settings, advance_instructions: e.target.value })}
             placeholder="Unesite instrukcije za uplatu avansa..."
             rows={4}
-            className="w-full bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg p-3 text-white resize-none focus:border-[#C5A880] focus:outline-none"
+            className="w-full bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg p-3 text-white resize-none focus:border-[var(--color-primary)] focus:outline-none"
             data-testid="settings-advance-instructions"
           />
         </div>
 
         <div className="border-t border-[#2A2A2D] pt-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-[#C5A880]" />
+            <CreditCard className="w-4 h-4 text-[var(--color-primary)]" />
             Podaci za uplatu
           </h3>
           <div className="space-y-4">
@@ -1864,7 +1864,7 @@ const SettingsPage = () => {
                 value={settings.bank_account}
                 onChange={(e) => setSettings({ ...settings, bank_account: e.target.value })}
                 placeholder="265-1234567890123-12"
-                className="bg-[#0A0A0B] border-[#2A2A2D]"
+                className="bg-[var(--color-background)] border-[#2A2A2D]"
                 data-testid="settings-bank-account"
               />
             </div>
@@ -1874,7 +1874,7 @@ const SettingsPage = () => {
                 value={settings.payment_recipient}
                 onChange={(e) => setSettings({ ...settings, payment_recipient: e.target.value })}
                 placeholder="Ime salona ili vlasnika"
-                className="bg-[#0A0A0B] border-[#2A2A2D]"
+                className="bg-[var(--color-background)] border-[#2A2A2D]"
                 data-testid="settings-payment-recipient"
               />
             </div>
@@ -1898,13 +1898,13 @@ const SettingsPage = () => {
         {isSuperAdmin && (
         <div className="border-t border-[#2A2A2D] pt-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-[#C5A880]" />
+            <Settings className="w-4 h-4 text-[var(--color-primary)]" />
             Integracije i Obaveštenja
           </h3>
 
           <div className="space-y-5">
             {/* SMTP Configuration */}
-            <div className="bg-[#0A0A0B] rounded-lg p-4 space-y-4">
+            <div className="bg-[var(--color-background)] rounded-lg p-4 space-y-4">
               <p className="text-xs text-[#9CA3AF] uppercase tracking-wider">Email (SMTP)</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1913,7 +1913,7 @@ const SettingsPage = () => {
                     value={settings.smtp_server}
                     onChange={(e) => setSettings({ ...settings, smtp_server: e.target.value })}
                     placeholder="smtp.gmail.com"
-                    className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                    className="bg-[var(--color-surface)] border-[#2A2A2D] min-h-[48px]"
                     data-testid="settings-smtp-server"
                   />
                 </div>
@@ -1924,7 +1924,7 @@ const SettingsPage = () => {
                     value={settings.smtp_port}
                     onChange={(e) => setSettings({ ...settings, smtp_port: parseInt(e.target.value) || 587 })}
                     placeholder="587"
-                    className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                    className="bg-[var(--color-surface)] border-[#2A2A2D] min-h-[48px]"
                     data-testid="settings-smtp-port"
                   />
                 </div>
@@ -1936,7 +1936,7 @@ const SettingsPage = () => {
                   value={settings.smtp_user}
                   onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })}
                   placeholder="salon@gmail.com"
-                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                  className="bg-[var(--color-surface)] border-[#2A2A2D] min-h-[48px]"
                   data-testid="settings-smtp-user"
                 />
               </div>
@@ -1947,7 +1947,7 @@ const SettingsPage = () => {
                   value={settings.smtp_password}
                   onChange={(e) => setSettings({ ...settings, smtp_password: e.target.value })}
                   placeholder="16-cifreni Gmail App Password"
-                  className="bg-[#141416] border-[#2A2A2D] min-h-[48px]"
+                  className="bg-[var(--color-surface)] border-[#2A2A2D] min-h-[48px]"
                   data-testid="settings-smtp-password"
                 />
                 <p className="text-[10px] text-[#6B7280] mt-1">Generišite na: myaccount.google.com/apppasswords</p>
@@ -1962,7 +1962,7 @@ const SettingsPage = () => {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black"
+          className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black"
           data-testid="save-settings-btn"
         >
           {saving ? "Čuvanje..." : "Sačuvaj Podešavanja"}
@@ -2036,7 +2036,7 @@ const BlacklistPage = () => {
       </p>
 
       {/* Add new phone */}
-      <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-6 mb-6">
+      <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-6 mb-6">
         <h3 className="font-medium mb-4">Dodaj broj na crnu listu</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -2045,7 +2045,7 @@ const BlacklistPage = () => {
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
               placeholder="+381 6X XXX XXXX"
-              className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] w-full"
+              className="pl-12 bg-[var(--color-background)] border-[#2A2A2D] focus:border-[var(--color-primary)] w-full"
               data-testid="blacklist-phone-input"
               onKeyDown={(e) => e.key === "Enter" && handleAddToBlacklist()}
             />
@@ -2066,12 +2066,12 @@ const BlacklistPage = () => {
       {loading ? (
         <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div>
       ) : blacklist.length === 0 ? (
-        <div className="text-center py-12 bg-[#141416] rounded-xl border border-[#2A2A2D]">
+        <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]">
           <Shield className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" />
           <p className="text-[#9CA3AF]">Nema blokiranih brojeva</p>
         </div>
       ) : (
-        <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+        <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
           {/* Desktop Table */}
           <div className="hidden sm:block">
             <Table>

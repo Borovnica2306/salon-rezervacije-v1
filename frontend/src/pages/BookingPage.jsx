@@ -505,10 +505,10 @@ const BookingPage = () => {
     const ipsReference = bookingDetails.booking_id ? `99${bookingDetails.booking_id}` : "";
 
     return (
-      <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#141416] rounded-2xl border border-[#2A2A2D] p-8 text-center animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-[#C5A880]/20 flex items-center justify-center mx-auto mb-6">
-            <Check className="w-8 h-8 text-[#C5A880]" />
+      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[var(--color-surface)] rounded-2xl border border-[#2A2A2D] p-8 text-center animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center mx-auto mb-6">
+            <Check className="w-8 h-8 text-[var(--color-primary)]" />
           </div>
           <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Rezervacija Potvrđena</h1>
 
@@ -531,19 +531,19 @@ const BookingPage = () => {
                   fallbackCopy(text);
                 }
               }}
-              className="inline-flex items-center gap-2 bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-lg px-4 py-2.5 mb-4 hover:bg-[#C5A880]/20 transition-colors active:scale-95"
+              className="inline-flex items-center gap-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg px-4 py-2.5 mb-4 hover:bg-[var(--color-primary)]/20 transition-colors active:scale-95"
               data-testid="success-booking-id"
             >
               <span className="text-[#9CA3AF] text-sm">Vaš ID: </span>
-              <span className="font-mono font-bold text-[#C5A880] text-lg">#{bookingDetails.booking_id}</span>
-              <Copy className="w-4 h-4 text-[#C5A880] opacity-70" />
+              <span className="font-mono font-bold text-[var(--color-primary)] text-lg">#{bookingDetails.booking_id}</span>
+              <Copy className="w-4 h-4 text-[var(--color-primary)] opacity-70" />
             </button>
           )}
 
           <p className="text-[#9CA3AF] mb-6">Hvala vam na rezervaciji!</p>
 
           {/* Date & Total Info */}
-          <div className="bg-[#0A0A0B] rounded-xl p-5 text-left mb-4">
+          <div className="bg-[var(--color-background)] rounded-xl p-5 text-left mb-4">
             <div className="flex justify-between mb-3">
               <span className="text-[#9CA3AF] text-sm">Datum:</span>
               <span className="font-medium text-sm">{bookingDetails.date}</span>
@@ -566,12 +566,12 @@ const BookingPage = () => {
             </div>
             <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
               <span className="text-[#9CA3AF] text-sm">Ukupno:</span>
-              <span className="font-semibold text-[#C5A880]">{bookingDetails.total_price?.toLocaleString()} RSD</span>
+              <span className="font-semibold text-[var(--color-primary)]">{bookingDetails.total_price?.toLocaleString()} RSD</span>
             </div>
           </div>
 
           {/* Visual Timeline */}
-          <div className="bg-[#0A0A0B] rounded-xl p-5 text-left mb-4" data-testid="service-timeline">
+          <div className="bg-[var(--color-background)] rounded-xl p-5 text-left mb-4" data-testid="service-timeline">
             <span className="text-[#9CA3AF] text-xs uppercase tracking-wider">Vaš raspored</span>
             <div className="mt-4 relative">
               {/* Timeline vertical line */}
@@ -582,7 +582,7 @@ const BookingPage = () => {
                   item.type === "service" ? (
                     <div key={idx} className="relative flex items-start gap-3 py-2.5" data-testid={`timeline-service-${idx}`}>
                       {/* Dot */}
-                      <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[#C5A880]/15 border border-[#C5A880]/40 flex items-center justify-center flex-shrink-0 text-base">
+                      <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[var(--color-primary)]/15 border border-[var(--color-primary)]/40 flex items-center justify-center flex-shrink-0 text-base">
                         {item.emoji}
                       </div>
                       {/* Content */}
@@ -592,7 +592,7 @@ const BookingPage = () => {
                           {item.startTime} - {item.endTime} &middot; {item.workerName}
                         </div>
                       </div>
-                      <div className="text-xs text-[#C5A880] font-medium flex-shrink-0 pt-0.5">
+                      <div className="text-xs text-[var(--color-primary)] font-medium flex-shrink-0 pt-0.5">
                         {item.price?.toLocaleString()} RSD
                       </div>
                     </div>
@@ -614,7 +614,7 @@ const BookingPage = () => {
                 {/* Fallback: no timeline blocks (single service) */}
                 {!hasTimeline && bookingDetails.service_worker_pairs?.map((pair, idx) => (
                   <div key={idx} className="relative flex items-start gap-3 py-2.5">
-                    <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[#C5A880]/15 border border-[#C5A880]/40 flex items-center justify-center flex-shrink-0 text-base">
+                    <div className="relative z-10 w-[38px] h-[38px] rounded-full bg-[var(--color-primary)]/15 border border-[var(--color-primary)]/40 flex items-center justify-center flex-shrink-0 text-base">
                       {CATEGORY_EMOJI[services.find(s => s.id === pair.service_id)?.category] || "\uD83D\uDC88"}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -623,7 +623,7 @@ const BookingPage = () => {
                         {bookingDetails.time} - {bookingDetails.end_time} &middot; {pair.worker_name}
                       </div>
                     </div>
-                    <div className="text-xs text-[#C5A880] font-medium flex-shrink-0 pt-0.5">
+                    <div className="text-xs text-[var(--color-primary)] font-medium flex-shrink-0 pt-0.5">
                       {pair.price?.toLocaleString()} RSD
                     </div>
                   </div>
@@ -641,7 +641,7 @@ const BookingPage = () => {
               className="flex-1 flex items-center justify-center gap-2 bg-[#1E1E22] hover:bg-[#2A2A2D] border border-[#2A2A2D] rounded-xl py-3 px-3 transition-colors text-sm"
               data-testid="google-calendar-btn"
             >
-              <Calendar className="w-4 h-4 text-[#C5A880]" />
+              <Calendar className="w-4 h-4 text-[var(--color-primary)]" />
               <span className="text-[#E5E7EB]">Google Calendar</span>
             </a>
             <button
@@ -649,15 +649,15 @@ const BookingPage = () => {
               className="flex-1 flex items-center justify-center gap-2 bg-[#1E1E22] hover:bg-[#2A2A2D] border border-[#2A2A2D] rounded-xl py-3 px-3 transition-colors text-sm"
               data-testid="ics-download-btn"
             >
-              <Calendar className="w-4 h-4 text-[#C5A880]" />
+              <Calendar className="w-4 h-4 text-[var(--color-primary)]" />
               <span className="text-[#E5E7EB]">Apple / Outlook</span>
             </button>
           </div>
 
           {/* IPS QR Code Payment */}
           {PAYMENT_MODE === 'FIAT_STANDARD' && ipsQRString && (
-            <div className="bg-[#0A0A0B] rounded-xl p-5 text-center mb-4 border border-[#C5A880]/20" data-testid="ips-qr-section">
-              <h3 className="text-[#C5A880] font-medium mb-2 flex items-center justify-center gap-2">
+            <div className="bg-[var(--color-background)] rounded-xl p-5 text-center mb-4 border border-[var(--color-primary)]/20" data-testid="ips-qr-section">
+              <h3 className="text-[var(--color-primary)] font-medium mb-2 flex items-center justify-center gap-2">
                 <QrCode className="w-4 h-4" />
                 Brzo plaćanje (IPS QR kod)
               </h3>
@@ -675,7 +675,7 @@ const BookingPage = () => {
                 </div>
                 <div className="flex justify-between min-h-[48px] items-center border-b border-[#2A2A2D]">
                   <span className="text-[#9CA3AF] text-sm">Iznos:</span>
-                  <span className="text-[#C5A880] font-medium text-sm" data-testid="ips-amount">{ipsAmount}</span>
+                  <span className="text-[var(--color-primary)] font-medium text-sm" data-testid="ips-amount">{ipsAmount}</span>
                 </div>
                 <div className="flex justify-between min-h-[48px] items-center">
                   <span className="text-[#9CA3AF] text-sm">Poziv na broj:</span>
@@ -687,9 +687,9 @@ const BookingPage = () => {
 
           {/* Viber & WhatsApp CTA */}
           {PAYMENT_MODE === 'FIAT_STANDARD' && settings?.viber_phone && (
-            <div className="rounded-xl p-5 mb-4 text-left border border-[#2A2A2D] bg-[#141416] space-y-3" data-testid="messaging-cta-section">
+            <div className="rounded-xl p-5 mb-4 text-left border border-[#2A2A2D] bg-[var(--color-surface)] space-y-3" data-testid="messaging-cta-section">
               <h3 className="text-white font-medium mb-1 flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-[#C5A880]" />
+                <MessageCircle className="w-4 h-4 text-[var(--color-primary)]" />
                 Pošaljite nam potvrdu
               </h3>
               <p className="text-[#9CA3AF] text-xs leading-relaxed mb-3">
@@ -720,8 +720,8 @@ const BookingPage = () => {
 
           {/* Payment / Uplatnica Section */}
           {PAYMENT_MODE === 'FIAT_STANDARD' && (
-          <div className="bg-[#C5A880]/10 border border-[#C5A880]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">
-            <h3 className="text-[#C5A880] font-medium mb-3 flex items-center gap-2">
+          <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">
+            <h3 className="text-[var(--color-primary)] font-medium mb-3 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Podaci za uplatu avansa
             </h3>
@@ -745,7 +745,7 @@ const BookingPage = () => {
                 </div>
               )}
             </div>
-            <div className="mt-4 pt-3 border-t border-[#C5A880]/20">
+            <div className="mt-4 pt-3 border-t border-[var(--color-primary)]/20">
               <p className="text-[#9CA3AF] text-xs leading-relaxed">
                 Molimo pošaljite sliku uplatnice na Viber/Instagram salona radi konačne potvrde termina.
               </p>
@@ -766,7 +766,7 @@ const BookingPage = () => {
 
           <Button
             onClick={resetBooking}
-            className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black font-medium py-6"
+            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium py-6"
             data-testid="new-booking-btn"
           >
             Nova Rezervacija
@@ -777,14 +777,14 @@ const BookingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B]">
+    <div className="min-h-screen bg-[var(--color-background)]">
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-[#2A2A2D]">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <span className="text-[#9CA3AF] text-xs">Beauty Studio Bor</span>
           <button
             onClick={() => setShowMyReservations(true)}
-            className="text-[#9CA3AF] text-xs hover:text-[#C5A880] transition-colors flex items-center gap-1"
+            className="text-[#9CA3AF] text-xs hover:text-[var(--color-primary)] transition-colors flex items-center gap-1"
             data-testid="my-reservations-btn"
           >
             <Calendar className="w-3 h-3" />
@@ -807,7 +807,7 @@ const BookingPage = () => {
 
       {/* My Reservations Dialog */}
       <Dialog open={showMyReservations} onOpenChange={closeMyReservations}>
-        <DialogContent className="bg-[#141416] border-[#2A2A2D] max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">Moje Rezervacije</DialogTitle>
             <DialogDescription className="text-[#9CA3AF]">
@@ -827,7 +827,7 @@ const BookingPage = () => {
               <Button
                 onClick={searchMyReservations}
                 disabled={isSearching}
-                className="bg-[#C5A880] hover:bg-[#B89970] text-black min-h-[48px]"
+                className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black min-h-[48px]"
                 data-testid="search-reservations-btn"
               >
                 <Search className="w-4 h-4" />
@@ -852,19 +852,19 @@ const BookingPage = () => {
                 {myReservations.map((res) => (
                   <div
                     key={res.id}
-                    className="bg-[#0A0A0B] rounded-xl border border-[#2A2A2D] p-4"
+                    className="bg-[var(--color-background)] rounded-xl border border-[#2A2A2D] p-4"
                     data-testid={`my-reservation-${res.id}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="text-[#C5A880] font-medium">
+                        <p className="text-[var(--color-primary)] font-medium">
                           {res.date} u {res.time}
                         </p>
                         <p className="text-sm text-[#9CA3AF]">
                           {res.services?.join(", ")}
                         </p>
                       </div>
-                      <span className="font-semibold text-[#C5A880]">
+                      <span className="font-semibold text-[var(--color-primary)]">
                         {res.total_price?.toLocaleString()} RSD
                       </span>
                     </div>
@@ -887,7 +887,7 @@ const BookingPage = () => {
                     {res.payment_status === "pending" && (
                       <Button
                         onClick={() => reportPayment(res.id)}
-                        className="w-full bg-[#C5A880] hover:bg-[#B89970] text-black font-medium min-h-[48px] mb-2"
+                        className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium min-h-[48px] mb-2"
                         data-testid={`report-payment-${res.id}`}
                       >
                         <Check className="w-4 h-4 mr-2" />
@@ -932,8 +932,8 @@ const BookingPage = () => {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                   step >= s
-                    ? "bg-[#C5A880] text-black"
-                    : "bg-[#141416] text-[#9CA3AF] border border-[#2A2A2D]"
+                    ? "bg-[var(--color-primary)] text-black"
+                    : "bg-[var(--color-surface)] text-[#9CA3AF] border border-[#2A2A2D]"
                 }`}
               >
                 {step > s ? <Check className="w-4 h-4" /> : s}
@@ -941,7 +941,7 @@ const BookingPage = () => {
               {s < 4 && (
                 <div
                   className={`w-12 sm:w-16 h-0.5 mx-1 transition-all ${
-                    step > s ? "bg-[#C5A880]" : "bg-[#2A2A2D]"
+                    step > s ? "bg-[var(--color-primary)]" : "bg-[#2A2A2D]"
                   }`}
                 />
               )}
@@ -967,7 +967,7 @@ const BookingPage = () => {
                   <button
                     key={cat.key}
                     onClick={() => setSelectedCategory(cat.key)}
-                    className="relative overflow-hidden rounded-2xl border border-[#2A2A2D] h-36 text-left transition-all hover:border-[#C5A880]/50 active:scale-[0.97] group"
+                    className="relative overflow-hidden rounded-2xl border border-[#2A2A2D] h-36 text-left transition-all hover:border-[var(--color-primary)]/50 active:scale-[0.97] group"
                     data-testid={`category-card-${cat.key}`}
                   >
                     {bgImage && (
@@ -988,19 +988,19 @@ const BookingPage = () => {
 
             {/* Show selected services summary if any */}
             {selectedServices.length > 0 && (
-              <div className="mt-6 p-4 bg-[#141416] rounded-xl border border-[#C5A880]/30">
+              <div className="mt-6 p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-primary)]/30">
                 <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge:</p>
                 <div className="space-y-1">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex justify-between text-sm">
                       <span>{s.name}</span>
-                      <span className="text-[#C5A880]">{s.price.toLocaleString()} RSD</span>
+                      <span className="text-[var(--color-primary)]">{s.price.toLocaleString()} RSD</span>
                     </div>
                   ))}
                 </div>
                 <div className="border-t border-[#2A2A2D] mt-3 pt-3 flex justify-between font-medium">
                   <span>Ukupno</span>
-                  <span className="text-[#C5A880]">{selectedServices.reduce((sum, s) => sum + s.price, 0).toLocaleString()} RSD</span>
+                  <span className="text-[var(--color-primary)]">{selectedServices.reduce((sum, s) => sum + s.price, 0).toLocaleString()} RSD</span>
                 </div>
               </div>
             )}
@@ -1012,10 +1012,10 @@ const BookingPage = () => {
             <div className="mb-6">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50 hover:bg-[#1A1A1D] transition-all mb-5"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-[#2A2A2D] bg-[var(--color-surface)] hover:border-[var(--color-primary)]/50 hover:bg-[#1A1A1D] transition-all mb-5"
                 data-testid="back-to-categories-btn"
               >
-                <ChevronLeft className="w-5 h-5 text-[#C5A880]" />
+                <ChevronLeft className="w-5 h-5 text-[var(--color-primary)]" />
                 <span className="text-sm font-medium">Nazad na kategorije</span>
               </button>
               <h2 className="font-['Cormorant_Garamond'] text-3xl font-light flex items-center gap-3">
@@ -1040,10 +1040,10 @@ const BookingPage = () => {
                     disabled={availableWorkers.length === 0}
                     className={`w-full p-4 rounded-xl border text-left transition-all ${
                       isSelected
-                        ? "border-[#C5A880] bg-[#C5A880]/10"
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
                         : availableWorkers.length === 0
-                        ? "border-[#2A2A2D] bg-[#141416] opacity-50 cursor-not-allowed"
-                        : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
+                        ? "border-[#2A2A2D] bg-[var(--color-surface)] opacity-50 cursor-not-allowed"
+                        : "border-[#2A2A2D] bg-[var(--color-surface)] hover:border-[var(--color-primary)]/50"
                     }`}
                     data-testid={`service-${service.id}`}
                   >
@@ -1059,9 +1059,9 @@ const BookingPage = () => {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-[#C5A880]">{service.price.toLocaleString()} RSD</p>
+                        <p className="font-semibold text-[var(--color-primary)]">{service.price.toLocaleString()} RSD</p>
                         {isSelected && (
-                          <Check className="w-5 h-5 text-[#C5A880] mt-1 ml-auto" />
+                          <Check className="w-5 h-5 text-[var(--color-primary)] mt-1 ml-auto" />
                         )}
                       </div>
                     </div>
@@ -1072,19 +1072,19 @@ const BookingPage = () => {
 
             {/* Selected services summary */}
             {selectedServices.length > 0 && (
-              <div className="mt-6 p-4 bg-[#141416] rounded-xl border border-[#C5A880]/30">
+              <div className="mt-6 p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-primary)]/30">
                 <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge ({selectedServices.length}):</p>
                 <div className="space-y-1">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex justify-between text-sm">
                       <span>{s.name} <span className="text-[#9CA3AF]">({categoryLabels[s.category] || s.category})</span></span>
-                      <span className="text-[#C5A880]">{s.price.toLocaleString()} RSD</span>
+                      <span className="text-[var(--color-primary)]">{s.price.toLocaleString()} RSD</span>
                     </div>
                   ))}
                 </div>
                 <div className="border-t border-[#2A2A2D] mt-3 pt-3 flex justify-between font-medium">
                   <span>Ukupno</span>
-                  <span className="text-[#C5A880]">{selectedServices.reduce((sum, s) => sum + s.price, 0).toLocaleString()} RSD</span>
+                  <span className="text-[var(--color-primary)]">{selectedServices.reduce((sum, s) => sum + s.price, 0).toLocaleString()} RSD</span>
                 </div>
               </div>
             )}
@@ -1106,7 +1106,7 @@ const BookingPage = () => {
                 const selectedWorkerId = serviceWorkerMap[service.id];
                 
                 return (
-                  <div key={service.id} className="bg-[#141416] rounded-xl border border-[#2A2A2D] p-4">
+                  <div key={service.id} className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <p className="font-medium">{service.name}</p>
@@ -1115,7 +1115,7 @@ const BookingPage = () => {
                         </p>
                       </div>
                       {selectedWorkerId && (
-                        <Check className="w-5 h-5 text-[#C5A880]" />
+                        <Check className="w-5 h-5 text-[var(--color-primary)]" />
                       )}
                     </div>
                     
@@ -1126,8 +1126,8 @@ const BookingPage = () => {
                           onClick={() => handleWorkerSelect(service.id, worker.id)}
                           className={`p-3 rounded-lg border text-left transition-all ${
                             selectedWorkerId === worker.id
-                              ? "border-[#C5A880] bg-[#C5A880]/10"
-                              : "border-[#2A2A2D] bg-[#0A0A0B] hover:border-[#C5A880]/50"
+                              ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                              : "border-[#2A2A2D] bg-[var(--color-background)] hover:border-[var(--color-primary)]/50"
                           }`}
                           data-testid={`worker-${service.id}-${worker.id}`}
                         >
@@ -1184,10 +1184,10 @@ const BookingPage = () => {
                       disabled={isFullyBooked}
                       className={`flex-shrink-0 w-16 py-3 rounded-xl border text-center transition-all ${
                         isFullyBooked
-                          ? "border-[#2A2A2D] bg-[#0A0A0B] opacity-40 cursor-not-allowed"
+                          ? "border-[#2A2A2D] bg-[var(--color-background)] opacity-40 cursor-not-allowed"
                           : isSelected
-                          ? "border-[#C5A880] bg-[#C5A880]/10"
-                          : "border-[#2A2A2D] bg-[#141416] hover:border-[#C5A880]/50"
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                          : "border-[#2A2A2D] bg-[var(--color-surface)] hover:border-[var(--color-primary)]/50"
                       }`}
                       data-testid={`date-${dateKey}`}
                     >
@@ -1253,7 +1253,7 @@ const BookingPage = () => {
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     placeholder="Unesite vaše ime"
-                    className="pl-12 bg-[#141416] border-[#2A2A2D] focus:border-[#C5A880] h-14"
+                    className="pl-12 bg-[var(--color-surface)] border-[#2A2A2D] focus:border-[var(--color-primary)] h-14"
                     data-testid="client-name-input"
                   />
                 </div>
@@ -1278,7 +1278,7 @@ const BookingPage = () => {
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
                     placeholder="primer@mail.com"
-                    className={`pl-12 bg-[#141416] focus:border-[#C5A880] h-14 ${clientEmail && !isValidEmail(clientEmail) ? "border-red-400" : "border-[#2A2A2D]"}`}
+                    className={`pl-12 bg-[var(--color-surface)] focus:border-[var(--color-primary)] h-14 ${clientEmail && !isValidEmail(clientEmail) ? "border-red-400" : "border-[#2A2A2D]"}`}
                     data-testid="client-email-input"
                   />
                 </div>
@@ -1300,12 +1300,12 @@ const BookingPage = () => {
             )}
 
             {/* Booking Summary */}
-            <div className="mt-8 bg-[#141416] rounded-xl border border-[#2A2A2D] p-6">
+            <div className="mt-8 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-medium">Pregled Rezervacije</h3>
                 <button
                   onClick={() => { setStep(1); setSelectedCategory(null); }}
-                  className="flex items-center gap-1.5 text-xs text-[#C5A880] hover:text-[#B89970] transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-[var(--color-primary)] hover:text-[#B89970] transition-colors"
                   data-testid="edit-services-link"
                 >
                   <Pencil className="w-3 h-3" />
@@ -1319,7 +1319,7 @@ const BookingPage = () => {
                     <div key={s.id} className="flex items-center justify-between">
                       <span className="text-[#9CA3AF]">{s.name}:</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[#C5A880]">{getWorkerName(serviceWorkerMap[s.id])}</span>
+                        <span className="text-[var(--color-primary)]">{getWorkerName(serviceWorkerMap[s.id])}</span>
                         <button
                           onClick={() => removeServiceFromReview(s.id)}
                           className="w-6 h-6 rounded-full flex items-center justify-center text-[#6B7280] hover:text-red-400 hover:bg-red-400/10 transition-colors"
@@ -1346,7 +1346,7 @@ const BookingPage = () => {
                 </div>
                 <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
                   <span className="font-medium">Ukupno:</span>
-                  <span className="font-semibold text-[#C5A880] text-lg">{totalPrice.toLocaleString()} RSD</span>
+                  <span className="font-semibold text-[var(--color-primary)] text-lg">{totalPrice.toLocaleString()} RSD</span>
                 </div>
               </div>
             </div>
@@ -1378,7 +1378,7 @@ const BookingPage = () => {
               <span className="text-[#9CA3AF]">
                 {selectedServices.length} usluga · {totalDuration} min
               </span>
-              <span className="font-semibold text-[#C5A880]">{totalPrice.toLocaleString()} RSD</span>
+              <span className="font-semibold text-[var(--color-primary)]">{totalPrice.toLocaleString()} RSD</span>
             </div>
           )}
 
@@ -1388,7 +1388,7 @@ const BookingPage = () => {
               <Button
                 variant="outline"
                 onClick={() => setStep(step - 1)}
-                className="flex-1 h-14 border-[#2A2A2D] bg-transparent hover:bg-[#141416]"
+                className="flex-1 h-14 border-[#2A2A2D] bg-transparent hover:bg-[var(--color-surface)]"
                 data-testid="prev-step-btn"
               >
                 <ChevronLeft className="w-5 h-5 mr-2" />
@@ -1404,7 +1404,7 @@ const BookingPage = () => {
                   (step === 2 && !allServicesHaveWorkers) ||
                   (step === 3 && !selectedTime)
                 }
-                className="flex-1 h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-50"
+                className="flex-1 h-14 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-50"
                 data-testid="next-step-btn"
               >
                 Dalje
@@ -1414,7 +1414,7 @@ const BookingPage = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !clientName.trim() || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)}
-                className="flex-1 h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium disabled:opacity-50"
+                className="flex-1 h-14 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-50"
                 data-testid="confirm-booking-btn"
               >
                 {isSubmitting ? "Obrada..." : "Potvrdi Rezervaciju"}

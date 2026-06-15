@@ -14,8 +14,8 @@ body {
     font-family: 'Outfit', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0A0A0B;
-    color: #FFFFFF;
+    background-color: var(--color-background, #0A0A0B);
+    color: var(--color-text, #FFFFFF);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -74,7 +74,7 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-    background: #141416;
+    background: var(--color-surface, #141416);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -83,7 +83,7 @@ code {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #C5A880;
+    background: var(--color-primary, #C5A880);
 }
 
 /* Animations */
@@ -161,7 +161,7 @@ code {
 /* Custom focus styles */
 input:focus, button:focus, select:focus, textarea:focus {
     outline: none;
-    ring: 2px solid #C5A880;
+    ring: 2px solid var(--color-primary, #C5A880);
 }
 
 /* Gold accent glow */
@@ -181,7 +181,7 @@ input:focus, button:focus, select:focus, textarea:focus {
 
 /* Active selection state */
 .selected-state {
-    border-color: #C5A880;
+    border-color: var(--color-primary, #C5A880);
     background: rgba(197, 168, 128, 0.1);
 }
 
@@ -191,7 +191,7 @@ input:focus, button:focus, select:focus, textarea:focus {
     letter-spacing: 0.2em;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #C5A880;
+    color: var(--color-primary, #C5A880);
 }
 
 /* Mobile bottom sheet */

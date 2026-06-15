@@ -60,18 +60,18 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8 animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-[#C5A880]/20 flex items-center justify-center mx-auto mb-4">
-            <Scissors className="w-8 h-8 text-[#C5A880]" />
+          <div className="w-16 h-16 rounded-2xl bg-[var(--color-primary)]/20 flex items-center justify-center mx-auto mb-4">
+            <Scissors className="w-8 h-8 text-[var(--color-primary)]" />
           </div>
           <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Prijava</h1>
           <p className="text-[#9CA3AF]">{"Unesite kredencijale za pristup vašem panelu"}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 animate-slide-up">
-          <div className="bg-[#141416] rounded-2xl border border-[#2A2A2D] p-6 space-y-4">
+          <div className="bg-[var(--color-surface)] rounded-2xl border border-[#2A2A2D] p-6 space-y-4">
             <div>
               <label className="text-sm text-[#9CA3AF] mb-2 block">Email</label>
               <div className="relative">
@@ -81,7 +81,7 @@ const AdminLogin = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="vas@email.com"
-                  className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] h-14"
+                  className="pl-12 bg-[var(--color-background)] border-[#2A2A2D] focus:border-[var(--color-primary)] h-14"
                   data-testid="login-email-input"
                 />
               </div>
@@ -96,7 +96,7 @@ const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="********"
-                  className="pl-12 bg-[#0A0A0B] border-[#2A2A2D] focus:border-[#C5A880] h-14"
+                  className="pl-12 bg-[var(--color-background)] border-[#2A2A2D] focus:border-[var(--color-primary)] h-14"
                   data-testid="login-password-input"
                 />
               </div>
@@ -105,7 +105,7 @@ const AdminLogin = () => {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-14 bg-[#C5A880] hover:bg-[#B89970] text-black font-medium"
+              className="w-full h-14 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium"
               data-testid="login-submit-btn"
             >
               {isLoading ? "Prijava..." : "Prijavite se"}
@@ -114,7 +114,7 @@ const AdminLogin = () => {
         </form>
 
         <p className="text-center mt-6 text-sm text-[#9CA3AF]">
-          <a href="/" className="hover:text-[#C5A880] transition-colors flex items-center justify-center gap-1" data-testid="back-to-home-link">
+          <a href="/" className="hover:text-[var(--color-primary)] transition-colors flex items-center justify-center gap-1" data-testid="back-to-home-link">
             <ChevronRight className="w-4 h-4 rotate-180" />
             {"Nazad na početnu"}
           </a>

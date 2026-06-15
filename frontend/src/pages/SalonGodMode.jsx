@@ -158,8 +158,8 @@ const SalonGodMode = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#C5A880] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -170,17 +170,17 @@ const SalonGodMode = () => {
   const enabledCount = categories.filter(c => c.enabled).length;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-white" data-testid="salon-god-mode">
+    <div className="min-h-screen bg-[var(--color-background)] text-white" data-testid="salon-god-mode">
       {/* Banner */}
-      <div className="bg-[#C5A880]/10 border-b border-[#C5A880]/30 px-4 py-3" data-testid="god-mode-banner">
+      <div className="bg-[var(--color-primary)]/10 border-b border-[var(--color-primary)]/30 px-4 py-3" data-testid="god-mode-banner">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <p className="text-sm text-[#C5A880]">
+          <p className="text-sm text-[var(--color-primary)]">
             {"Pregledate sistemska podešavanja za salon: "}
             <span className="font-medium text-white">{tenant.name}</span>
           </p>
           <a
             href="/super-admin"
-            className="text-sm font-medium text-[#C5A880] hover:text-[#B89970] transition-colors flex items-center gap-1"
+            className="text-sm font-medium text-[var(--color-primary)] hover:text-[#B89970] transition-colors flex items-center gap-1"
             data-testid="back-to-super-panel"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -193,8 +193,8 @@ const SalonGodMode = () => {
       <header className="border-b border-[#2A2A2D]">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-lg bg-[#C5A880]/20 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-[#C5A880]" />
+            <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-[var(--color-primary)]" />
             </div>
             <div>
               <h1 className="font-['Cormorant_Garamond'] text-2xl font-light">{tenant.name}</h1>
@@ -207,14 +207,14 @@ const SalonGodMode = () => {
       {/* Content */}
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 bg-[#141416] rounded-lg p-1 w-fit border border-[#2A2A2D]">
-          <button onClick={() => setActiveTab("features")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "features" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="godmode-tab-features">
+        <div className="flex gap-1 mb-8 bg-[var(--color-surface)] rounded-lg p-1 w-fit border border-[#2A2A2D]">
+          <button onClick={() => setActiveTab("features")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "features" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="godmode-tab-features">
             <ToggleLeft className="w-4 h-4 inline mr-1.5" />Feature Flags
           </button>
-          <button onClick={() => setActiveTab("categories")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "categories" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="godmode-tab-categories">
+          <button onClick={() => setActiveTab("categories")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "categories" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="godmode-tab-categories">
             <Tag className="w-4 h-4 inline mr-1.5" />Kategorije
           </button>
-          <button onClick={() => setActiveTab("system")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "system" ? "bg-[#C5A880] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="godmode-tab-system">
+          <button onClick={() => setActiveTab("system")} className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${activeTab === "system" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="godmode-tab-system">
             <Server className="w-4 h-4 inline mr-1.5" />{"Sistemski podaci"}
           </button>
         </div>
@@ -222,14 +222,14 @@ const SalonGodMode = () => {
         {/* Feature Flags Tab */}
         {activeTab === "features" && (
           <div className="space-y-1" data-testid="godmode-features-panel">
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <div className="p-4 border-b border-[#2A2A2D]">
                 <h3 className="font-medium text-white">Feature Flags</h3>
                 <p className="text-xs text-[#6B7280] mt-0.5">{"Uključite ili isključite funkcionalnosti za ovaj salon"}</p>
               </div>
               <div className="divide-y divide-[#2A2A2D]">
                 {Object.entries(tenant.enabled_features || {}).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between p-4 hover:bg-[#0A0A0B]/50 transition-colors" data-testid={`godmode-feature-${key}`}>
+                  <div key={key} className="flex items-center justify-between p-4 hover:bg-[var(--color-background)]/50 transition-colors" data-testid={`godmode-feature-${key}`}>
                     <div>
                       <span className="text-sm text-white font-medium">{FEATURE_LABELS[key] || key}</span>
                       {FEATURE_DESCRIPTIONS[key] && (
@@ -239,16 +239,16 @@ const SalonGodMode = () => {
                     <Switch
                       checked={value}
                       onCheckedChange={() => handleFeatureToggle(key, value)}
-                      className="data-[state=checked]:bg-[#C5A880]"
+                      className="data-[state=checked]:bg-[var(--color-primary)]"
                       data-testid={`godmode-feature-toggle-${key}`}
                     />
                   </div>
                 ))}
               </div>
             </div>
-            <div className="p-4 bg-[#C5A880]/5 border border-[#C5A880]/20 rounded-xl mt-4">
+            <div className="p-4 bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-xl mt-4">
               <p className="text-xs text-[#9CA3AF]">
-                <strong className="text-[#C5A880]">Napomena:</strong>{" Promene se primenjuju odmah i utiču samo na salon "}<strong className="text-white">{tenant.name}</strong>.
+                <strong className="text-[var(--color-primary)]">Napomena:</strong>{" Promene se primenjuju odmah i utiču samo na salon "}<strong className="text-white">{tenant.name}</strong>.
               </p>
             </div>
           </div>
@@ -257,13 +257,13 @@ const SalonGodMode = () => {
         {/* Categories Tab */}
         {activeTab === "categories" && (
           <div data-testid="godmode-categories-panel">
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <div className="p-4 border-b border-[#2A2A2D] flex items-center justify-between">
                 <div>
                   <h3 className="font-medium text-white">Kategorije usluga</h3>
                   <p className="text-xs text-[#6B7280] mt-0.5">{"Upravljanje kategorijama za ovaj salon"}</p>
                 </div>
-                <span className="text-xs text-[#C5A880]">{enabledCount} / {categories.length} aktivno</span>
+                <span className="text-xs text-[var(--color-primary)]">{enabledCount} / {categories.length} aktivno</span>
               </div>
               <div className="divide-y divide-[#2A2A2D]">
                 {categories.map((cat) => (
@@ -275,16 +275,16 @@ const SalonGodMode = () => {
                     <Switch
                       checked={cat.enabled}
                       onCheckedChange={() => handleCategoryToggle(cat.key, cat.enabled)}
-                      className="data-[state=checked]:bg-[#C5A880]"
+                      className="data-[state=checked]:bg-[var(--color-primary)]"
                       data-testid={`godmode-category-toggle-${cat.key}`}
                     />
                   </div>
                 ))}
               </div>
             </div>
-            <div className="p-4 bg-[#C5A880]/5 border border-[#C5A880]/20 rounded-xl mt-4">
+            <div className="p-4 bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-xl mt-4">
               <p className="text-xs text-[#9CA3AF]">
-                <strong className="text-[#C5A880]">Napomena:</strong>{" Isključivanje kategorije sakriva usluge iz javnog prikaza samo za "}<strong className="text-white">{tenant.name}</strong>.
+                <strong className="text-[var(--color-primary)]">Napomena:</strong>{" Isključivanje kategorije sakriva usluge iz javnog prikaza samo za "}<strong className="text-white">{tenant.name}</strong>.
               </p>
             </div>
           </div>
@@ -294,7 +294,7 @@ const SalonGodMode = () => {
         {activeTab === "system" && (
           <div className="space-y-6" data-testid="godmode-system-panel">
             {/* Status */}
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <div className="p-4 border-b border-[#2A2A2D]">
                 <h3 className="font-medium text-white">Status salona</h3>
               </div>
@@ -323,7 +323,7 @@ const SalonGodMode = () => {
             </div>
 
             {/* Theme selector */}
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <div className="p-4 border-b border-[#2A2A2D]">
                 <h3 className="font-medium text-white">{"Tema salona"}</h3>
               </div>
@@ -334,14 +334,14 @@ const SalonGodMode = () => {
                     value={tenant.theme || DEFAULT_THEME}
                     onChange={(e) => handleThemeChange(e.target.value)}
                     disabled={savingTheme}
-                    className="flex-1 bg-[#0A0A0B] border border-[#2A2A2D] rounded-lg px-3 h-11 text-white text-sm focus:border-[#C5A880] focus:outline-none"
+                    className="flex-1 bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg px-3 h-11 text-white text-sm focus:border-[var(--color-primary)] focus:outline-none"
                     data-testid="theme-select"
                   >
                     {THEME_NAMES.map(name => (
                       <option key={name} value={name}>{name}</option>
                     ))}
                   </select>
-                  {savingTheme && <Loader2 className="w-4 h-4 animate-spin text-[#C5A880]" />}
+                  {savingTheme && <Loader2 className="w-4 h-4 animate-spin text-[var(--color-primary)]" />}
                 </div>
                 {/* Color preview */}
                 {(() => {
@@ -361,14 +361,14 @@ const SalonGodMode = () => {
             </div>
 
             {/* Owner info */}
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <div className="p-4 border-b border-[#2A2A2D]">
                 <h3 className="font-medium text-white">{"Podaci o vlasniku"}</h3>
               </div>
               <div className="p-5 space-y-4">
                 <div>
                   <label className="text-xs text-[#6B7280] block mb-1">Email vlasnika</label>
-                  <p className="text-sm text-white font-mono bg-[#0A0A0B] px-3 py-2.5 rounded-lg border border-[#2A2A2D]" data-testid="owner-email-display">
+                  <p className="text-sm text-white font-mono bg-[var(--color-background)] px-3 py-2.5 rounded-lg border border-[#2A2A2D]" data-testid="owner-email-display">
                     {tenant.owner_email || "—"}
                   </p>
                 </div>
@@ -383,7 +383,7 @@ const SalonGodMode = () => {
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
                         placeholder="Nova lozinka (min 6 karaktera)"
-                        className="pl-10 pr-10 bg-[#0A0A0B] border-[#2A2A2D] h-11"
+                        className="pl-10 pr-10 bg-[var(--color-background)] border-[#2A2A2D] h-11"
                         data-testid="new-owner-password-input"
                       />
                       <button
@@ -397,7 +397,7 @@ const SalonGodMode = () => {
                     <Button
                       onClick={handlePasswordChange}
                       disabled={changingPassword || newPassword.length < 6}
-                      className="bg-[#C5A880] hover:bg-[#B89970] text-black font-medium h-11 px-5"
+                      className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium h-11 px-5"
                       data-testid="change-password-btn"
                     >
                       {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : "Promeni"}
@@ -408,7 +408,7 @@ const SalonGodMode = () => {
             </div>
 
             {/* Salon info summary */}
-            <div className="bg-[#141416] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
               <div className="p-4 border-b border-[#2A2A2D]">
                 <h3 className="font-medium text-white">{"Informacije o salonu"}</h3>
               </div>
