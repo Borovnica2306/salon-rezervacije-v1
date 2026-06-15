@@ -30,13 +30,13 @@ code {
 
 @layer base {
     :root {
-        --color-primary: #C5A880;
-        --color-secondary: #B89970;
-        --color-background: #0A0A0B;
-        --color-surface: #141416;
-        --color-text: #FFFFFF;
-        --color-accent: #C5A880;
-        --color-gradient-hint: #16141A;
+        --color-primary: #38BDF8;
+        --color-secondary: #7DD3FC;
+        --color-background: #0A0D14;
+        --color-surface: #131825;
+        --color-text: #F0F9FF;
+        --color-accent: #38BDF8;
+        --color-gradient-hint: #1E293B;
 
         --background: 0 0% 4%;
         --foreground: 0 0% 100%;
