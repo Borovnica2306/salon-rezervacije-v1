@@ -14,8 +14,10 @@ body {
     font-family: 'Outfit', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: var(--color-background, #0A0A0B);
+    background: radial-gradient(ellipse at top right, var(--color-gradient-hint, #16141A), var(--color-background, #0A0A0B) 70%);
+    background-attachment: fixed;
     color: var(--color-text, #FFFFFF);
+    min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -34,6 +36,7 @@ code {
         --color-surface: #141416;
         --color-text: #FFFFFF;
         --color-accent: #C5A880;
+        --color-gradient-hint: #16141A;
 
         --background: 0 0% 4%;
         --foreground: 0 0% 100%;
