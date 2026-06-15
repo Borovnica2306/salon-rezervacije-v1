@@ -42,6 +42,7 @@ async def startup_event():
     await db.services.create_index("category")
     await db.workers.create_index("active")
     await db.reservations.create_index([("date", 1), ("worker_id", 1)])
+    await db.reservations.create_index([("tenant_id", 1), ("date", 1)])
     await db.blacklisted_phones.create_index("phone")
     await db.tenants.create_index("slug", unique=True)
     await db.tenants.create_index("tenant_id", unique=True)
