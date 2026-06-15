@@ -505,7 +505,7 @@ const BookingPage = () => {
     const ipsReference = bookingDetails.booking_id ? `99${bookingDetails.booking_id}` : "";
 
     return (
-      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-[var(--color-surface)] rounded-2xl border border-[#2A2A2D] p-8 text-center animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center mx-auto mb-6">
             <Check className="w-8 h-8 text-[var(--color-primary)]" />
@@ -777,7 +777,7 @@ const BookingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)]">
+    <div className="min-h-screen bg-transparent">
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-[#2A2A2D]">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">

@@ -158,7 +158,7 @@ const SalonGodMode = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -170,7 +170,7 @@ const SalonGodMode = () => {
   const enabledCount = categories.filter(c => c.enabled).length;
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-white" data-testid="salon-god-mode">
+    <div className="min-h-screen bg-transparent text-white" data-testid="salon-god-mode">
       {/* Banner */}
       <div className="bg-[var(--color-primary)]/10 border-b border-[var(--color-primary)]/30 px-4 py-3" data-testid="god-mode-banner">
         <div className="max-w-5xl mx-auto flex items-center justify-between">

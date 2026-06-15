@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   const navItems = baseNavItems;
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)]">
+    <div className="min-h-screen bg-transparent">
       {/* Super Admin Banner */}
       {isSuperAdminViewing && (
         <div className="bg-[var(--color-primary)]/10 border-b border-[var(--color-primary)]/30 px-4 py-2.5 flex items-center justify-between" data-testid="super-admin-banner">

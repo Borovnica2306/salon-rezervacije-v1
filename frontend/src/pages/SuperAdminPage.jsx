@@ -23,7 +23,7 @@ const SuperAdminPage = () => {
   if (!user || user.role !== "super_admin") return null;
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-white" data-testid="super-admin-page">
+    <div className="min-h-screen bg-transparent text-white" data-testid="super-admin-page">
       {/* Header */}
       <header className="border-b border-[#2A2A2D] bg-[var(--color-background)]/90 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">

@@ -3,7 +3,7 @@ import { Building2, ChevronLeft, Sparkles, BarChart3, Clock, Globe } from "lucid
 
 const OwnersPage = () => {
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="max-w-lg mx-auto px-6 py-16">
         <Link
           to="/"

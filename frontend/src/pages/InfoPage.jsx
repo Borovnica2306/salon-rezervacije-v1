@@ -3,7 +3,7 @@ import { Share2, Users, Gift, ChevronLeft } from "lucide-react";
 
 const InfoPage = () => {
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="max-w-lg mx-auto px-6 py-16">
         <Link
           to="/"

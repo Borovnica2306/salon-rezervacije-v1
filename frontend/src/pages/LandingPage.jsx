@@ -4,7 +4,7 @@ import { Scissors, Building2, ChevronRight, LogIn } from "lucide-react";
 
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-white flex flex-col">
+    <div className="min-h-screen bg-transparent text-white flex flex-col">
       {/* Header with discrete login */}
       <header className="px-6 py-4 flex justify-end relative z-10">
         <Link
