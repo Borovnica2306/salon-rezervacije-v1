@@ -106,26 +106,22 @@ class SettingsUpdate(BaseModel):
     work_start: Optional[str] = None
     work_end: Optional[str] = None
     advance_instructions: Optional[str] = None
-    bank_account: Optional[str] = None
-    payment_recipient: Optional[str] = None
+    pi_wallet_address: Optional[str] = None
     smtp_server: Optional[str] = None
     smtp_port: Optional[int] = None
     smtp_user: Optional[str] = None
     smtp_password: Optional[str] = None
-    viber_phone: Optional[str] = None
 
 class SettingsResponse(BaseModel):
     salon_name: str
     work_start: str
     work_end: str
     advance_instructions: str
-    bank_account: str = ""
-    payment_recipient: str = ""
+    pi_wallet_address: str = ""
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    viber_phone: str = ""
 
 class AvailableSlotsRequest(BaseModel):
     service_worker_pairs: List[ServiceWorkerPair]

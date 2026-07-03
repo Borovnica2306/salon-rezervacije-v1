@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API, useTenant, getTenantHeaders } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, QrCode, Mail, MessageCircle } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, Mail } from "lucide-react";
 import { PhoneInput, isValidPhone } from "../components/PhoneInput";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -23,48 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { QRCodeSVG } from "qrcode.react";
-import { PAYMENT_MODE } from "../config";
 
 const PHONE_PREFIX = "+381";
-
-const transliterateSerbian = (text) => {
-  const map = {
-    'č': 'C', 'Č': 'C', 'ć': 'C', 'Ć': 'C',
-    'š': 'S', 'Š': 'S', 'ž': 'Z', 'Ž': 'Z',
-    'đ': 'Dj', 'Đ': 'DJ',
-  };
-  return text.replace(/[čČćĆšŠžŽđĐ]/g, (m) => map[m] || m).toUpperCase();
-};
-
-const cleanBankAccount = (account) => {
-  return account.replace(/[\s\-]/g, '').padEnd(18, '0').slice(0, 18);
-};
-
-const formatIPSAmount = (amount) => {
-  return `RSD${Number(amount).toFixed(2).replace('.', ',')}`;
-};
-
-const generateIPSQR = (salonSettings, booking) => {
-  const account = cleanBankAccount(salonSettings.bank_account);
-  const name = transliterateSerbian(salonSettings.payment_recipient || salonSettings.salon_name || 'SALON');
-  const amount = formatIPSAmount(booking.total_price);
-  const bookingId = booking.booking_id;
-  const purpose = transliterateSerbian(`Avans za rezervaciju ID ${bookingId}`);
-  const reference = `99${bookingId}`;
-
-  return [
-    'K:PR',
-    'V:01',
-    'C:1',
-    `R:${account}`,
-    `N:${name}`,
-    `I:${amount}`,
-    'SF:289',
-    `S:${purpose}`,
-    `RO:${reference}`,
-  ].join('|');
-};
 
 function fallbackCopy(text) {
   const ta = document.createElement("textarea");
@@ -496,14 +456,6 @@ const BookingPage = () => {
     const timelineItems = buildTimelineItems();
     const hasTimeline = timelineItems.length > 0;
 
-    const ipsQRString = settings?.bank_account && bookingDetails.total_price > 0
-      ? generateIPSQR(settings, bookingDetails)
-      : null;
-    const ipsAccount = settings?.bank_account ? cleanBankAccount(settings.bank_account) : "";
-    const ipsAccountFormatted = ipsAccount ? `${ipsAccount.slice(0,3)}-${ipsAccount.slice(3,16)}-${ipsAccount.slice(16)}` : "";
-    const ipsAmount = bookingDetails.total_price > 0 ? formatIPSAmount(bookingDetails.total_price) : "";
-    const ipsReference = bookingDetails.booking_id ? `99${bookingDetails.booking_id}` : "";
-
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-[var(--color-surface)] rounded-2xl border border-[#2A2A2D] p-8 text-center animate-fade-in">
@@ -654,107 +606,7 @@ const BookingPage = () => {
             </button>
           </div>
 
-          {/* IPS QR Code Payment */}
-          {PAYMENT_MODE === 'FIAT_STANDARD' && ipsQRString && (
-            <div className="bg-[var(--color-background)] rounded-xl p-5 text-center mb-4 border border-[var(--color-primary)]/20" data-testid="ips-qr-section">
-              <h3 className="text-[var(--color-primary)] font-medium mb-2 flex items-center justify-center gap-2">
-                <QrCode className="w-4 h-4" />
-                Brzo plaćanje (IPS QR kod)
-              </h3>
-              <p className="text-[#9CA3AF] text-xs mb-4 leading-relaxed">
-                Skenirajte kod iz vaše mBanking aplikacije.<br />
-                Na telefonu napravite screenshot i otvorite ga u banci.
-              </p>
-              <div className="inline-block bg-white rounded-xl p-4 mb-4" data-testid="ips-qr-code">
-                <QRCodeSVG value={ipsQRString} size={220} level="M" />
-              </div>
-              <div className="text-left space-y-0 mt-2">
-                <div className="flex justify-between min-h-[48px] items-center border-b border-[#2A2A2D]">
-                  <span className="text-[#9CA3AF] text-sm">Račun:</span>
-                  <span className="text-white font-mono text-sm" data-testid="ips-account">{ipsAccountFormatted}</span>
-                </div>
-                <div className="flex justify-between min-h-[48px] items-center border-b border-[#2A2A2D]">
-                  <span className="text-[#9CA3AF] text-sm">Iznos:</span>
-                  <span className="text-[var(--color-primary)] font-medium text-sm" data-testid="ips-amount">{ipsAmount}</span>
-                </div>
-                <div className="flex justify-between min-h-[48px] items-center">
-                  <span className="text-[#9CA3AF] text-sm">Poziv na broj:</span>
-                  <span className="text-white font-mono text-sm" data-testid="ips-reference">{ipsReference}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Viber & WhatsApp CTA */}
-          {PAYMENT_MODE === 'FIAT_STANDARD' && settings?.viber_phone && (
-            <div className="rounded-xl p-5 mb-4 text-left border border-[#2A2A2D] bg-[var(--color-surface)] space-y-3" data-testid="messaging-cta-section">
-              <h3 className="text-white font-medium mb-1 flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-[var(--color-primary)]" />
-                Pošaljite nam potvrdu
-              </h3>
-              <p className="text-[#9CA3AF] text-xs leading-relaxed mb-3">
-                Pošaljite potvrdu rezervacije direktno salonu putem Viber-a ili WhatsApp-a.
-              </p>
-              <a
-                href={`viber://forward?text=${encodeURIComponent(`Potvrda rezervacije #${bookingDetails.booking_id}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-xl bg-[#7360F2] hover:bg-[#6350E2] text-white font-medium transition-colors"
-                data-testid="viber-chat-btn"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Otvori Viber
-              </a>
-              <a
-                href={`https://wa.me/${settings.viber_phone}?text=${encodeURIComponent(`Potvrda rezervacije #${bookingDetails.booking_id}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-xl bg-[#25D366] hover:bg-[#1EBE59] text-white font-medium transition-colors"
-                data-testid="whatsapp-chat-btn"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Otvori WhatsApp
-              </a>
-            </div>
-          )}
-
-          {/* Payment / Uplatnica Section */}
-          {PAYMENT_MODE === 'FIAT_STANDARD' && (
-          <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-xl p-5 mb-6 text-left" data-testid="payment-info-section">
-            <h3 className="text-[var(--color-primary)] font-medium mb-3 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Podaci za uplatu avansa
-            </h3>
-            <div className="space-y-2.5 text-sm">
-              {settings?.bank_account && (
-                <div>
-                  <span className="text-[#9CA3AF]">Tekući račun: </span>
-                  <span className="text-white font-mono font-medium">{settings.bank_account}</span>
-                </div>
-              )}
-              {(settings?.payment_recipient || settings?.salon_name) && (
-                <div>
-                  <span className="text-[#9CA3AF]">Primalac: </span>
-                  <span className="text-white font-medium">{settings.payment_recipient || settings.salon_name}</span>
-                </div>
-              )}
-              {bookingDetails.booking_id && (
-                <div>
-                  <span className="text-[#9CA3AF]">Svrha uplate: </span>
-                  <span className="text-white font-medium">Rezervacija #{bookingDetails.booking_id}</span>
-                </div>
-              )}
-            </div>
-            <div className="mt-4 pt-3 border-t border-[var(--color-primary)]/20">
-              <p className="text-[#9CA3AF] text-xs leading-relaxed">
-                Molimo pošaljite sliku uplatnice na Viber/Instagram salona radi konačne potvrde termina.
-              </p>
-            </div>
-          </div>
-          )}
-
-          {/* PI_ECOSYSTEM clean confirmation */}
-          {PAYMENT_MODE === 'PI_ECOSYSTEM' && (
+          {/* Confirmation */}
           <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-5 mb-6 text-center" data-testid="pi-confirmation-section">
             <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
             <h3 className="text-green-400 font-medium mb-1">{"Rezervacija potvrđena"}</h3>
@@ -762,7 +614,6 @@ const BookingPage = () => {
               {"Vaš termin je uspešno zakazan. Dobićete obaveštenje sa detaljima."}
             </p>
           </div>
-          )}
 
           <Button
             onClick={resetBooking}

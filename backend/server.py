@@ -58,8 +58,6 @@ async def startup_event():
             "country": "RS",
             "city": "Bor",
             "enabled_features": {
-                "viber_notifications": True,
-                "ips_qr_payment": True,
                 "manual_booking": True,
                 "email_notifications": True,
                 "lazy_cancel": True,

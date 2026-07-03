@@ -216,8 +216,6 @@ async def create_tenant(body: dict, user: dict = Depends(get_current_user)):
         "country": country,
         "city": city,
         "enabled_features": {
-            "viber_notifications": True,
-            "ips_qr_payment": True,
             "manual_booking": True,
             "email_notifications": True,
             "lazy_cancel": True,
@@ -758,13 +756,11 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
     # Send confirmation email in background
     settings_doc = await db.settings.find_one({"type": "salon", "tenant_id": tid})
     salon_name = settings_doc.get("salon_name", "Beauty Salon") if settings_doc else "Beauty Salon"
-    bank_account = settings_doc.get("bank_account", "") if settings_doc else ""
-    payment_recipient = settings_doc.get("payment_recipient", "") if settings_doc else ""
     client_email = reservation.client_email.strip().lower()
 
     logger.info(f"[BOOKING] #{booking_id} created for {reservation.client_name}, email from form: {client_email}")
 
-    if client_email and bank_account:
+    if client_email:
         background_tasks.add_task(
             send_booking_confirmation_email,
             to_email=client_email,
@@ -777,8 +773,6 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
             service_worker_pairs=service_worker_pairs,
             total_price=total_price,
             total_duration=actual_duration,
-            bank_account=bank_account,
-            payment_recipient=payment_recipient,
         )
 
     return ReservationResponse(
@@ -1294,13 +1288,11 @@ async def get_settings(request: Request):
         work_start=settings.get("work_start", "09:00"),
         work_end=settings.get("work_end", "21:00"),
         advance_instructions=settings.get("advance_instructions", ""),
-        bank_account=settings.get("bank_account", ""),
-        payment_recipient=settings.get("payment_recipient", ""),
+        pi_wallet_address=settings.get("pi_wallet_address", ""),
         smtp_server=settings.get("smtp_server", "smtp.gmail.com"),
         smtp_port=settings.get("smtp_port", 587),
         smtp_user=settings.get("smtp_user", ""),
         smtp_password=settings.get("smtp_password", ""),
-        viber_phone=settings.get("viber_phone", ""),
     )
 
 
@@ -1339,13 +1331,11 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
         work_start=settings.get("work_start", "09:00"),
         work_end=settings.get("work_end", "21:00"),
         advance_instructions=settings.get("advance_instructions", ""),
-        bank_account=settings.get("bank_account", ""),
-        payment_recipient=settings.get("payment_recipient", ""),
+        pi_wallet_address=settings.get("pi_wallet_address", ""),
         smtp_server=settings.get("smtp_server", "smtp.gmail.com"),
         smtp_port=settings.get("smtp_port", 587),
         smtp_user=settings.get("smtp_user", ""),
         smtp_password=settings.get("smtp_password", ""),
-        viber_phone=settings.get("viber_phone", ""),
     )
 
 

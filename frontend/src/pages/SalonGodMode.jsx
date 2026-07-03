@@ -141,16 +141,12 @@ const SalonGodMode = () => {
   };
 
   const FEATURE_LABELS = {
-    viber_notifications: "Viber/WhatsApp Notifikacije",
-    ips_qr_payment: "IPS QR Plaćanje",
     manual_booking: "Manual Booking (Admin)",
     email_notifications: "Email Notifikacije",
     lazy_cancel: "Auto-otkazivanje (Lazy Cancel)",
   };
 
   const FEATURE_DESCRIPTIONS = {
-    viber_notifications: "Direktni Viber i WhatsApp linkovi za komunikaciju sa klijentima",
-    ips_qr_payment: "IPS QR kod za uplatu avansa po NBS standardu",
     manual_booking: "Admin može ručno kreirati rezervacije iz dashboarda",
     email_notifications: "Automatski email podsetnici i potvrde rezervacija",
     lazy_cancel: "Automatsko otkazivanje neplaćenih rezervacija nakon 3 sata",

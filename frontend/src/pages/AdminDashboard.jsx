@@ -1739,13 +1739,11 @@ const SettingsPage = () => {
     work_start: "09:00",
     work_end: "21:00",
     advance_instructions: "",
-    bank_account: "",
-    payment_recipient: "",
+    pi_wallet_address: "",
     smtp_server: "smtp.gmail.com",
     smtp_port: 587,
     smtp_user: "",
     smtp_password: "",
-    viber_phone: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1855,42 +1853,22 @@ const SettingsPage = () => {
         <div className="border-t border-[#2A2A2D] pt-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-[var(--color-primary)]" />
-            Podaci za uplatu
+            Pi Wallet
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-[#9CA3AF] mb-2 block">Tekući račun</label>
+              <label className="text-sm text-[#9CA3AF] mb-2 block">{"Javna adresa Pi novčanika"}</label>
               <Input
-                value={settings.bank_account}
-                onChange={(e) => setSettings({ ...settings, bank_account: e.target.value })}
-                placeholder="265-1234567890123-12"
-                className="bg-[var(--color-background)] border-[#2A2A2D]"
-                data-testid="settings-bank-account"
+                value={settings.pi_wallet_address}
+                onChange={(e) => setSettings({ ...settings, pi_wallet_address: e.target.value })}
+                placeholder="GABCDEFGHIJKLMNOPQRSTUVWXYZ234567..."
+                className="bg-[var(--color-background)] border-[#2A2A2D] font-mono text-sm"
+                data-testid="settings-pi-wallet"
               />
+              {settings.pi_wallet_address && settings.pi_wallet_address.length < 20 && (
+                <p className="text-[10px] text-red-400 mt-1">{"Adresa mora imati najmanje 20 karaktera"}</p>
+              )}
             </div>
-            <div>
-              <label className="text-sm text-[#9CA3AF] mb-2 block">Primalac uplate</label>
-              <Input
-                value={settings.payment_recipient}
-                onChange={(e) => setSettings({ ...settings, payment_recipient: e.target.value })}
-                placeholder="Ime salona ili vlasnika"
-                className="bg-[var(--color-background)] border-[#2A2A2D]"
-                data-testid="settings-payment-recipient"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Salon Phone */}
-        <div className="border-t border-[#2A2A2D] pt-6">
-          <div>
-            <label className="text-sm text-[#9CA3AF] mb-1.5 block">Telefon salona (Viber/WhatsApp)</label>
-            <PhoneInput
-              value={settings.viber_phone}
-              onChange={(v) => setSettings({ ...settings, viber_phone: v })}
-              data-testid="settings-viber-phone"
-            />
-            <p className="text-[10px] text-[#6B7280] mt-1">Koristi se za Viber/WhatsApp dugmad na potvrdi rezervacije.</p>
           </div>
         </div>
 
