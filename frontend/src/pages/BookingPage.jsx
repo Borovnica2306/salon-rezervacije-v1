@@ -64,6 +64,8 @@ const BookingPage = () => {
   const [blacklistError, setBlacklistError] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
+  const [piPaymentPending, setPiPaymentPending] = useState(false);
+  const [piPaymentData, setPiPaymentData] = useState(null);
 
   // My Reservations state
   const [showMyReservations, setShowMyReservations] = useState(false);
@@ -236,9 +238,15 @@ const BookingPage = () => {
         pi_uid: piUser.uid,
       }, { headers: tHeaders });
       
-      setBookingDetails(response.data);
-      setBookingComplete(true);
-      toast.success("Rezervacija uspešno kreirana!");
+      const booking = response.data;
+      setBookingDetails(booking);
+
+      if (booking.payment_status === "pending_pi_payment" && booking.total_price > 0) {
+        initiatePiPayment(booking);
+      } else {
+        setBookingComplete(true);
+        toast.success("Rezervacija uspešno kreirana!");
+      }
     } catch (error) {
       const detail = error.response?.data?.detail || "";
       if (detail.toLowerCase().includes("crn") || detail.toLowerCase().includes("blacklist") || detail.toLowerCase().includes("blokiran")) {
@@ -251,6 +259,67 @@ const BookingPage = () => {
     }
   };
 
+  const initiatePiPayment = (booking) => {
+    const totalPi = booking.total_price;
+    const serviceName = booking.service_names?.join(", ") || "Usluga";
+    const memo = `Rezervacija ${booking.booking_id} - ${serviceName}`;
+
+    if (isSandbox) {
+      setPiPaymentData({ booking, totalPi, serviceName, memo });
+      setPiPaymentPending(true);
+      return;
+    }
+
+    // Production Pi SDK
+    try {
+      window.Pi.createPayment({
+        amount: totalPi,
+        memo,
+        metadata: { booking_id: booking.booking_id, tenant_id: tenant?.tenant_id },
+      }, {
+        onReadyForServerApproval: (paymentId) => {
+          console.log("[Pi] Ready for server approval:", paymentId);
+          // TODO: POST paymentId to backend for approval
+        },
+        onReadyForServerCompletion: (paymentId, txid) => {
+          console.log("[Pi] Ready for completion:", paymentId, txid);
+          // TODO: POST completion to backend
+          setBookingComplete(true);
+          setPiPaymentPending(false);
+          toast.success("Pi plaćanje uspešno!");
+        },
+        onCancel: (paymentId) => {
+          console.log("[Pi] Payment cancelled:", paymentId);
+          toast.error("Plaćanje otkazano");
+          setPiPaymentPending(false);
+        },
+        onError: (error, payment) => {
+          console.error("[Pi] Payment error:", error, payment);
+          toast.error("Greška pri plaćanju");
+          setPiPaymentPending(false);
+        },
+      });
+    } catch (err) {
+      console.error("[Pi] createPayment failed:", err);
+      toast.error("Pi SDK greška");
+    }
+  };
+
+  const handleSandboxApprove = () => {
+    setPiPaymentPending(false);
+    const fakePaymentId = `sandbox_pay_${Date.now()}`;
+    console.log("[Pi Sandbox] Payment approved, paymentId:", fakePaymentId);
+    setTimeout(() => {
+      setBookingComplete(true);
+      toast.success("Pi plaćanje uspešno! (Sandbox)");
+    }, 1000);
+  };
+
+  const handleSandboxCancel = () => {
+    setPiPaymentPending(false);
+    toast.error("Plaćanje otkazano (Sandbox)");
+  };
+
   const resetBooking = () => {
     setStep(1);
     setSelectedCategory(null);
@@ -260,6 +329,8 @@ const BookingPage = () => {
     setSelectedTime(null);
     setClientPhone("");
     setClientEmail("");
+    setPiPaymentPending(false);
+    setPiPaymentData(null);
     setBookingComplete(false);
     setBookingDetails(null);
     setBlacklistError(false);
@@ -454,6 +525,65 @@ const BookingPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Sandbox Pi Wallet Modal
+  const SandboxPaymentModal = () => {
+    if (!piPaymentPending || !piPaymentData) return null;
+    const { totalPi, serviceName, booking } = piPaymentData;
+    return (
+      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" data-testid="sandbox-payment-modal">
+        <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-2xl w-full max-w-sm overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2">
+              <span className="text-xl font-bold text-white">π</span>
+            </div>
+            <h3 className="text-white font-medium text-lg">Pi Wallet</h3>
+            <span className="text-white/60 text-[10px] px-2 py-0.5 bg-white/10 rounded-full">SANDBOX</span>
+          </div>
+          {/* Body */}
+          <div className="px-6 py-5 space-y-4">
+            <div className="text-center">
+              <p className="text-[#9CA3AF] text-sm mb-1">{"Odobriti plaćanje?"}</p>
+              <p className="text-3xl font-bold text-white">{totalPi} <span className="text-lg text-purple-400">π</span></p>
+            </div>
+            <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B7280]">Usluga</span>
+                <span className="text-white text-right max-w-[60%] truncate">{serviceName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B7280]">Rezervacija</span>
+                <span className="text-white font-mono">#{booking.booking_id}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B7280]">Primalac</span>
+                <span className="text-white">@salon</span>
+              </div>
+            </div>
+          </div>
+          {/* Actions */}
+          <div className="px-6 pb-6 flex gap-3">
+            <Button
+              onClick={handleSandboxCancel}
+              variant="outline"
+              className="flex-1 border-[#2A2A2D] min-h-[48px]"
+              data-testid="sandbox-cancel-btn"
+            >
+              {"Otkaži"}
+            </Button>
+            <Button
+              onClick={handleSandboxApprove}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white min-h-[48px] font-medium"
+              data-testid="sandbox-approve-btn"
+            >
+              {"Odobri plaćanje"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (piLoading) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
@@ -642,6 +772,7 @@ const BookingPage = () => {
 
   return (
     <div className="min-h-screen bg-transparent">
+      <SandboxPaymentModal />
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-[#2A2A2D]">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
