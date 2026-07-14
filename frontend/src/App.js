@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, lazy, Suspense } from "
 import axios from "axios";
 import { initAuthStorage, getToken, setToken, removeToken } from "./authStorage";
 import { applyTheme, DEFAULT_THEME } from "./config";
+import { PiAuthProvider } from "./context/PiAuthContext";
 
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -205,7 +206,7 @@ function App() {
                   </ProtectedSuperAdmin>
                 }
               />
-              <Route path="/:slug" element={<TenantProvider><BookingPage /></TenantProvider>} />
+              <Route path="/:slug" element={<TenantProvider><PiAuthProvider><BookingPage /></PiAuthProvider></TenantProvider>} />
               <Route path="/:slug/admin/login" element={<AdminLogin />} />
               <Route
                 path="/:slug/admin/*"
