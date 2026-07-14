@@ -76,7 +76,9 @@ class ReservationCreate(BaseModel):
     time: str
     client_name: str
     client_phone: str
-    client_email: str
+    client_email: str = ""
+    pi_username: Optional[str] = None
+    pi_uid: Optional[str] = None
 
 class ReservationResponse(BaseModel):
     id: str
@@ -98,6 +100,8 @@ class ReservationResponse(BaseModel):
     advance_released: bool
     created_at: str
     client_email: str = ""
+    pi_username: Optional[str] = None
+    pi_uid: Optional[str] = None
     worker_id: Optional[str] = None
     worker_name: Optional[str] = None
 

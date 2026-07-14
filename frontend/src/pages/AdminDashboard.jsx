@@ -876,7 +876,7 @@ const ReservationsPage = () => {
               </div>
               <div className="flex gap-2 pt-2 border-t border-[#2A2A2D]">
                 <button onClick={() => { handleTogglePayment(selectedRes.id); setSelectedRes(null); }} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${selectedRes.payment_status === "confirmed" || selectedRes.payment_status === "paid" ? "bg-green-600/20 text-green-400" : selectedRes.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : "bg-[#1E1E22] text-[#9CA3AF]"}`} data-testid={`detail-payment-${selectedRes.id}`}>
-                  {selectedRes.payment_status === "confirmed" || selectedRes.payment_status === "paid" ? "Plaćeno" : selectedRes.payment_status === "sent_for_verification" ? "Čeka proveru" : "Čeka uplatu"}
+                  {selectedRes.payment_status === "confirmed" || selectedRes.payment_status === "paid" ? "Plaćeno" : selectedRes.payment_status === "sent_for_verification" ? "Čeka proveru" : selectedRes.payment_status === "pending_pi_payment" ? "Čeka Pi uplatu" : "Čeka uplatu"}
                 </button>
                 <button onClick={() => { setSelectedRes(null); openCancelDialog(selectedRes); }} className="px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20" data-testid={`detail-cancel-${selectedRes.id}`}>Otkaži</button>
                 {!blacklist.includes(selectedRes.client_phone) ? (
@@ -988,7 +988,7 @@ const ReservationsPage = () => {
                       <TableCell><span className="text-sm">{res.client_name}</span><br /><span className="text-xs text-[#6B7280]">{res.client_phone}</span></TableCell>
                       <TableCell><span className="text-xs text-[#9CA3AF]">{res.service_names?.join(", ")}</span></TableCell>
                       <TableCell className="text-right text-sm font-medium text-[var(--color-primary)]">{res.total_price?.toLocaleString()} RSD</TableCell>
-                      <TableCell><span className={`px-2 py-1 rounded-full text-[10px] ${res.payment_status === "confirmed" || res.payment_status === "paid" ? "bg-green-600/20 text-green-400" : res.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : "bg-[#2A2A2D] text-[#9CA3AF]"}`}>{res.payment_status === "confirmed" || res.payment_status === "paid" ? "Plaćeno" : res.payment_status === "sent_for_verification" ? "Čeka proveru" : "Čeka"}</span></TableCell>
+                      <TableCell><span className={`px-2 py-1 rounded-full text-[10px] ${res.payment_status === "confirmed" || res.payment_status === "paid" ? "bg-green-600/20 text-green-400" : res.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : res.payment_status === "pending_pi_payment" ? "bg-purple-500/20 text-purple-400" : "bg-[#2A2A2D] text-[#9CA3AF]"}`}>{res.payment_status === "confirmed" || res.payment_status === "paid" ? "Plaćeno" : res.payment_status === "sent_for_verification" ? "Čeka proveru" : res.payment_status === "pending_pi_payment" ? "Pi" : "Čeka"}</span></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
