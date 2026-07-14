@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API, useTenant, getTenantHeaders } from "../App";
-import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, Mail } from "lucide-react";
+import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, Mail, Shield } from "lucide-react";
 import { PhoneInput, isValidPhone } from "../components/PhoneInput";
+import { usePiAuth } from "../context/PiAuthContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -40,6 +41,7 @@ function fallbackCopy(text) {
 const BookingPage = () => {
   const tenant = useTenant();
   const { slug } = useParams();
+  const { piUser, loading: piLoading, isSandbox } = usePiAuth();
   const tHeaders = getTenantHeaders(tenant?.tenant_id);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -56,7 +58,6 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [dateSlotCounts, setDateSlotCounts] = useState({});
-  const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -212,8 +213,8 @@ const BookingPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!clientName.trim() || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)) {
-      toast.error("Molimo unesite ime, validan broj telefona i email adresu");
+    if (!piUser?.username || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)) {
+      toast.error("Molimo unesite validan broj telefona i email adresu");
       return;
     }
 
@@ -228,9 +229,11 @@ const BookingPage = () => {
         service_worker_pairs: pairs,
         date: format(selectedDate, "yyyy-MM-dd"),
         time: selectedTime,
-        client_name: clientName,
+        client_name: `@${piUser.username}`,
         client_phone: getE164Phone(clientPhone),
         client_email: clientEmail.trim().toLowerCase(),
+        pi_username: piUser.username,
+        pi_uid: piUser.uid,
       }, { headers: tHeaders });
       
       setBookingDetails(response.data);
@@ -255,7 +258,6 @@ const BookingPage = () => {
     setServiceWorkerMap({});
     setSelectedDate(null);
     setSelectedTime(null);
-    setClientName("");
     setClientPhone("");
     setClientEmail("");
     setBookingComplete(false);
@@ -451,6 +453,17 @@ const BookingPage = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  if (piLoading) {
+    return (
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-[#9CA3AF] text-sm">{"Povezivanje sa Pi mrežom..."}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (bookingComplete && bookingDetails) {
     const timelineItems = buildTimelineItems();
@@ -1096,17 +1109,15 @@ const BookingPage = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Pi Identity */}
               <div>
-                <label className="text-sm text-[#9CA3AF] mb-2 block">Ime i Prezime</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
-                  <Input
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Unesite vaše ime"
-                    className="pl-12 bg-[var(--color-surface)] border-[#2A2A2D] focus:border-[var(--color-primary)] h-14"
-                    data-testid="client-name-input"
-                  />
+                <label className="text-sm text-[#9CA3AF] mb-2 block">Pi Nalog</label>
+                <div className="flex items-center gap-3 bg-[var(--color-surface)] border border-[#2A2A2D] rounded-lg px-4 h-14" data-testid="pi-identity-card">
+                  <Shield className="w-5 h-5 text-[var(--color-primary)]" />
+                  <span className="text-white font-medium">@{piUser?.username || "—"}</span>
+                  {isSandbox && (
+                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Sandbox</span>
+                  )}
                 </div>
               </div>
 
@@ -1264,7 +1275,7 @@ const BookingPage = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !clientName.trim() || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)}
+                disabled={isSubmitting || !piUser?.username || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)}
                 className="flex-1 h-14 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-50"
                 data-testid="confirm-booking-btn"
               >
