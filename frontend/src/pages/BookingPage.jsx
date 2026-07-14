@@ -277,16 +277,34 @@ const BookingPage = () => {
         memo,
         metadata: { booking_id: booking.booking_id, tenant_id: tenant?.tenant_id },
       }, {
-        onReadyForServerApproval: (paymentId) => {
+        onReadyForServerApproval: async (paymentId) => {
           console.log("[Pi] Ready for server approval:", paymentId);
-          // TODO: POST paymentId to backend for approval
+          try {
+            await axios.post(`${API}/payments/approve`, {
+              paymentId,
+              booking_id: booking.booking_id,
+              is_sandbox: false,
+            }, { headers: tHeaders });
+          } catch (err) {
+            console.error("[Pi] Server approve failed:", err);
+          }
         },
-        onReadyForServerCompletion: (paymentId, txid) => {
+        onReadyForServerCompletion: async (paymentId, txid) => {
           console.log("[Pi] Ready for completion:", paymentId, txid);
-          // TODO: POST completion to backend
-          setBookingComplete(true);
-          setPiPaymentPending(false);
-          toast.success("Pi plaćanje uspešno!");
+          try {
+            await axios.post(`${API}/payments/complete`, {
+              paymentId,
+              txid,
+              booking_id: booking.booking_id,
+              is_sandbox: false,
+            }, { headers: tHeaders });
+            setBookingComplete(true);
+            setPiPaymentPending(false);
+            toast.success("Pi plaćanje uspešno!");
+          } catch (err) {
+            console.error("[Pi] Server complete failed:", err);
+            toast.error("Greška pri potvrdi plaćanja");
+          }
         },
         onCancel: (paymentId) => {
           console.log("[Pi] Payment cancelled:", paymentId);
@@ -305,11 +323,32 @@ const BookingPage = () => {
     }
   };
 
-  const handleSandboxApprove = () => {
-    setPiPaymentPending(false);
+  const handleSandboxApprove = async () => {
     const fakePaymentId = `sandbox_pay_${Date.now()}`;
     console.log("[Pi Sandbox] Payment approved, paymentId:", fakePaymentId);
-    setTimeout(() => {
+
+    try {
+      await axios.post(`${API}/payments/approve`, {
+        paymentId: fakePaymentId,
+        booking_id: piPaymentData.booking.booking_id,
+        is_sandbox: true,
+      }, { headers: tHeaders });
+    } catch (err) {
+      console.error("[Pi Sandbox] Approve call failed:", err);
+    }
+
+    setPiPaymentPending(false);
+    setTimeout(async () => {
+      try {
+        await axios.post(`${API}/payments/complete`, {
+          paymentId: fakePaymentId,
+          txid: `sandbox_tx_${Date.now()}`,
+          booking_id: piPaymentData.booking.booking_id,
+          is_sandbox: true,
+        }, { headers: tHeaders });
+      } catch (err) {
+        console.error("[Pi Sandbox] Complete call failed:", err);
+      }
       setBookingComplete(true);
       toast.success("Pi plaćanje uspešno! (Sandbox)");
     }, 1000);

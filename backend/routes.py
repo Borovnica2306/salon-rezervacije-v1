@@ -1,5 +1,7 @@
 import jwt
+import os
 import logging
+import httpx
 from fastapi import APIRouter, HTTPException, Request, Response, Depends, BackgroundTasks, Header
 from bson import ObjectId
 from typing import List, Optional
@@ -27,6 +29,9 @@ from mail_service import send_booking_confirmation_email, PAYMENT_MODE
 from tenant import resolve_tenant_by_slug, check_tenant_access
 
 logger = logging.getLogger(__name__)
+
+PI_API_KEY = os.environ.get("PI_API_KEY", "")
+PI_API_BASE = "https://api.minepi.com/v2"
 
 api_router = APIRouter(prefix="/api")
 
@@ -1343,6 +1348,79 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
         smtp_user=settings.get("smtp_user", ""),
         smtp_password=settings.get("smtp_password", ""),
     )
+
+
+# ================== PI PAYMENTS ==================
+
+
+@api_router.post("/payments/approve")
+async def approve_pi_payment(body: dict, request: Request):
+    payment_id = body.get("paymentId", "")
+    booking_id = body.get("booking_id", "")
+    is_sandbox = body.get("is_sandbox", False)
+    tid = request.headers.get("X-Tenant-ID", "")
+
+    if not payment_id or not booking_id:
+        raise HTTPException(status_code=400, detail="paymentId and booking_id required")
+
+    if is_sandbox:
+        logger.info(f"[Pi Sandbox] Approve payment {payment_id} for booking {booking_id}")
+        return {"status": "approved", "message": "Sandbox auto-approved"}
+
+    if not PI_API_KEY:
+        raise HTTPException(status_code=500, detail="PI_API_KEY not configured")
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{PI_API_BASE}/payments/{payment_id}/approve",
+            headers={"Authorization": f"Key {PI_API_KEY}"},
+        )
+    if resp.status_code != 200:
+        logger.error(f"[Pi] Approve failed: {resp.status_code} {resp.text}")
+        raise HTTPException(status_code=502, detail="Pi API approve failed")
+
+    logger.info(f"[Pi] Approved payment {payment_id} for booking {booking_id}")
+    return {"status": "approved", "pi_response": resp.json()}
+
+
+@api_router.post("/payments/complete")
+async def complete_pi_payment(body: dict, request: Request):
+    payment_id = body.get("paymentId", "")
+    txid = body.get("txid", "")
+    booking_id = body.get("booking_id", "")
+    is_sandbox = body.get("is_sandbox", False)
+    tid = request.headers.get("X-Tenant-ID", "")
+
+    if not payment_id or not booking_id:
+        raise HTTPException(status_code=400, detail="paymentId and booking_id required")
+
+    if is_sandbox:
+        logger.info(f"[Pi Sandbox] Complete payment {payment_id} for booking {booking_id}")
+        await db.reservations.update_one(
+            {"booking_id": booking_id, "tenant_id": tid},
+            {"$set": {"payment_status": "confirmed", "pi_payment_id": payment_id, "pi_txid": f"sandbox_{payment_id}"}}
+        )
+        return {"status": "completed", "message": "Sandbox payment confirmed"}
+
+    if not PI_API_KEY:
+        raise HTTPException(status_code=500, detail="PI_API_KEY not configured")
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{PI_API_BASE}/payments/{payment_id}/complete",
+            headers={"Authorization": f"Key {PI_API_KEY}"},
+            json={"txid": txid},
+        )
+    if resp.status_code != 200:
+        logger.error(f"[Pi] Complete failed: {resp.status_code} {resp.text}")
+        raise HTTPException(status_code=502, detail="Pi API complete failed")
+
+    await db.reservations.update_one(
+        {"booking_id": booking_id, "tenant_id": tid},
+        {"$set": {"payment_status": "confirmed", "pi_payment_id": payment_id, "pi_txid": txid}}
+    )
+    logger.info(f"[Pi] Completed payment {payment_id}, txid={txid}, booking={booking_id}")
+    return {"status": "completed", "pi_response": resp.json()}
 
 
 # ================== ROOT ENDPOINT ==================
