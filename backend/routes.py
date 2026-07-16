@@ -1078,7 +1078,8 @@ async def get_reservations(
             payment_status=r.get("payment_status", "pending"),
             advance_required=r.get("advance_required", True),
             advance_released=r.get("advance_released", False),
-            created_at=r.get("created_at", "")
+            created_at=r.get("created_at", ""),
+            is_rescheduled=r.get("is_rescheduled", False),
         ) for r in reservations
     ]
 
@@ -1351,8 +1352,8 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
 
 
 @api_router.put("/reservations/{reservation_id}/reschedule")
-async def reschedule_reservation(reservation_id: str, body: dict, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
-    tid = user.get("tenant_id", "")
+async def reschedule_reservation(reservation_id: str, body: dict, request: Request, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
+    tid = user.get("tenant_id", "") or request.headers.get("X-Tenant-ID", "")
     new_time = body.get("new_time", "")
     new_worker_id = body.get("new_worker_id", "")
     if not new_time or not new_worker_id:

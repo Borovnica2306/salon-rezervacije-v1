@@ -104,6 +104,7 @@ class ReservationResponse(BaseModel):
     pi_uid: Optional[str] = None
     worker_id: Optional[str] = None
     worker_name: Optional[str] = None
+    is_rescheduled: bool = False
 
 class SettingsUpdate(BaseModel):
     salon_name: Optional[str] = None
