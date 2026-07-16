@@ -74,8 +74,6 @@ const ReservationsPage = () => {
     catch (e) { toast.error("Greška pri učitavanju"); } finally { setLoading(false); }
   };
   const fetchBlacklist = async () => { try { const r = await axios.get(`${API}/blacklist`, { headers }); setBlacklist(r.data.map(b => b.phone)); } catch (e) { console.error(e); } };
-  const handleTogglePayment = async (id) => { try { await axios.put(`${API}/reservations/${id}/payment-status`, {}, { headers }); fetchReservations(); } catch (e) { toast.error("Greška"); } };
-  const handleConfirmPayment = async (id) => { try { await axios.patch(`${API}/admin/reservations/${id}/confirm-payment`, {}, { headers }); toast.success("Uplata potvrđena"); setSelectedRes(null); fetchReservations(); } catch (e) { toast.error("Greška"); } };
   const handleSendReminders = async () => {
     setSendingReminders(true);
     try { const r = await axios.post(`${API}/admin/reservations/trigger-reminders`, {}, { headers }); const d = r.data; toast.success(`Sutra (${d.date}): ${d.total_reservations} termina`); }
@@ -359,21 +357,13 @@ const ReservationsPage = () => {
                 ))}
               </div>
               <div className="flex gap-2 pt-2 border-t border-[#2A2A2D]">
-                <button onClick={() => { handleTogglePayment(selectedRes.id); setSelectedRes(null); }} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${selectedRes.payment_status === "confirmed" || selectedRes.payment_status === "paid" ? "bg-green-600/20 text-green-400" : selectedRes.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : "bg-[#1E1E22] text-[#9CA3AF]"}`}>
-                  {selectedRes.payment_status === "confirmed" || selectedRes.payment_status === "paid" ? "Plaćeno" : selectedRes.payment_status === "sent_for_verification" ? "Čeka proveru" : selectedRes.payment_status === "pending_pi_payment" ? "Čeka Pi uplatu" : "Čeka uplatu"}
-                </button>
-                <button onClick={() => { setSelectedRes(null); openCancelDialog(selectedRes); }} className="px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20">Otkaži</button>
+                <button onClick={() => { setSelectedRes(null); openCancelDialog(selectedRes); }} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20">Otkaži rezervaciju</button>
                 {!blacklist.includes(selectedRes.client_phone) ? (
-                  <button onClick={() => handleBlacklist(selectedRes.client_phone)} className="px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Ban className="w-3 h-3 inline mr-1" />Blokiraj</button>
+                  <button onClick={() => handleBlacklist(selectedRes.client_phone)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Ban className="w-3 h-3 inline mr-1" />Blokiraj</button>
                 ) : (
-                  <button onClick={() => handleRemoveFromBlacklist(selectedRes.client_phone)} className="px-3 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20"><Check className="w-3 h-3 inline mr-1" />Odblokiraj</button>
+                  <button onClick={() => handleRemoveFromBlacklist(selectedRes.client_phone)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20"><Check className="w-3 h-3 inline mr-1" />Odblokiraj</button>
                 )}
               </div>
-              {selectedRes.payment_status === "sent_for_verification" && (
-                <button onClick={() => handleConfirmPayment(selectedRes.id)} className="w-full mt-2 px-3 py-3 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors min-h-[48px]">
-                  <Check className="w-4 h-4 inline mr-2" />Potvrdi uplatu
-                </button>
-              )}
             </div>
           )}
         </DialogContent>
@@ -425,9 +415,7 @@ const ReservationsPage = () => {
                           {cellBlocks.map((block, bIdx) => {
                             const topOff = ((block.startMin - slotMin) / 30) * SLOT_HEIGHT;
                             const blockH = Math.max(((block.endMin - block.startMin) / 30) * SLOT_HEIGHT, 24);
-                            const isPaid = block.res.payment_status === "confirmed" || block.res.payment_status === "paid";
-                            const isVerifying = block.res.payment_status === "sent_for_verification";
-                            const blockColor = isVerifying ? "#F59E0B" : isPaid ? "#22C55E" : block.color;
+                            const blockColor = block.color;
                             const isRescheduled = block.res.is_rescheduled;
                             return (
                               <div
@@ -445,7 +433,7 @@ const ReservationsPage = () => {
                                   {block.serviceName}
                                 </div>
                                 {blockH > 28 && <div className="text-[9px] text-[#9CA3AF] truncate">{block.res.client_name}</div>}
-                                {blockH > 42 && <div className="flex items-center gap-1 mt-0.5"><span className="text-[9px] font-mono text-[#6B7280]">#{block.bookingId}</span>{isPaid && <Check className="w-2.5 h-2.5 text-green-400" />}{isVerifying && <Clock className="w-2.5 h-2.5 text-amber-400" />}</div>}
+                                {blockH > 42 && <div className="flex items-center gap-1 mt-0.5"><span className="text-[9px] font-mono text-[#6B7280]">#{block.bookingId}</span></div>}
                               </div>
                             );
                           })}
@@ -473,7 +461,7 @@ const ReservationsPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="border-[#2A2A2D] hover:bg-transparent">
-                    <TableHead className="text-[#9CA3AF]">ID</TableHead><TableHead className="text-[#9CA3AF]">Vreme</TableHead><TableHead className="text-[#9CA3AF]">Klijent</TableHead><TableHead className="text-[#9CA3AF]">Usluge</TableHead><TableHead className="text-[#9CA3AF] text-right">Cena</TableHead><TableHead className="text-[#9CA3AF]">Uplata</TableHead>
+                    <TableHead className="text-[#9CA3AF]">ID</TableHead><TableHead className="text-[#9CA3AF]">Vreme</TableHead><TableHead className="text-[#9CA3AF]">Klijent</TableHead><TableHead className="text-[#9CA3AF]">Usluge</TableHead><TableHead className="text-[#9CA3AF] text-right">Cena</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -484,7 +472,6 @@ const ReservationsPage = () => {
                       <TableCell><span className="text-sm">{res.client_name}</span><br /><span className="text-xs text-[#6B7280]">{res.client_phone}</span></TableCell>
                       <TableCell><span className="text-xs text-[#9CA3AF]">{res.service_names?.join(", ")}</span></TableCell>
                       <TableCell className="text-right text-sm font-medium text-[var(--color-primary)]">{res.total_price ?? 0} π</TableCell>
-                      <TableCell><span className={`px-2 py-1 rounded-full text-[10px] ${res.payment_status === "confirmed" || res.payment_status === "paid" ? "bg-green-600/20 text-green-400" : res.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : res.payment_status === "pending_pi_payment" ? "bg-purple-500/20 text-purple-400" : "bg-[#2A2A2D] text-[#9CA3AF]"}`}>{res.payment_status === "confirmed" || res.payment_status === "paid" ? "Plaćeno" : res.payment_status === "sent_for_verification" ? "Čeka proveru" : res.payment_status === "pending_pi_payment" ? "Pi" : "Čeka"}</span></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
