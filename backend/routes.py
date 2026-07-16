@@ -1376,6 +1376,22 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
     end_min = start_min + duration
     new_end_time = f"{end_min // 60:02d}:{end_min % 60:02d}"
 
+    # Check overlap with other reservations for the same worker on the same date
+    overlap = await db.reservations.find_one({
+        "_id": {"$ne": ObjectId(reservation_id)},
+        "tenant_id": tid,
+        "date": res["date"],
+        "status": "confirmed",
+        "$or": [
+            {"worker_id": new_worker_id},
+            {"service_worker_pairs.worker_id": new_worker_id},
+        ],
+        "time": {"$lt": new_end_time},
+        "end_time": {"$gt": new_time},
+    })
+    if overlap:
+        raise HTTPException(status_code=400, detail="Termin je zauzet")
+
     # Update reservation
     update = {
         "time": new_time,

@@ -133,6 +133,22 @@ const ReservationsPage = () => {
       setDropTarget(null);
       return;
     }
+
+    // Overlap check: does the new time block collide with existing reservations for this worker?
+    const duration = dragData.res.total_duration || 30;
+    const newStartMin = slotMin;
+    const newEndMin = slotMin + duration;
+    const workerBlocks = buildWorkerBlocks(workerId);
+    const hasOverlap = workerBlocks.some(b =>
+      b.res.id !== dragData.res.id && newStartMin < b.endMin && newEndMin > b.startMin
+    );
+    if (hasOverlap) {
+      toast.error("Ovaj termin je već zauzet kod izabranog radnika.");
+      setDragData(null);
+      setDropTarget(null);
+      return;
+    }
+
     const newTime = mtt(slotMin);
     const targetWorker = workers.find(w => w.id === workerId);
     setRescheduleModal({
