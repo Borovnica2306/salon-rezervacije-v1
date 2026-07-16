@@ -82,7 +82,7 @@ def _build_html(
       </tr>
       <tr>
         <td style="padding:12px 0;color:#94A3B8;font-size:13px;">Ukupno</td>
-        <td style="padding:12px 0;color:#38BDF8;font-size:15px;font-weight:600;text-align:right;">{total_price:.0f} RSD</td>
+        <td style="padding:12px 0;color:#38BDF8;font-size:15px;font-weight:600;text-align:right;">{total_price} π</td>
       </tr>
     </table>
 
@@ -158,7 +158,7 @@ async def send_booking_confirmation_email(
         msg["From"] = smtp_cfg["user"]
         msg["To"] = to_email
 
-        plain = f"Rezervacija #{booking_id} potvrđena. Datum: {date}, Vreme: {time}-{end_time}. Ukupno: {total_price:.0f} RSD."
+        plain = f"Rezervacija #{booking_id} potvrđena. Datum: {date}, Vreme: {time}-{end_time}. Ukupno: {total_price} π."
         msg.attach(MIMEText(plain, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
 

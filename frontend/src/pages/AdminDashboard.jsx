@@ -369,7 +369,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
                   </div>
                 ))}
                 <div className="text-xs text-[#9CA3AF] text-right">
-                  Ukupno: {totalDuration} min &middot; {totalPrice.toLocaleString()} RSD
+                  Ukupno: {totalDuration} min &middot; {totalPrice} π
                 </div>
               </div>
             )}
@@ -384,7 +384,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               >
                 <option value="">Izaberite uslugu...</option>
                 {services.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.duration} min - {s.price.toLocaleString()} RSD)</option>
+                  <option key={s.id} value={s.id}>{s.name} ({s.duration} min - {s.price} π)</option>
                 ))}
               </select>
 
@@ -539,7 +539,7 @@ const ManualBookingModal = ({ open, onClose, onSuccess, workers, selectedDate })
               </div>
               <div className="flex justify-between border-t border-[#2A2A2D] pt-1 mt-1">
                 <span className="text-[#9CA3AF]">Ukupno:</span>
-                <span className="text-[var(--color-primary)] font-medium">{totalPrice.toLocaleString()} RSD</span>
+                <span className="text-[var(--color-primary)] font-medium">{totalPrice} π</span>
               </div>
             </div>
 
@@ -854,7 +854,7 @@ const ReservationsPage = () => {
             <div className="space-y-3">
               <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-[#9CA3AF]">Telefon:</span><span className="text-white">{selectedRes.client_phone}</span></div>
-                <div className="flex justify-between"><span className="text-[#9CA3AF]">Ukupno:</span><span className="text-[var(--color-primary)] font-medium">{selectedRes.total_price?.toLocaleString()} RSD</span></div>
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">Ukupno:</span><span className="text-[var(--color-primary)] font-medium">{selectedRes.total_price ?? 0} π</span></div>
               </div>
               <div className="space-y-1">
                 {selectedRes.worker_time_blocks?.length > 0 ? selectedRes.worker_time_blocks.map((block, idx) => {
@@ -987,7 +987,7 @@ const ReservationsPage = () => {
                       <TableCell><span className="text-sm text-[var(--color-primary)]">{res.time}-{res.end_time}</span></TableCell>
                       <TableCell><span className="text-sm">{res.client_name}</span><br /><span className="text-xs text-[#6B7280]">{res.client_phone}</span></TableCell>
                       <TableCell><span className="text-xs text-[#9CA3AF]">{res.service_names?.join(", ")}</span></TableCell>
-                      <TableCell className="text-right text-sm font-medium text-[var(--color-primary)]">{res.total_price?.toLocaleString()} RSD</TableCell>
+                      <TableCell className="text-right text-sm font-medium text-[var(--color-primary)]">{res.total_price ?? 0} π</TableCell>
                       <TableCell><span className={`px-2 py-1 rounded-full text-[10px] ${res.payment_status === "confirmed" || res.payment_status === "paid" ? "bg-green-600/20 text-green-400" : res.payment_status === "sent_for_verification" ? "bg-amber-500/15 text-amber-400" : res.payment_status === "pending_pi_payment" ? "bg-purple-500/20 text-purple-400" : "bg-[#2A2A2D] text-[#9CA3AF]"}`}>{res.payment_status === "confirmed" || res.payment_status === "paid" ? "Plaćeno" : res.payment_status === "sent_for_verification" ? "Čeka proveru" : res.payment_status === "pending_pi_payment" ? "Pi" : "Čeka"}</span></TableCell>
                     </TableRow>
                   ))}
@@ -1624,7 +1624,7 @@ const ServicesPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-[#9CA3AF] mb-2 block">Cena (RSD)</label>
+                  <label className="text-sm text-[#9CA3AF] mb-2 block">Cena (π)</label>
                   <Input
                     type="number"
                     value={form.price}
@@ -1693,7 +1693,7 @@ const ServicesPage = () => {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="font-semibold text-[var(--color-primary)] text-sm whitespace-nowrap">
-                            {service.price.toLocaleString()} RSD
+                            {service.price} π
                           </span>
                           <div className="flex gap-1">
                             <Button
@@ -1838,24 +1838,24 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <div>
-          <label className="text-sm text-[#9CA3AF] mb-2 block">Instrukcije za Avans</label>
-          <textarea
-            value={settings.advance_instructions}
-            onChange={(e) => setSettings({ ...settings, advance_instructions: e.target.value })}
-            placeholder="Unesite instrukcije za uplatu avansa..."
-            rows={4}
-            className="w-full bg-[var(--color-background)] border border-[#2A2A2D] rounded-lg p-3 text-white resize-none focus:border-[var(--color-primary)] focus:outline-none"
-            data-testid="settings-advance-instructions"
-          />
-        </div>
-
         <div className="border-t border-[#2A2A2D] pt-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-[var(--color-primary)]" />
             Pi Wallet
           </h3>
           <div className="space-y-4">
+            {/* Security Banner */}
+            <div className="bg-red-950/60 border border-red-500/30 rounded-xl p-4" data-testid="pi-security-banner">
+              <p className="text-red-400 font-medium text-sm mb-2 flex items-center gap-2">
+                <span className="text-base">&#9888;&#65039;</span>
+                {"VAŽNO SIGURNOSNO UPOZORENJE"}
+              </p>
+              <ul className="text-xs text-red-300/80 space-y-1.5 leading-relaxed">
+                <li>{"• Unesite isključivo vašu JAVNU adresu Pi novčanika (ona počinje slovom 'G' i služi za primanje uplata)."}</li>
+                <li>{"• NIKADA i ni na jednom mestu u ovoj aplikaciji nemojte upisivati svoju lozinku od 24 reči (passphrase). Ova aplikacija vas nikada neće pitati za te reči. Ako vam bilo ko traži te reči – u pitanju je prevara!"}</li>
+              </ul>
+            </div>
+
             <div>
               <label className="text-sm text-[#9CA3AF] mb-2 block">{"Javna adresa Pi novčanika"}</label>
               <Input
