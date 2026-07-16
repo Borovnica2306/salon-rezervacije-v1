@@ -1350,6 +1350,88 @@ async def update_settings(update: SettingsUpdate, request: Request, user: dict =
     )
 
 
+@api_router.put("/reservations/{reservation_id}/reschedule")
+async def reschedule_reservation(reservation_id: str, body: dict, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
+    tid = user.get("tenant_id", "")
+    new_time = body.get("new_time", "")
+    new_worker_id = body.get("new_worker_id", "")
+    if not new_time or not new_worker_id:
+        raise HTTPException(status_code=400, detail="new_time and new_worker_id required")
+
+    res = await db.reservations.find_one({"_id": ObjectId(reservation_id), "tenant_id": tid})
+    if not res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    new_worker = await db.workers.find_one({"_id": ObjectId(new_worker_id), "tenant_id": tid})
+    if not new_worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    old_time = res.get("time", "")
+    old_worker_name = res.get("worker_name", "")
+    duration = res.get("total_duration", 30)
+
+    # Calculate new end_time
+    start_min = int(new_time.split(":")[0]) * 60 + int(new_time.split(":")[1])
+    end_min = start_min + duration
+    new_end_time = f"{end_min // 60:02d}:{end_min % 60:02d}"
+
+    # Update reservation
+    update = {
+        "time": new_time,
+        "end_time": new_end_time,
+        "worker_id": new_worker_id,
+        "worker_name": new_worker["name"],
+        "is_rescheduled": True,
+    }
+    # Update service_worker_pairs and worker_time_blocks
+    pairs = res.get("service_worker_pairs", [])
+    blocks = res.get("worker_time_blocks", [])
+    if pairs:
+        for p in pairs:
+            p["worker_id"] = new_worker_id
+            p["worker_name"] = new_worker["name"]
+        update["service_worker_pairs"] = pairs
+    if blocks:
+        block_start = start_min
+        for b in blocks:
+            dur = int(b.get("end_time", "00:00").split(":")[0]) * 60 + int(b.get("end_time", "00:00").split(":")[1]) - int(b.get("start_time", "00:00").split(":")[0]) * 60 - int(b.get("start_time", "00:00").split(":")[1])
+            b["worker_id"] = new_worker_id
+            b["worker_name"] = new_worker["name"]
+            b["start_time"] = f"{block_start // 60:02d}:{block_start % 60:02d}"
+            block_start += dur + b.get("gap", 0)
+            b["end_time"] = f"{(block_start - b.get('gap', 0)) // 60:02d}:{(block_start - b.get('gap', 0)) % 60:02d}"
+        update["worker_time_blocks"] = blocks
+
+    await db.reservations.update_one({"_id": ObjectId(reservation_id)}, {"$set": update})
+
+    # Send email notification if client has email
+    client_email = res.get("client_email", "")
+    if client_email:
+        settings_doc = await db.settings.find_one({"type": "salon", "tenant_id": tid})
+        salon_name = settings_doc.get("salon_name", "Salon") if settings_doc else "Salon"
+        background_tasks.add_task(
+            send_booking_confirmation_email,
+            to_email=client_email,
+            salon_name=salon_name,
+            booking_id=res.get("booking_id", ""),
+            client_name=res.get("client_name", ""),
+            date=res.get("date", ""),
+            time=new_time,
+            end_time=new_end_time,
+            service_worker_pairs=pairs,
+            total_price=res.get("total_price", 0),
+            total_duration=duration,
+        )
+
+    return {
+        "message": "Rescheduled",
+        "old_time": old_time,
+        "new_time": new_time,
+        "old_worker": old_worker_name,
+        "new_worker": new_worker["name"],
+    }
+
+
 # ================== PI PAYMENTS ==================
 
 
