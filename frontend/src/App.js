@@ -137,8 +137,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (updates) => {
+    setUser(prev => prev ? { ...prev, ...updates } : prev);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -153,6 +157,11 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Force password change: block dashboard access, send back to login
+  if (user.must_change_password) {
     return <Navigate to="/login" replace />;
   }
 
