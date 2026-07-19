@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "../ui/dialog";
 import { Plus } from "lucide-react";
 
@@ -36,6 +36,9 @@ const WorkerFormDialog = ({
           <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">
             {editingEmployee ? "Izmeni Radnika" : "Novi Radnik"}
           </DialogTitle>
+          <DialogDescription className="text-[#9CA3AF] sr-only">
+            {editingEmployee ? "Izmenite podatke radnika" : "Dodajte novog radnika"}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-4">
           <div>
