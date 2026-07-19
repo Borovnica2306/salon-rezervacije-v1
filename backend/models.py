@@ -11,6 +11,13 @@ class UserResponse(BaseModel):
     email: str
     name: str
     role: str
+    worker_id: Optional[str] = None
+    language_preference: str = "sr"
+
+
+class WorkerAccountCreate(BaseModel):
+    email: str
+    language_preference: str = "sr"
 
 class ServiceCreate(BaseModel):
     name: str

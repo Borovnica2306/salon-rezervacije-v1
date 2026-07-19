@@ -145,6 +145,56 @@ async def startup_event():
             await db.users.update_one({"email": admin_email}, {"$set": update_fields})
             logger.info(f"Admin updated: {admin_email}")
 
+    # ===== SEED TEST WORKER ACCOUNT =====
+    worker_email = "worker@salon.com"
+    worker_password = "Worker123!"
+    existing_worker_user = await db.users.find_one({"email": worker_email})
+    # Find or create a test worker in workers collection
+    test_worker = await db.workers.find_one({"tenant_id": PRIMARY_TENANT_ID, "name": "Marija"})
+    if not test_worker:
+        test_worker_doc = {
+            "name": "Marija",
+            "services": [],
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "break_start": "13:00",
+            "break_end": "13:30",
+            "days_off": [0],
+            "active": True,
+            "tenant_id": PRIMARY_TENANT_ID,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        result = await db.workers.insert_one(test_worker_doc)
+        test_worker_id = str(result.inserted_id)
+        logger.info(f"Test worker entity created: Marija ({test_worker_id})")
+    else:
+        test_worker_id = str(test_worker["_id"])
+
+    if existing_worker_user is None:
+        await db.users.insert_one({
+            "email": worker_email,
+            "password_hash": hash_password(worker_password),
+            "name": "Marija",
+            "role": "worker",
+            "worker_id": test_worker_id,
+            "tenant_id": PRIMARY_TENANT_ID,
+            "language_preference": "sr",
+            "must_change_password": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Test worker user created: {worker_email}")
+    else:
+        update_fields = {}
+        if existing_worker_user.get("role") != "worker":
+            update_fields["role"] = "worker"
+        if not existing_worker_user.get("worker_id"):
+            update_fields["worker_id"] = test_worker_id
+        if not verify_password(worker_password, existing_worker_user["password_hash"]):
+            update_fields["password_hash"] = hash_password(worker_password)
+        if update_fields:
+            await db.users.update_one({"email": worker_email}, {"$set": update_fields})
+            logger.info(f"Test worker user updated: {worker_email}")
+
     # ===== MIGRATE EXISTING DATA: add tenant_id =====
     for coll_name in ["services", "workers", "reservations", "blacklisted_phones", "categories_config"]:
         coll = db[coll_name]
@@ -193,6 +243,12 @@ async def startup_event():
         f.write(f"- Email: {admin_email}\n")
         f.write(f"- Password: {admin_password}\n")
         f.write("- Role: admin\n")
+        f.write(f"- Tenant: {PRIMARY_TENANT_ID} ({PRIMARY_TENANT_SLUG})\n\n")
+        f.write("## Worker (Test)\n")
+        f.write(f"- Email: {worker_email}\n")
+        f.write(f"- Password: {worker_password}\n")
+        f.write("- Role: worker\n")
+        f.write(f"- Worker Name: Marija\n")
         f.write(f"- Tenant: {PRIMARY_TENANT_ID} ({PRIMARY_TENANT_SLUG})\n\n")
         f.write("## Primary Tenant\n")
         f.write(f"- Slug: {PRIMARY_TENANT_SLUG}\n")

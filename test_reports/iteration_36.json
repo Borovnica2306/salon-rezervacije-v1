@@ -1,0 +1,52 @@
+{
+  "summary": "RBAC worker role feature tested end-to-end. Backend: 12/12 pytest assertions PASS on /app/backend/tests/test_rbac_worker.py (worker login returns role/worker_id/slug, /api/auth/me returns worker fields, /api/reservations filtered to worker+7-day window, worker denied on admin endpoints (settings/workers/admin-reservations), /api/workers/{wid}/account returns has_account=true for Marija, duplicate create-account returns 409, duplicate email on different worker returns 409, PUT /api/auth/change-password works and password restore verified). Frontend Playwright: worker login redirects to /beauty-studio-bor/admin PASS; blue worker-banner with 'Pregled rasporeda — samo za čitanje' and 'Marija' PASS; sidebar shows ONLY 'Rezervacije' (no Crna Lista/Radnici/Usluge/Podešavanja) PASS; no Nova Rezervacija / Podsetnici / Mreža-Arhiva tabs PASS; single 'Marija' worker column in grid PASS; next-day disabled at today+7 PASS; admin login shows all 5 nav items + Nova Rezervacija + Podsetnici + tabs + no worker banner PASS. 1 BUG found: prev-day button NOT disabled at 'today' boundary on initial load (canGoPrev = selectedDate > today comparison fails because selectedDate is `new Date()` with time-of-day while today is set to 00:00, so selectedDate > today is true).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "CalendarView.jsx (worker mode date navigation)",
+        "issue": "Prev-day button is NOT disabled when worker is on today's date. Root cause: `const canGoPrev = isWorker ? selectedDate > today : true;` — selectedDate is initialized to `new Date()` (current timestamp), while `today` is normalized to midnight via setHours(0,0,0,0). Therefore selectedDate > today evaluates true on initial mount, so the button stays enabled and the worker can navigate to yesterday and earlier. Fix: normalize selectedDate to start-of-day, OR compare formatted date strings (format(selectedDate,'yyyy-MM-dd') <= format(today,'yyyy-MM-dd')).",
+        "selector": "[data-testid='prev-day-btn']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rbac_worker.py",
+    "/app/test_reports/pytest/rbac_worker.xml"
+  ],
+  "action_items": [
+    "Fix CalendarView.jsx worker prev-day boundary: normalize `selectedDate` to midnight (or compare date strings) so canGoPrev correctly returns false when selectedDate matches today. Suggested: `const canGoPrev = isWorker ? format(selectedDate,'yyyy-MM-dd') > format(today,'yyyy-MM-dd') : true;` and same pattern for canGoNext (< maxWorkerDate)."
+  ],
+  "critical_code_review_comments": [
+    "AdminDashboard.jsx line 21,42: isWorker filter on nav items via workerVisible flag is clean and correct. Verified only 'Rezervacije' shows in sidebar.",
+    "CalendarView.jsx line 208: displayWorkers correctly filtered to `w.id === user?.worker_id` for workers. Verified single Marija column.",
+    "CalendarView.jsx line 472-488: grid blocks properly set draggable=false and pointerEvents:none in style for workers. onClick guarded with isWorker check. Read-only UI is correctly enforced.",
+    "CalendarView.jsx line 253-254: canGoPrev/canGoNext boundary comparison uses Date object math but selectedDate has time-of-day while `today` is midnight → prev is always enabled on today (bug).",
+    "routes.py line 611-660 (create_worker_account): correctly returns 409 for both duplicate email and duplicate worker_id. Returns temp_password in response body — ensure frontend displays/copies it since must_change_password=true.",
+    "routes.py line 1189-1205 (get_reservations worker branch): correctly restricts to worker_id + 7-day salon-timezone window. Uses $or across worker_id/service_worker_pairs.worker_id/worker_time_blocks.worker_id. Verified via test_worker_reservations_scoped.",
+    "routes.py line 698-713 (change-password): does NOT require old password verification. Fine for temp-password flow but note — same endpoint is reachable by admins/super_admin so any authenticated user can silently reset their own password with no re-auth. Consider requiring current password for non-must_change_password users."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_rbac_worker.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12)",
+    "frontend": "92% (12/13 — prev-day boundary failed)"
+  },
+  "test_credentials": {
+    "worker": "worker@salon.com / Worker123! (role=worker, links to Marija, tenant_bsb_001)",
+    "admin": "admin@salon.com / Admin123!",
+    "super_admin": "Bornaja23@gmail.com / Markonijus23!"
+  },
+  "seed_data_creation": "None. Password change test restores original Worker123! after test.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 36 tested RBAC worker role. New backend regression suite at /app/backend/tests/test_rbac_worker.py (12 tests covering login/me, reservations scoping, RBAC deny on admin endpoints, worker account CRUD, change-password). One frontend bug: worker prev-day button not disabled at today. All other worker-mode UI enforcement (sidebar filter, no admin controls, no tabs, single worker column, next-day boundary, banner) verified passing. Admin still has full access with all 5 nav items, Nova Rezervacija, Podsetnici, Mreža/Arhiva tabs. Worker seed for Marija works idempotently at server startup.",
+  "rca_of_the_issue": "prev-day-btn not disabled at today: In CalendarView.jsx, `const today = new Date(); today.setHours(0,0,0,0);` sets today to midnight, but `selectedDate` is initialized as `new Date()` with the actual current time-of-day. The comparison `selectedDate > today` is therefore true for any moment after 00:00:00 on the current day, so canGoPrev returns true and the button remains enabled. Fix: either normalize selectedDate at init (`useState(() => { const d = new Date(); d.setHours(0,0,0,0); return d; })`) or compare formatted 'yyyy-MM-dd' strings which is timezone-safe."
+}

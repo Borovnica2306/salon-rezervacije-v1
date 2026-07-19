@@ -2,6 +2,9 @@ import jwt
 import os
 import logging
 import httpx
+import secrets
+import string
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, HTTPException, Request, Response, Depends, BackgroundTasks, Header
 from bson import ObjectId
 from typing import List, Optional
@@ -13,7 +16,7 @@ from models import (
     WorkerCreate, WorkerUpdate, WorkerResponse, ServiceWorkerPair,
     ReservationCreate, ReservationResponse, SettingsUpdate, SettingsResponse,
     AvailableSlotsRequest, CategoryToggle, ClientReservationsRequest,
-    AdminReservationCreate,
+    AdminReservationCreate, WorkerAccountCreate,
 )
 from auth import (
     get_jwt_secret, JWT_ALGORITHM, hash_password, verify_password,
@@ -32,6 +35,30 @@ logger = logging.getLogger(__name__)
 
 PI_API_KEY = os.environ.get("PI_API_KEY", "")
 PI_API_BASE = "https://api.minepi.com/v2"
+
+COUNTRY_TIMEZONES = {
+    "RS": "Europe/Belgrade",
+    "HR": "Europe/Zagreb",
+    "BA": "Europe/Sarajevo",
+    "ME": "Europe/Podgorica",
+    "MK": "Europe/Skopje",
+    "SI": "Europe/Ljubljana",
+}
+
+
+def _generate_temp_password(length: int = 10) -> str:
+    alphabet = string.ascii_letters + string.digits + "!@#"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+async def _get_salon_today(tenant_id: str) -> str:
+    """Get today's date string in the salon's timezone."""
+    tenant = await db.tenants.find_one({"tenant_id": tenant_id})
+    country = tenant.get("country", "RS") if tenant else "RS"
+    tz_name = COUNTRY_TIMEZONES.get(country, "Europe/Belgrade")
+    salon_now = datetime.now(ZoneInfo(tz_name))
+    return salon_now.strftime("%Y-%m-%d")
+
 
 api_router = APIRouter(prefix="/api")
 
@@ -338,7 +365,10 @@ async def login(request: LoginRequest, response: Response):
         "role": role,
         "tenant_id": tenant_id,
         "slug": slug,
-        "access_token": access_token
+        "access_token": access_token,
+        "worker_id": user.get("worker_id", ""),
+        "language_preference": user.get("language_preference", "sr"),
+        "must_change_password": user.get("must_change_password", False),
     }
 
 
@@ -357,6 +387,13 @@ async def get_me(user: dict = Depends(get_current_user)):
         tenant = await db.tenants.find_one({"tenant_id": tenant_id}, {"slug": 1})
         if tenant:
             user["slug"] = tenant["slug"]
+    # Ensure worker fields are present
+    if "worker_id" not in user:
+        user["worker_id"] = ""
+    if "language_preference" not in user:
+        user["language_preference"] = "sr"
+    if "must_change_password" not in user:
+        user["must_change_password"] = False
     return user
 
 
@@ -569,6 +606,111 @@ async def delete_worker(worker_id: str, user: dict = Depends(get_current_user)):
 
     await db.workers.delete_one({"_id": ObjectId(worker_id)})
     return {"message": "Radnik je trajno obrisan."}
+
+
+@api_router.post("/workers/{worker_id}/create-account")
+async def create_worker_account(worker_id: str, body: WorkerAccountCreate, request: Request, user: dict = Depends(get_current_user)):
+    """Admin creates a login account for a worker. Auto-generates a temporary password."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    tid = await _get_tid(request)
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
+
+    # Verify worker exists
+    worker = await db.workers.find_one({"_id": ObjectId(worker_id), "tenant_id": tid})
+    if not worker:
+        raise HTTPException(status_code=404, detail="Radnik nije pronađen.")
+
+    email = body.email.lower().strip()
+
+    # Check if email already taken
+    existing_user = await db.users.find_one({"email": email})
+    if existing_user:
+        raise HTTPException(status_code=409, detail="Email je već u upotrebi.")
+
+    # Check if worker already has an account
+    existing_account = await db.users.find_one({"worker_id": worker_id, "tenant_id": tid})
+    if existing_account:
+        raise HTTPException(status_code=409, detail="Radnik već ima nalog.")
+
+    temp_password = _generate_temp_password()
+
+    await db.users.insert_one({
+        "email": email,
+        "password_hash": hash_password(temp_password),
+        "name": worker["name"],
+        "role": "worker",
+        "worker_id": worker_id,
+        "tenant_id": tid,
+        "language_preference": body.language_preference,
+        "must_change_password": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    logger.info(f"Worker account created: {email} for worker {worker['name']} ({worker_id})")
+
+    return {
+        "message": f"Nalog kreiran za {worker['name']}",
+        "email": email,
+        "temp_password": temp_password,
+        "worker_id": worker_id,
+        "worker_name": worker["name"],
+    }
+
+
+@api_router.delete("/workers/{worker_id}/account")
+async def delete_worker_account(worker_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Admin deletes a worker's login account."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    tid = await _get_tid(request)
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
+
+    result = await db.users.delete_one({"worker_id": worker_id, "tenant_id": tid, "role": "worker"})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Nalog radnika nije pronađen.")
+
+    return {"message": "Nalog radnika je obrisan."}
+
+
+@api_router.get("/workers/{worker_id}/account")
+async def get_worker_account(worker_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Check if a worker has a login account."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    tid = await _get_tid(request)
+    account = await db.users.find_one({"worker_id": worker_id, "tenant_id": tid, "role": "worker"})
+    if not account:
+        return {"has_account": False}
+
+    return {
+        "has_account": True,
+        "email": account["email"],
+        "created_at": account.get("created_at", ""),
+    }
+
+
+@api_router.put("/auth/change-password")
+async def change_password(request: Request, user: dict = Depends(get_current_user)):
+    """Worker changes their temporary password."""
+    body = await request.json()
+    new_password = body.get("new_password", "")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Lozinka mora imati najmanje 6 karaktera.")
+
+    await db.users.update_one(
+        {"_id": ObjectId(user["id"])},
+        {"$set": {
+            "password_hash": hash_password(new_password),
+            "must_change_password": False,
+        }}
+    )
+    return {"message": "Lozinka uspešno promenjena."}
 
 
 # ================== RESERVATIONS ENDPOINTS ==================
@@ -1033,24 +1175,43 @@ async def get_reservations(
     worker_id: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    if user.get("role") not in ("admin", "super_admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if user.get("role") not in ("admin", "super_admin", "worker"):
+        raise HTTPException(status_code=403, detail="Access required")
 
     tid = await _get_tid(request)
-    if user.get("role") != "super_admin":
+    if user.get("role") not in ("super_admin",):
         check_tenant_access(user, tid)
 
     await cancel_stale_unpaid_reservations(tid)
 
     query = {"status": {"$ne": "cancelled"}, "tenant_id": tid}
-    if date:
-        query["date"] = date
-    if worker_id:
+
+    is_worker = user.get("role") == "worker"
+
+    if is_worker:
+        # Worker: restrict to own reservations, today → today+7 (salon timezone)
+        user_worker_id = user.get("worker_id", "")
+        if not user_worker_id:
+            raise HTTPException(status_code=403, detail="Worker account not linked")
+
+        salon_today = await _get_salon_today(tid)
+        salon_end = (datetime.strptime(salon_today, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
+
+        query["date"] = {"$gte": salon_today, "$lte": salon_end}
         query["$or"] = [
-            {"worker_id": worker_id},
-            {"service_worker_pairs.worker_id": worker_id},
-            {"worker_time_blocks.worker_id": worker_id},
+            {"worker_id": user_worker_id},
+            {"service_worker_pairs.worker_id": user_worker_id},
+            {"worker_time_blocks.worker_id": user_worker_id},
         ]
+    else:
+        if date:
+            query["date"] = date
+        if worker_id:
+            query["$or"] = [
+                {"worker_id": worker_id},
+                {"service_worker_pairs.worker_id": worker_id},
+                {"worker_time_blocks.worker_id": worker_id},
+            ]
 
     reservations = await db.reservations.find(query).sort("date", 1).sort("time", 1).to_list(1000)
 
@@ -1183,7 +1344,7 @@ async def trigger_reminders(request: Request, user: dict = Depends(get_current_u
 @api_router.get("/blacklist")
 async def get_blacklist(request: Request, user: dict = Depends(get_current_user)):
     tid = await _get_tid(request)
-    if user.get("role") not in ("admin", "super_admin"):
+    if user.get("role") not in ("admin", "super_admin", "worker"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     phones = await db.blacklisted_phones.find({"tenant_id": tid}, {"_id": 0}).to_list(1000)

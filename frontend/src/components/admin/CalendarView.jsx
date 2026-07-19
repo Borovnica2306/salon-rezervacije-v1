@@ -24,6 +24,7 @@ const COLORS = ["#C5A880", "#7C9EB2", "#A8C686", "#D4A574", "#B294BB", "#86C1B9"
 const ReservationsPage = () => {
   const { user } = useAuth();
   const tenant = useTenant();
+  const isWorker = user?.role === "worker";
   const [reservations, setReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -39,11 +40,16 @@ const ReservationsPage = () => {
   const [selectedRes, setSelectedRes] = useState(null);
   const [sendingReminders, setSendingReminders] = useState(false);
 
-  // Drag-and-drop state
+  // Drag-and-drop state (disabled for workers)
   const [dragData, setDragData] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [rescheduleModal, setRescheduleModal] = useState(null);
   const [rescheduling, setRescheduling] = useState(false);
+
+  // Worker date limit: today + 7 days
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const maxWorkerDate = addDays(today, 7);
 
   const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
@@ -70,7 +76,11 @@ const ReservationsPage = () => {
   const fetchServices = async () => { try { const r = await axios.get(`${API}/services`, { headers }); setServices(r.data); } catch (e) { console.error(e); } };
   const fetchReservations = async () => {
     setLoading(true);
-    try { const r = await axios.get(`${API}/reservations`, { params: { date: format(selectedDate, "yyyy-MM-dd") }, headers }); setReservations(r.data); }
+    try {
+      const params = isWorker ? {} : { date: format(selectedDate, "yyyy-MM-dd") };
+      const r = await axios.get(`${API}/reservations`, { params, headers });
+      setReservations(r.data);
+    }
     catch (e) { toast.error("Greška pri učitavanju"); } finally { setLoading(false); }
   };
   const fetchBlacklist = async () => { try { const r = await axios.get(`${API}/blacklist`, { headers }); setBlacklist(r.data.map(b => b.phone)); } catch (e) { console.error(e); } };
@@ -108,13 +118,14 @@ const ReservationsPage = () => {
   }, [workers]);
 
   const handleDragStart = (e, res, block) => {
+    if (isWorker) { e.preventDefault(); return; }
     e.dataTransfer.effectAllowed = "move";
     setDragData({ res, block, serviceIds: getServiceIdsForReservation(res) });
   };
 
   const handleDragOver = (e, workerId, slotMin) => {
     e.preventDefault();
-    if (!dragData) return;
+    if (isWorker || !dragData) return;
     const canDrop = workerCanDoServices(workerId, dragData.serviceIds);
     e.dataTransfer.dropEffect = canDrop ? "move" : "none";
     if (canDrop) setDropTarget({ workerId, slotMin });
@@ -124,7 +135,7 @@ const ReservationsPage = () => {
 
   const handleDrop = (e, workerId, slotMin) => {
     e.preventDefault();
-    if (!dragData) return;
+    if (isWorker || !dragData) return;
     if (!workerCanDoServices(workerId, dragData.serviceIds)) {
       toast.error("Radnik ne pruža ovu uslugu");
       setDragData(null);
@@ -192,12 +203,22 @@ const ReservationsPage = () => {
   const isToday = format(selectedDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
   const isPast = selectedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const activeReservations = reservations.filter(r => { if (!isToday) return !isPast; return nowMins < ttm(r.end_time) + 30; });
-  const archivedReservations = reservations.filter(r => { if (!isToday) return isPast; return nowMins >= ttm(r.end_time) + 30; });
+  // Worker: filter workers to only show their own column
+  const displayWorkers = isWorker
+    ? workers.filter(w => w.id === user?.worker_id)
+    : workers;
+
+  // Worker: filter reservations by selected date (backend returns all 7 days)
+  const displayReservations = isWorker
+    ? reservations.filter(r => r.date === format(selectedDate, "yyyy-MM-dd"))
+    : reservations;
+
+  const activeReservations = displayReservations.filter(r => { if (!isToday) return !isPast; return nowMins < ttm(r.end_time) + 30; });
+  const archivedReservations = displayReservations.filter(r => { if (!isToday) return isPast; return nowMins >= ttm(r.end_time) + 30; });
 
   const buildWorkerBlocks = (wid) => {
     const blocks = [];
-    reservations.forEach((res, rIdx) => {
+    displayReservations.forEach((res, rIdx) => {
       const color = COLORS[rIdx % COLORS.length];
       const isArch = isToday && nowMins >= ttm(res.end_time) + 30;
       if (res.worker_time_blocks && res.worker_time_blocks.length > 0) {
@@ -228,66 +249,90 @@ const ReservationsPage = () => {
     return !workerCanDoServices(workerId, dragData.serviceIds);
   };
 
+  // Worker date navigation helpers
+  const canGoPrev = isWorker ? selectedDate > today : true;
+  const canGoNext = isWorker ? selectedDate < maxWorkerDate : true;
+
+  const handlePrevDay = () => {
+    if (!canGoPrev) return;
+    setSelectedDate(subDays(selectedDate, 1));
+  };
+  const handleNextDay = () => {
+    if (!canGoNext) return;
+    setSelectedDate(addDays(selectedDate, 1));
+  };
+  const handleToday = () => setSelectedDate(new Date());
+
   return (
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
-          <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Rezervacije</h2>
+          <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">{isWorker ? "Moj Raspored" : "Rezervacije"}</h2>
           <p className="text-[#9CA3AF]">{format(selectedDate, "EEEE, d. MMMM yyyy", { locale: sr })}</p>
+          {isWorker && <p className="text-[10px] text-blue-400/60 mt-0.5">Prikaz narednih 7 dana</p>}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={handleSendReminders} disabled={sendingReminders} variant="outline" className="border-[#2A2A2D] hover:bg-[var(--color-surface)] text-[#9CA3AF] hover:text-white" data-testid="send-reminders-btn">
-            {sendingReminders ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Bell className="w-4 h-4 mr-1.5" />}
-            Podsetnici za sutra
-          </Button>
-          <Button onClick={() => setManualBookingOpen(true)} className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" data-testid="admin-new-reservation-btn">
-            <Plus className="w-4 h-4 mr-1" /> Nova Rezervacija
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="prev-day-btn"><ChevronLeft className="w-4 h-4" /></Button>
-          <Button variant="outline" onClick={() => setSelectedDate(new Date())} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="today-btn">Danas</Button>
-          <Button variant="outline" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="next-day-btn"><ChevronRight className="w-4 h-4" /></Button>
+          {!isWorker && (
+            <>
+              <Button onClick={handleSendReminders} disabled={sendingReminders} variant="outline" className="border-[#2A2A2D] hover:bg-[var(--color-surface)] text-[#9CA3AF] hover:text-white" data-testid="send-reminders-btn">
+                {sendingReminders ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Bell className="w-4 h-4 mr-1.5" />}
+                Podsetnici za sutra
+              </Button>
+              <Button onClick={() => setManualBookingOpen(true)} className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" data-testid="admin-new-reservation-btn">
+                <Plus className="w-4 h-4 mr-1" /> Nova Rezervacija
+              </Button>
+            </>
+          )}
+          <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoPrev} className="border-[#2A2A2D] hover:bg-[var(--color-surface)] disabled:opacity-30" data-testid="prev-day-btn"><ChevronLeft className="w-4 h-4" /></Button>
+          <Button variant="outline" onClick={handleToday} className="border-[#2A2A2D] hover:bg-[var(--color-surface)]" data-testid="today-btn">Danas</Button>
+          <Button variant="outline" size="icon" onClick={handleNextDay} disabled={!canGoNext} className="border-[#2A2A2D] hover:bg-[var(--color-surface)] disabled:opacity-30" data-testid="next-day-btn"><ChevronRight className="w-4 h-4" /></Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="flex gap-1 bg-[var(--color-background)] rounded-lg p-1 w-fit" data-testid="view-tabs">
-          <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
-            <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
-          </button>
-          <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
-            <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
-          </button>
-        </div>
-        {user?.role === "super_admin" && (
-          <Button onClick={handleExportCSV} variant="outline" size="sm" className="border-[#2A2A2D] hover:bg-[var(--color-surface)] text-[#9CA3AF] hover:text-white" data-testid="export-csv-btn">
-            <Download className="w-4 h-4 mr-1.5" />Export CSV
-          </Button>
-        )}
-      </div>
-
-      {/* Cancel Dialog */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D]">
-          <DialogHeader><DialogTitle className="text-white">Otkazivanje rezervacije</DialogTitle><DialogDescription className="text-[#9CA3AF]">Da li ste sigurni?</DialogDescription></DialogHeader>
-          {cancelTarget && (
-            <div className="bg-[var(--color-background)] rounded-lg p-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-[#9CA3AF]">ID:</span><span className="font-mono text-[var(--color-primary)]">#{cancelTarget.booking_id}</span></div>
-              <div className="flex justify-between"><span className="text-[#9CA3AF]">Klijent:</span><span className="text-white">{cancelTarget.client_name}</span></div>
-              <div className="flex justify-between"><span className="text-[#9CA3AF]">Vreme:</span><span className="text-white">{cancelTarget.time} - {cancelTarget.end_time}</span></div>
-            </div>
-          )}
-          <div className="flex gap-3 mt-2">
-            <Button variant="outline" className="flex-1 border-[#2A2A2D]" onClick={() => setCancelDialogOpen(false)}>Ne, zadrži</Button>
-            <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => cancelTarget && handleCancel(cancelTarget.id)}>Da, otkaži</Button>
+      {!isWorker && (
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <div className="flex gap-1 bg-[var(--color-background)] rounded-lg p-1 w-fit" data-testid="view-tabs">
+            <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
+              <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
+            </button>
+            <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
+              <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
+            </button>
           </div>
-        </DialogContent>
-      </Dialog>
+          {user?.role === "super_admin" && (
+            <Button onClick={handleExportCSV} variant="outline" size="sm" className="border-[#2A2A2D] hover:bg-[var(--color-surface)] text-[#9CA3AF] hover:text-white" data-testid="export-csv-btn">
+              <Download className="w-4 h-4 mr-1.5" />Export CSV
+            </Button>
+          )}
+        </div>
+      )}
 
-      {/* Reschedule Confirmation Modal */}
-      <Dialog open={!!rescheduleModal} onOpenChange={(v) => !v && setRescheduleModal(null)}>
-        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm" data-testid="reschedule-modal">
+      {/* Cancel Dialog - admin only */}
+      {!isWorker && (
+        <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D]">
+            <DialogHeader><DialogTitle className="text-white">Otkazivanje rezervacije</DialogTitle><DialogDescription className="text-[#9CA3AF]">Da li ste sigurni?</DialogDescription></DialogHeader>
+            {cancelTarget && (
+              <div className="bg-[var(--color-background)] rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">ID:</span><span className="font-mono text-[var(--color-primary)]">#{cancelTarget.booking_id}</span></div>
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">Klijent:</span><span className="text-white">{cancelTarget.client_name}</span></div>
+                <div className="flex justify-between"><span className="text-[#9CA3AF]">Vreme:</span><span className="text-white">{cancelTarget.time} - {cancelTarget.end_time}</span></div>
+              </div>
+            )}
+            <div className="flex gap-3 mt-2">
+              <Button variant="outline" className="flex-1 border-[#2A2A2D]" onClick={() => setCancelDialogOpen(false)}>Ne, zadrži</Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => cancelTarget && handleCancel(cancelTarget.id)}>Da, otkaži</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Reschedule Confirmation Modal - admin only */}
+      {!isWorker && (
+        <Dialog open={!!rescheduleModal} onOpenChange={(v) => !v && setRescheduleModal(null)}>
+          <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm" data-testid="reschedule-modal">
           <DialogHeader>
             <DialogTitle className="text-white">{"Premesti termin?"}</DialogTitle>
             <DialogDescription className="text-[#9CA3AF]">
@@ -319,7 +364,8 @@ const ReservationsPage = () => {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      )}
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedRes} onOpenChange={(v) => !v && setSelectedRes(null)}>
@@ -356,33 +402,35 @@ const ReservationsPage = () => {
                   </div>
                 ))}
               </div>
-              <div className="flex gap-2 pt-2 border-t border-[#2A2A2D]">
-                <button onClick={() => { setSelectedRes(null); openCancelDialog(selectedRes); }} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20">Otkaži rezervaciju</button>
-                {!blacklist.includes(selectedRes.client_phone) ? (
-                  <button onClick={() => handleBlacklist(selectedRes.client_phone)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Ban className="w-3 h-3 inline mr-1" />Blokiraj</button>
-                ) : (
-                  <button onClick={() => handleRemoveFromBlacklist(selectedRes.client_phone)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20"><Check className="w-3 h-3 inline mr-1" />Odblokiraj</button>
-                )}
-              </div>
+              {!isWorker && (
+                <div className="flex gap-2 pt-2 border-t border-[#2A2A2D]">
+                  <button onClick={() => { setSelectedRes(null); openCancelDialog(selectedRes); }} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20">Otkaži rezervaciju</button>
+                  {!blacklist.includes(selectedRes.client_phone) ? (
+                    <button onClick={() => handleBlacklist(selectedRes.client_phone)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Ban className="w-3 h-3 inline mr-1" />Blokiraj</button>
+                  ) : (
+                    <button onClick={() => handleRemoveFromBlacklist(selectedRes.client_phone)} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20"><Check className="w-3 h-3 inline mr-1" />Odblokiraj</button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      <ManualBookingModal open={manualBookingOpen} onClose={() => setManualBookingOpen(false)} onSuccess={() => fetchReservations()} workers={workers} selectedDate={selectedDate} />
+      {!isWorker && <ManualBookingModal open={manualBookingOpen} onClose={() => setManualBookingOpen(false)} onSuccess={() => fetchReservations()} workers={workers} selectedDate={selectedDate} />}
 
       {/* ===== GRID TAB ===== */}
       {activeTab === "grid" && (
         loading ? <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div> :
-        workers.length === 0 ? (
-          <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">Nema aktivnih radnika</p></div>
+        displayWorkers.length === 0 ? (
+          <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">{isWorker ? "Nemate dodeljene smene" : "Nema aktivnih radnika"}</p></div>
         ) : (
           <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]" data-testid="timeline-grid">
             <div className="overflow-auto max-h-[70vh]" ref={gridRef} data-testid="grid-body">
               {/* Header */}
               <div className="flex sticky top-0 z-20 bg-[var(--color-surface)] border-b border-[#2A2A2D]">
                 <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D] sticky left-0 z-30 bg-[var(--color-surface)]">Vreme</div>
-                {workers.map(w => (
+                {displayWorkers.map(w => (
                   <div key={w.id} className={`flex-1 min-w-[120px] flex-shrink-0 p-2 text-center border-r border-[#2A2A2D] last:border-r-0 transition-opacity ${isWorkerDimmed(w.id) ? "opacity-25" : ""}`}>
                     <div className="text-xs font-medium text-white truncate">{w.name}</div>
                     <div className="text-[10px] text-[#6B7280]">{w.work_start}-{w.work_end}</div>
@@ -399,18 +447,19 @@ const ReservationsPage = () => {
                 {timeSlots.map((slotMin) => (
                   <div key={slotMin} className="flex border-b border-[#1E1E22]" style={{ height: `${SLOT_HEIGHT}px` }}>
                     <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22] sticky left-0 z-10 bg-[var(--color-surface)]">{mtt(slotMin)}</div>
-                    {workers.map(w => {
+                    {displayWorkers.map(w => {
                       const blocks = buildWorkerBlocks(w.id);
                       const cellBlocks = blocks.filter(b => b.startMin >= slotMin && b.startMin < slotMin + 30);
                       const dimmed = isWorkerDimmed(w.id);
-                      const isDropHere = dropTarget?.workerId === w.id && dropTarget?.slotMin === slotMin;
+                      const isDropHere = !isWorker && dropTarget?.workerId === w.id && dropTarget?.slotMin === slotMin;
                       return (
                         <div
                           key={w.id}
                           className={`flex-1 min-w-[120px] flex-shrink-0 border-r border-[#1E1E22] last:border-r-0 relative transition-all ${dimmed ? "opacity-20 bg-red-900/10" : ""} ${isDropHere ? "bg-[var(--color-primary)]/10" : ""}`}
-                          onDragOver={(e) => handleDragOver(e, w.id, slotMin)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, w.id, slotMin)}
+                          onDragOver={isWorker ? undefined : (e) => handleDragOver(e, w.id, slotMin)}
+                          onDragLeave={isWorker ? undefined : handleDragLeave}
+                          onDrop={isWorker ? undefined : (e) => handleDrop(e, w.id, slotMin)}
+                          style={isWorker ? { pointerEvents: "auto" } : undefined}
                         >
                           {cellBlocks.map((block, bIdx) => {
                             const topOff = ((block.startMin - slotMin) / 30) * SLOT_HEIGHT;
@@ -420,12 +469,23 @@ const ReservationsPage = () => {
                             return (
                               <div
                                 key={bIdx}
-                                draggable={!block.isArchived}
-                                onDragStart={(e) => !block.isArchived && handleDragStart(e, block.res, block)}
-                                onDragEnd={handleDragEnd}
-                                onClick={() => setSelectedRes(block.res)}
-                                className={`absolute left-1 right-1 rounded-md px-1.5 py-0.5 cursor-grab overflow-hidden transition-all hover:brightness-110 hover:shadow-lg ${block.isArchived ? "opacity-40 cursor-default" : ""} ${dragData?.res?.id === block.res.id ? "opacity-50 ring-2 ring-[var(--color-primary)]" : ""}`}
-                                style={{ top: `${topOff}px`, height: `${blockH}px`, backgroundColor: `${blockColor}18`, borderLeft: `3px solid ${blockColor}`, zIndex: 5 }}
+                                draggable={isWorker ? false : !block.isArchived}
+                                onDragStart={isWorker ? undefined : (e) => !block.isArchived && handleDragStart(e, block.res, block)}
+                                onDragEnd={isWorker ? undefined : handleDragEnd}
+                                onClick={isWorker ? undefined : () => setSelectedRes(block.res)}
+                                className={`absolute left-1 right-1 rounded-md px-1.5 py-0.5 overflow-hidden transition-all ${
+                                  isWorker
+                                    ? "cursor-default select-none"
+                                    : `cursor-grab hover:brightness-110 hover:shadow-lg ${block.isArchived ? "opacity-40 cursor-default" : ""} ${dragData?.res?.id === block.res.id ? "opacity-50 ring-2 ring-[var(--color-primary)]" : ""}`
+                                }`}
+                                style={{
+                                  top: `${topOff}px`,
+                                  height: `${blockH}px`,
+                                  backgroundColor: `${blockColor}18`,
+                                  borderLeft: `3px solid ${blockColor}`,
+                                  zIndex: 5,
+                                  ...(isWorker ? { pointerEvents: "none" } : {}),
+                                }}
                                 data-testid={`grid-block-${block.res.id}`}
                               >
                                 <div className="text-[10px] font-medium truncate flex items-center gap-1" style={{ color: blockColor }}>
