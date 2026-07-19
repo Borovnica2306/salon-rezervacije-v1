@@ -1,0 +1,45 @@
+{
+  "summary": "Regression testing of routes.py refactoring (split into auth_routes/worker_routes/admin_routes/booking_routes + route_utils) and the new SalonWorkers.jsx account management UI. All 12 existing RBAC pytest tests still pass. New regression test suite (19 tests) covers every endpoint group across all 4 sub-routers — all pass. Frontend UI verified end-to-end: SalonWorkers renders all 8 workers with account-status indicator, Marija shows green 'Nalog aktivan (worker@salon.com)' + 'Ukloni nalog', 7 other workers show 'Kreiraj nalog za prijavu'. Full create→display temp password→copy buttons→close→delete-account cleanup flow verified.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_refactor_regression_iter37.py",
+    "/app/backend/tests/test_rbac_worker.py",
+    "/app/test_reports/pytest/refactor_iter37.xml",
+    "/app/test_reports/pytest/rbac_worker_iter37.xml"
+  ],
+  "action_items": [
+    "Prior-iteration bug still open: CalendarView.jsx worker prev-day boundary (selectedDate>today comparison uses timestamps not midnight). Not re-verified in this iteration — remains E1's fix from iter_36."
+  ],
+  "critical_code_review_comments": [
+    "routes.py is now a clean 15-line orchestrator including 4 sub-routers. All 4 sub-routers register their own APIRouter and are mounted with /api prefix at the parent level. Clean separation.",
+    "route_utils.py is properly shared: _get_tid, _generate_temp_password, _get_salon_today, PI_API_KEY/BASE, COUNTRY_TIMEZONES. No duplication observed across sub-modules.",
+    "SalonWorkers.jsx (~645 lines) is approaching the 700-line threshold; consider extracting the Create-Account dialog and the Add/Edit Worker dialog into their own components to keep the file focused.",
+    "SalonWorkers.jsx fetchData() sequentially fires N+1 GET /workers/{id}/account requests (one per worker) — for larger tenants this could be replaced by a single bulk endpoint GET /workers/accounts. Acceptable at current scale (8 workers).",
+    "auth_routes.py PUT /auth/change-password still does NOT require current password verification (flagged in iter_36) — any authenticated user (admin/super/worker) can silently reset own password without re-auth. Security review recommended.",
+    "worker_routes.py create_worker_account correctly returns temp_password ONCE in body (must_change_password=true), and 409 on duplicate email/worker. Verified via API + UI.",
+    "admin_routes.py get_services (line 278-313) does raw JWT decode instead of using Depends(get_current_user) — inconsistent pattern; consider refactoring for uniformity, though functionally correct.",
+    "booking_routes.py get_reservations worker branch is timezone-safe (uses _get_salon_today) and correctly enforces the 7-day window + worker_id scoping (verified)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_refactor_regression_iter37.py (new — 19 tests covering all 4 sub-routers)"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19 new regression + 12/12 RBAC = 31/31)",
+    "frontend": "100% (SalonWorkers UI checks and full create-account E2E flow both pass)"
+  },
+  "test_credentials": {
+    "admin": "admin@salon.com / Admin123!",
+    "worker": "worker@salon.com / Worker123!",
+    "super_admin": "Bornaja23@gmail.com / Markonijus23!",
+    "tenant_slug": "beauty-studio-bor"
+  },
+  "seed_data_creation": "E2E test created and deleted a worker account (test_regr_{id}@salon.com) — full cleanup performed, no residual data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 37 verified the routes.py -> 4-module refactor and the SalonWorkers.jsx account UI. Backend: /app/backend/tests/test_refactor_regression_iter37.py hits every endpoint group (auth/worker/admin/booking) — 19/19 pass. Frontend: SalonWorkers shows account-status per worker card; Marija=active (green dot, Ukloni nalog), others=Kreiraj nalog link that opens a Dialog with email input, on success displays temp_password with Copy buttons for both email and password. The known open bug from iter_36 (CalendarView worker prev-day boundary) was NOT re-tested here — main agent should still address it."
+}

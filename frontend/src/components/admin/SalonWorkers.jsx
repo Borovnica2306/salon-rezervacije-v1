@@ -4,7 +4,7 @@ import axios from "axios";
 import { API, useTenant, getTenantHeaders, getToken } from "../../App";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Users, Plus, Edit2, Trash2, AlertTriangle } from "lucide-react";
+import { Users, Plus, Edit2, Trash2, AlertTriangle, KeyRound, Copy, Check, X as XIcon } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "../ui/dialog";
@@ -17,6 +17,15 @@ const EmployeesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Worker account state
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const [accountTarget, setAccountTarget] = useState(null);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [createdAccount, setCreatedAccount] = useState(null);
+  const [copiedField, setCopiedField] = useState(null);
+  const [workerAccounts, setWorkerAccounts] = useState({});
   const [form, setForm] = useState({
     name: "",
     categories: [],
@@ -49,6 +58,16 @@ const EmployeesPage = () => {
       setServices(servRes.data);
       setCategories(catRes.data);
       setSalonSettings(settRes.data);
+
+      // Fetch account status for each worker
+      const accountStatuses = {};
+      await Promise.all(empRes.data.map(async (emp) => {
+        try {
+          const r = await axios.get(`${API}/workers/${emp.id}/account`, { headers });
+          accountStatuses[emp.id] = r.data;
+        } catch { accountStatuses[emp.id] = { has_account: false }; }
+      }));
+      setWorkerAccounts(accountStatuses);
     } catch (error) {
       toast.error("Greška pri učitavanju");
     } finally {
@@ -197,6 +216,57 @@ const EmployeesPage = () => {
   };
 
   const dayLabels = ["Ned", "Pon", "Uto", "Sre", "Čet", "Pet", "Sub"];
+
+  const openAccountDialog = (emp) => {
+    setAccountTarget(emp);
+    setAccountEmail("");
+    setCreatedAccount(null);
+    setCopiedField(null);
+    setAccountDialogOpen(true);
+  };
+
+  const handleCreateAccount = async () => {
+    if (!accountEmail.trim() || !accountEmail.includes("@")) {
+      toast.error("Unesite validan email");
+      return;
+    }
+    setAccountLoading(true);
+    try {
+      const res = await axios.post(
+        `${API}/workers/${accountTarget.id}/create-account`,
+        { email: accountEmail.trim() },
+        { headers }
+      );
+      setCreatedAccount(res.data);
+      toast.success(`Nalog kreiran za ${accountTarget.name}`);
+      fetchData();
+    } catch (error) {
+      const msg = error.response?.data?.detail || "Greška pri kreiranju naloga";
+      toast.error(msg);
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (workerId) => {
+    try {
+      await axios.delete(`${API}/workers/${workerId}/account`, { headers });
+      toast.success("Nalog radnika obrisan");
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Greška");
+    }
+  };
+
+  const copyToClipboard = async (text, field) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      toast.error("Kopiranje nije uspelo");
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -426,6 +496,35 @@ const EmployeesPage = () => {
               <p className="text-xs text-[#9CA3AF]">
                 {getCategoriesFromServices(emp.services || []).map(c => categories.find(cat => cat.key === c)?.label || c).join(", ") || "Bez kategorija"}
               </p>
+
+              {/* Worker Account Status */}
+              <div className="mt-3 pt-3 border-t border-[#2A2A2D]">
+                {workerAccounts[emp.id]?.has_account ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                      <span className="text-[10px] text-green-400/80 font-medium">Nalog aktivan</span>
+                      <span className="text-[10px] text-[#6B7280]">({workerAccounts[emp.id].email})</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteAccount(emp.id)}
+                      className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors"
+                      data-testid={`delete-account-${emp.id}`}
+                    >
+                      Ukloni nalog
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => openAccountDialog(emp)}
+                    className="flex items-center gap-1.5 text-[11px] text-[var(--color-primary)] hover:text-[var(--color-secondary)] transition-colors"
+                    data-testid={`create-account-${emp.id}`}
+                  >
+                    <KeyRound className="w-3 h-3" />
+                    Kreiraj nalog za prijavu
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -461,6 +560,80 @@ const EmployeesPage = () => {
               Obriši
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Worker Account Dialog */}
+      <Dialog open={accountDialogOpen} onOpenChange={(open) => { if (!open) { setAccountDialogOpen(false); setCreatedAccount(null); } }}>
+        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm" data-testid="create-account-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-[var(--color-primary)]" />
+              {createdAccount ? "Nalog kreiran" : "Kreiraj nalog"}
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              {createdAccount
+                ? `Lozinka je prikazana samo jednom. Sačuvajte je.`
+                : `Kreiraj nalog za prijavu radnika ${accountTarget?.name}`
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          {!createdAccount ? (
+            <div className="space-y-4 mt-2">
+              <div>
+                <label className="text-sm text-[#9CA3AF] mb-2 block">Email za prijavu</label>
+                <Input
+                  type="email"
+                  value={accountEmail}
+                  onChange={(e) => setAccountEmail(e.target.value)}
+                  placeholder="radnik@email.com"
+                  className="bg-[var(--color-background)] border-[#2A2A2D]"
+                  data-testid="worker-account-email-input"
+                />
+              </div>
+              <Button
+                onClick={handleCreateAccount}
+                disabled={accountLoading}
+                className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium"
+                data-testid="worker-account-create-btn"
+              >
+                {accountLoading ? "Kreiranje..." : "Kreiraj nalog"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 mt-2">
+              <div className="bg-[var(--color-background)] rounded-lg p-4 space-y-3">
+                <div>
+                  <label className="text-[10px] text-[#6B7280] uppercase tracking-wider mb-1 block">Email</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-white font-mono">{createdAccount.email}</span>
+                    <button onClick={() => copyToClipboard(createdAccount.email, "email")} className="p-1 hover:bg-[var(--color-surface)] rounded transition-colors" data-testid="copy-email-btn">
+                      {copiedField === "email" ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-[#9CA3AF]" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#6B7280] uppercase tracking-wider mb-1 block">Privremena lozinka</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[var(--color-primary)] font-mono font-bold">{createdAccount.temp_password}</span>
+                    <button onClick={() => copyToClipboard(createdAccount.temp_password, "password")} className="p-1 hover:bg-[var(--color-surface)] rounded transition-colors" data-testid="copy-password-btn">
+                      {copiedField === "password" ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-[#9CA3AF]" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-amber-400/70">Ova lozinka se prikazuje samo jednom. Prosledite je radniku lično.</p>
+              <Button
+                onClick={() => { setAccountDialogOpen(false); setCreatedAccount(null); }}
+                variant="outline"
+                className="w-full border-[#2A2A2D]"
+                data-testid="close-account-dialog-btn"
+              >
+                Zatvori
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
