@@ -209,3 +209,37 @@ async def get_worker_account(worker_id: str, request: Request, user: dict = Depe
         "email": account["email"],
         "created_at": account.get("created_at", ""),
     }
+
+
+@router.put("/workers/{worker_id}/reset-password")
+async def reset_worker_password(worker_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Admin resets a worker's password to a new temporary one."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    tid = await _get_tid(request)
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
+
+    account = await db.users.find_one({"worker_id": worker_id, "tenant_id": tid, "role": "worker"})
+    if not account:
+        raise HTTPException(status_code=404, detail="Nalog radnika nije pronađen.")
+
+    temp_password = _generate_temp_password()
+
+    await db.users.update_one(
+        {"_id": account["_id"]},
+        {"$set": {
+            "password_hash": hash_password(temp_password),
+            "must_change_password": True,
+        }}
+    )
+
+    logger.info(f"Worker password reset: {account['email']} ({worker_id})")
+
+    return {
+        "message": f"Lozinka resetovana za {account.get('name', '')}",
+        "email": account["email"],
+        "temp_password": temp_password,
+        "worker_name": account.get("name", ""),
+    }
