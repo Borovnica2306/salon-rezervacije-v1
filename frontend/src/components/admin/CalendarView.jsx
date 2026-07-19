@@ -250,8 +250,8 @@ const ReservationsPage = () => {
   };
 
   // Worker date navigation helpers
-  const canGoPrev = isWorker ? selectedDate > today : true;
-  const canGoNext = isWorker ? selectedDate < maxWorkerDate : true;
+  const canGoPrev = isWorker ? format(selectedDate, "yyyy-MM-dd") > format(today, "yyyy-MM-dd") : true;
+  const canGoNext = isWorker ? format(selectedDate, "yyyy-MM-dd") < format(maxWorkerDate, "yyyy-MM-dd") : true;
 
   const handlePrevDay = () => {
     if (!canGoPrev) return;
