@@ -8,6 +8,10 @@ import requests
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
+from dotenv import load_dotenv
+
+# Ensure MONGO_URL/DB_NAME are available when this module runs standalone
+load_dotenv("/app/backend/.env")
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://slot-reserve-23.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"

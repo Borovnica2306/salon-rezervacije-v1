@@ -3,7 +3,10 @@ import { toast } from "sonner";
 import axios from "axios";
 import { API, useTenant, getTenantHeaders, getToken } from "../../App";
 import { Button } from "../ui/button";
-import { Users, Edit2, Trash2, KeyRound, RotateCcw } from "lucide-react";
+import { Users, Edit2, Trash2, KeyRound, RotateCcw, AlertTriangle } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "../ui/dialog";
 
 import WorkerFormDialog from "./WorkerFormDialog";
 import WorkerAccountDialog from "./WorkerAccountDialog";
@@ -27,6 +30,7 @@ const EmployeesPage = () => {
   const [createdAccount, setCreatedAccount] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [workerAccounts, setWorkerAccounts] = useState({});
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(null);
 
   const [form, setForm] = useState({
     name: "", categories: [], work_start: "09:00", work_end: "21:00",
@@ -54,14 +58,16 @@ const EmployeesPage = () => {
       setCategories(catRes.data);
       setSalonSettings(settRes.data);
 
-      const accountStatuses = {};
-      await Promise.all(empRes.data.map(async (emp) => {
-        try {
-          const r = await axios.get(`${API}/workers/${emp.id}/account`, { headers });
-          accountStatuses[emp.id] = r.data;
-        } catch { accountStatuses[emp.id] = { has_account: false }; }
-      }));
-      setWorkerAccounts(accountStatuses);
+      // Bulk fetch all worker account statuses in one request
+      try {
+        const accRes = await axios.get(`${API}/workers/account-statuses`, { headers });
+        setWorkerAccounts(accRes.data);
+      } catch (err) {
+        if (err.response?.status !== 403) {
+          toast.error("Greška pri učitavanju statusa naloga");
+        }
+        setWorkerAccounts({});
+      }
     } catch {
       toast.error("Greška pri učitavanju");
     } finally {
@@ -309,7 +315,7 @@ const EmployeesPage = () => {
                         Resetuj lozinku
                       </button>
                       <button
-                        onClick={() => handleDeleteAccount(emp.id)}
+                        onClick={() => setDeleteAccountConfirm(emp)}
                         className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors"
                         data-testid={`delete-account-${emp.id}`}
                       >
@@ -349,6 +355,30 @@ const EmployeesPage = () => {
         copiedField={copiedField}
         onCopy={copyToClipboard}
       />
+
+      {/* Delete Account Confirmation */}
+      <Dialog open={!!deleteAccountConfirm} onOpenChange={(o) => !o && setDeleteAccountConfirm(null)}>
+        <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Ukloni nalog
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Da li ste sigurni da želite da uklonite nalog za prijavu radnika <span className="text-white font-medium">{deleteAccountConfirm?.name}</span>? Radnik više neće moći da se prijavi.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 mt-4">
+            <Button variant="outline" onClick={() => setDeleteAccountConfirm(null)} className="flex-1 border-[#2A2A2D] bg-transparent hover:bg-[var(--color-background)]" data-testid="cancel-delete-account-btn">
+              Otkaži
+            </Button>
+            <Button onClick={() => { handleDeleteAccount(deleteAccountConfirm?.id); setDeleteAccountConfirm(null); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white" data-testid="confirm-delete-account-btn">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Ukloni
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

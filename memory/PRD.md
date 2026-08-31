@@ -10,15 +10,15 @@ Multi-tenant salon booking PWA within the Pi Network ecosystem. Clients book app
 - **Backend Modules**:
   - `routes.py` — Orchestrator (includes 4 sub-routers)
   - `auth_routes.py` — Login, logout, me, change-password
-  - `worker_routes.py` — Workers CRUD + account management + reset-password
+  - `worker_routes.py` — Workers CRUD, account management, bulk statuses, reset-password
   - `admin_routes.py` — Tenants, categories, services, blacklist, settings, reminders
   - `booking_routes.py` — Reservations, client-facing, reschedule, Pi payments
   - `route_utils.py` — Shared helpers
 - **Frontend Components** (admin/):
-  - `SalonWorkers.jsx` — Main page (~250 lines, extracted dialogs)
+  - `SalonWorkers.jsx` — Main worker management page
   - `WorkerFormDialog.jsx` — Add/Edit worker form
   - `WorkerAccountDialog.jsx` — Create account + Reset password (shared)
-  - `DeleteWorkerDialog.jsx` — Delete confirmation
+  - `DeleteWorkerDialog.jsx` — Delete worker confirmation
 
 ## Completed Features
 - [x] Multi-tenant with slug resolution + 7 CSS variable themes
@@ -30,8 +30,12 @@ Multi-tenant salon booking PWA within the Pi Network ecosystem. Clients book app
 - [x] Forced password change on first login (must_change_password flow)
 - [x] Admin "Resetuj lozinku" button in worker cards
 - [x] Backend routes.py split into 4 domain modules
-- [x] SalonWorkers.jsx split into 4 component files (P3 complete)
+- [x] SalonWorkers.jsx split into 4 component files
+- [x] **Bulk account-statuses endpoint (N+1 optimization)**
+- [x] **Worker role guard on admin routes (redirect to reservations)**
+- [x] **Confirmation dialog for "Ukloni nalog"**
 
 ## Backlog
-- [ ] P3: Bulk endpoint GET /api/workers/accounts to replace N+1 queries
-- [ ] P4: Confirmation dialog before "Ukloni nalog" (currently instant delete)
+- [ ] P4: Worker logout redirect to tenant-specific login page
+- [ ] P4: Brute-force protection on login endpoint
+- [ ] P4: Fix CORS wildcard with credentials

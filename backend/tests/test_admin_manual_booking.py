@@ -84,7 +84,7 @@ class TestAdminManualBookingSuccess:
         for res_id in self.created_reservation_ids:
             try:
                 requests.put(f"{BASE_URL}/api/reservations/{res_id}/cancel", headers=self.headers)
-            except:
+            except Exception:
                 pass
     
     def test_admin_creates_reservation_successfully(self):
@@ -191,7 +191,7 @@ class TestAdminManualBookingConflicts:
         for res_id in self.created_reservation_ids:
             try:
                 requests.put(f"{BASE_URL}/api/reservations/{res_id}/cancel", headers=self.headers)
-            except:
+            except Exception:
                 pass
     
     def test_overlap_returns_409_when_force_false(self):

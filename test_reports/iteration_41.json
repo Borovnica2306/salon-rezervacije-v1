@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only verification of 3 fixes from iteration 40 plus regressions. All 3 fixes verified PASS: (1) worker route guard redirects /admin/employees|services|settings|blacklist back to /beauty-studio-bor/admin and only 'Rezervacije' nav is rendered; (2) 'Ukloni nalog' now opens confirmation dialog (confirm-delete-account-btn / cancel-delete-account-btn) — cancel keeps account intact, confirm deletes; (3) forced 500 on GET /api/workers/account-statuses now shows toast 'Greška pri učitavanju statusa naloga' instead of silent reset. Regressions verified: bulk account-statuses returns 200 and Marija shows 'Nalog aktivan (worker@salon.com)'; create-account flow (email validation + temp password dialog + copy UI), reset-password flow (new temp password), delete-account confirm path all worked on a TEST account created and cleaned up on worker Milena; admin login shows all 5 nav items; worker login shows read-only CalendarView with worker banner; prev-day disabled on today, next-day enabled and prev becomes enabled after moving forward. Worker credentials (worker@salon.com/Worker123!) re-verified valid after all tests; Marija's account was NOT deleted or reset.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Worker logout", "issue": "handleLogout redirects worker to /login (super-admin login) instead of /beauty-studio-bor/admin/login — user?.role is already null after await logout(), so the role branch falls through. Low priority.", "affected_selectors": ["[data-testid=\"desktop-logout-btn\"]"]},
+      {"flow": "SalonWorkers initial load", "issue": "GET /api/workers/account-statuses fires twice on mount (duplicate toast shown twice in error case). Likely StrictMode/effect double-invoke; harmless in prod but duplicate error toasts are visible.", "affected_selectors": ["[data-sonner-toast]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: capture role before await logout() so worker logout returns to tenant admin login page",
+    "Optional: de-duplicate account-statuses fetch on mount to avoid double toast"
+  ],
+  "critical_code_review_comments": [
+    "AdminDashboard worker guard is client-side only; ensure backend also rejects worker tokens on admin-only endpoints (blacklist/services/settings) — not re-tested this iteration.",
+    "Worker route guard catch-all only exists when isWorker; unknown routes for admins render an empty main area (no 404 fallback)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100% (10/10 target scenarios passed)"},
+  "seed_data_creation": "Created and deleted a temporary worker account test_qa_worker@example.com on worker Milena (69d4d6f82990ad8a6366bf7e); cleaned up via confirm-delete dialog. No residual data.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@salon.com/Admin123!, worker@salon.com/Worker123! (both verified working)",
+  "context_for_next_testing_agent": "All iteration-40 bugs are fixed. Remaining minor items: worker logout redirect target, double account-statuses fetch. Do NOT click confirm-delete-account-btn for Marija (worker@salon.com) — use Milena's card with a TEST email for delete-path testing. Backend-side worker authorization on admin endpoints has not been verified.",
+  "rca_of_the_issue": "N/A - fixes verified working"
+}

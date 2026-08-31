@@ -1,0 +1,63 @@
+{
+  "summary": "Iteration 40: Verified the N+1 optimization (bulk GET /api/workers/account-statuses) end-to-end. Backend: 9 new tests (auth/RBAC, response shape, Marija correctness, bulk-vs-individual consistency, route-ordering, create/reset/delete lifecycle) all pass; regression suites test_rbac_worker.py (12), test_reset_password.py (3), test_must_change_password.py (6) all pass. Frontend: admin login -> Radnici loads with EXACTLY ONE bulk call and ZERO per-worker /account calls (N+1 eliminated); Marija shows 'Nalog aktivan (worker@salon.com)' with green dot; 6 account-less workers show 'Kreiraj nalog za prijavu'; Resetuj lozinku, Kreiraj nalog (temp password panel), Ukloni nalog and Dodaj Radnika dialogs all work; worker login + read-only 'Moj Raspored' CalendarView works with restricted nav. No blocking issues in the optimization itself. Found one pre-existing security/UX gap: worker can render the admin Radnici page via direct URL, and SalonWorkers swallows the 403 silently.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/login", "issue": "No brute-force protection / account lockout. 6 consecutive failed logins for the same email all return 401 with no 429 or lockout (playbook item 4 not implemented)."},
+      {"endpoint": "CORS (server.py:28)", "issue": "allow_origins=[FRONTEND_URL, \"*\"] with allow_credentials=True. Response echoes access-control-allow-origin: * plus allow-credentials: true, which browsers reject for credentialed (cookie) requests. Should use explicit origins only."},
+      {"endpoint": "auth_routes.py:34-35", "issue": "Cookies set with secure=False (edge currently upgrades to Secure); should be driven by env/config for production correctness."},
+      {"endpoint": "seed", "issue": "No idempotent seed_admin/seed_worker script exists in backend or scripts. Seeded test accounts live only in Mongo, so an accidental 'Ukloni nalog' permanently destroys the documented worker@salon.com credential (this happened during testing and had to be manually restored)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SalonWorkers / AdminDashboard routes", "issue": "Missing role guard: a logged-in worker who navigates directly to /:slug/admin/employees gets the full admin Radnici UI rendered (Dodaj Radnika, edit/delete worker, Kreiraj nalog links). Backend correctly returns 403 (data safe, mutations blocked) but the admin surface should not render for role=worker.", "selector": "[data-testid=\"add-employee-btn\"], [data-testid^=\"delete-employee-\"]", "priority": "HIGH"},
+      {"component": "SalonWorkers - account delete", "issue": "'Ukloni nalog' deletes a worker's login account immediately with no confirmation dialog (unlike worker deletion which has DeleteWorkerDialog). One misclick permanently destroys credentials.", "selector": "[data-testid^=\"delete-account-\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "SalonWorkers fetchData bulk account statuses", "issue": "Empty catch: `catch { setWorkerAccounts({}) }` (SalonWorkers.jsx:61) silently swallows 401/403/500/network failures and renders every worker as having no account ('Kreiraj nalog za prijavu'), which is misleading. Reproduced with worker role: Marija showed 'Kreiraj nalog za prijavu' while the bulk call was 403. Should surface an error state instead of a false-negative.", "affected_selectors": ["[data-testid^=\"create-account-\"]"]},
+      {"flow": "SalonWorkers initial load", "issue": "fetchData runs twice on mount (2x /workers?active_only=false and 2x /workers/account-statuses observed). Consistent with React StrictMode double-invoke in dev, but worth confirming there is no missing effect guard.", "affected_selectors": []}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_worker_account_statuses.py",
+    "/app/backend/tests/restore_marija.py",
+    "/app/test_reports/pytest/account_statuses_iter40.xml",
+    "/app/test_reports/pytest/regression_iter40.xml"
+  ],
+  "action_items": [
+    "Add role-based route guard so role=worker cannot render admin routes (/employees, /services, /settings, /blacklist) via direct URL.",
+    "Replace the empty catch in SalonWorkers.jsx:61 with an error state/toast so a failed account-statuses call is not rendered as 'no accounts'.",
+    "Add a confirmation dialog before 'Ukloni nalog' (delete worker account).",
+    "Add brute-force lockout (e.g. 5 failed attempts -> 429/temporary lock) on /api/auth/login.",
+    "Fix CORS: drop the '*' entry from allow_origins while allow_credentials=True.",
+    "Add an idempotent seed script for admin@salon.com / worker@salon.com so seeded test credentials can be restored."
+  ],
+  "critical_code_review_comments": [
+    "worker_routes.py:43 - static route /workers/account-statuses is declared before parameterized worker routes; verified no shadowing. Good.",
+    "worker_routes.py:53-56 - projection excludes _id, so no ObjectId leaks; single find() call confirms N+1 removal. Good.",
+    "worker_routes.py:49-51 - check_tenant_access applied for non-super_admin; RBAC verified 403 for worker, 401 for missing/invalid token.",
+    "worker_routes.py:222 - individual GET /workers/{id}/account kept for back-compat but no longer used by the frontend; consider removing once no consumers remain.",
+    "SalonWorkers.jsx is 354 lines and fine, but the bare `catch {}` blocks hide integration failures - anti-pattern for the required loading/success/error states."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_worker_account_statuses.py",
+    "/app/backend/tests/test_reset_password.py",
+    "/app/backend/tests/restore_marija.py"
+  ],
+  "success_rate": {"backend": "100% (30/30 tests)", "frontend": "92% (11/12 flows; worker admin-route guard failed)"},
+  "seed_data_creation": "Temp worker 'TEST_BulkStatusWorker' + test_bulkstatus@salon.com account created and deleted within tests. UI test created/deleted test_milena_qa@salon.com for Milena (cleaned up). Marija's worker@salon.com account was accidentally deleted by the test's cleanup click (no confirm dialog) and was fully restored via /app/backend/tests/restore_marija.py: password Worker123!, bcrypt hash prefix $2b$, must_change_password=false, worker_id 6a5c81428b4853b77e9e79af. Verified login 200 and 'Nalog aktivan (worker@salon.com)' visible in UI.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@salon.com / Admin123! (admin), worker@salon.com / Worker123! (worker, restored & verified), tenant beauty-studio-bor / tenant_bsb_001",
+  "playbook_checks": {
+    "bcrypt_hash_format": "PASS - hashes start with $2b$ (bcrypt.gensalt in auth.py)",
+    "httponly_cookies_on_login": "PASS - access_token & refresh_token set with HttpOnly; Secure; SameSite=None; Partitioned",
+    "cors_credentials_explicit_origins": "FAIL - wildcard '*' present with allow_credentials=True",
+    "brute_force_lockout": "FAIL - not implemented, 6/6 failed logins returned 401",
+    "seed_admin_idempotent_update": "N/A - no seed script found in repo"
+  },
+  "context_for_next_testing_agent": "N+1 optimization is verified working (1 bulk call, 0 per-worker calls). New regression suite: /app/backend/tests/test_worker_account_statuses.py (9 tests, all pass). test_reset_password.py was fixed to load /app/backend/.env (it failed standalone with 'name must be an instance of str' because DB_NAME was unset). WARNING: do NOT click [data-testid^='delete-account-'] for Marija - there is no confirm dialog and it permanently deletes the seeded worker@salon.com credential; use /app/backend/tests/restore_marija.py to restore if it happens. Open items for retest after fixes: worker role guard on admin routes, error state instead of empty catch in SalonWorkers.jsx, confirm dialog on Ukloni nalog.",
+  "rca_of_the_issue": "No defect in the N+1 change itself. Two pre-existing weaknesses were exposed by it: (1) AdminDashboard renders admin child routes purely by URL with no role check, so a worker sees the Radnici admin UI; (2) SalonWorkers.jsx wraps the bulk account-statuses call in a bare catch that resets state to {} on any failure, so a 403/500 is indistinguishable from 'no worker has an account' - the worker-role view rendered 'Kreiraj nalog za prijavu' for Marija despite her having an active account."
+}

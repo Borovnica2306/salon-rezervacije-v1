@@ -40,6 +40,32 @@ async def get_workers(request: Request, active_only: bool = True):
     ]
 
 
+@router.get("/workers/account-statuses")
+async def get_worker_account_statuses(request: Request, user: dict = Depends(get_current_user)):
+    """Bulk fetch account status for all workers in a tenant. Single DB query."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    tid = await _get_tid(request)
+    if user.get("role") != "super_admin":
+        check_tenant_access(user, tid)
+
+    accounts = await db.users.find(
+        {"tenant_id": tid, "role": "worker", "worker_id": {"$exists": True, "$ne": ""}},
+        {"worker_id": 1, "email": 1, "created_at": 1, "_id": 0}
+    ).to_list(200)
+
+    result = {}
+    for acc in accounts:
+        result[acc["worker_id"]] = {
+            "has_account": True,
+            "email": acc["email"],
+            "created_at": acc.get("created_at", ""),
+        }
+
+    return result
+
+
 @router.post("/workers", response_model=WorkerResponse)
 async def create_worker(worker: WorkerCreate, request: Request, user: dict = Depends(get_current_user)):
     tid = await _get_tid(request)

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Routes, Route, Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth, useTenant } from "../App";
 import { Calendar, Users, Scissors, Settings, LogOut, Menu, X, Shield } from "lucide-react";
 
@@ -151,10 +151,16 @@ const AdminDashboard = () => {
         <main className="flex-1 lg:ml-64 p-4 lg:p-8">
           <Routes>
             <Route index element={<ReservationsPage />} />
-            <Route path="blacklist" element={<BlacklistPage />} />
-            <Route path="employees" element={<EmployeesPage />} />
-            <Route path="services" element={<ServicesPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            {!isWorker && (
+              <>
+                <Route path="blacklist" element={<BlacklistPage />} />
+                <Route path="employees" element={<EmployeesPage />} />
+                <Route path="services" element={<ServicesPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </>
+            )}
+            {/* Worker trying admin-only routes → redirect to reservations */}
+            {isWorker && <Route path="*" element={<Navigate to={basePath} replace />} />}
           </Routes>
         </main>
       </div>
