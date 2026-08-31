@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Building2, ChevronLeft, Sparkles, BarChart3, Clock, Globe } from "lucide-react";
+import { Building2, ChevronLeft, Sparkles, BarChart3, Clock, Globe, ClipboardList, Users, Share2 } from "lucide-react";
 
 const OwnersPage = () => {
   return (
@@ -46,6 +46,31 @@ const OwnersPage = () => {
             <div>
               <h3 className="font-medium text-white text-sm mb-0.5">{"Jedinstveni link za vaš salon"}</h3>
               <p className="text-xs text-[#9CA3AF]">{"Delite link na društvenim mrežama i klijenti direktno zakazuju."}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* How To Section */}
+        <div className="mb-10">
+          <h2 className="font-['Cormorant_Garamond'] text-2xl font-light text-center mb-6">{"Kako funkcioniše"}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 text-center relative" data-testid="how-to-step-1">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[var(--color-primary)] text-black text-[10px] font-bold flex items-center justify-center">1</span>
+              <ClipboardList className="w-6 h-6 text-[var(--color-primary)] mx-auto mb-2.5 mt-1" />
+              <h3 className="font-medium text-white text-sm mb-1">{"Registracija i podešavanje"}</h3>
+              <p className="text-[11px] text-[#9CA3AF] leading-relaxed">{"Prijavite salon, podesite radno vreme i unesite usluge."}</p>
+            </div>
+            <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 text-center relative" data-testid="how-to-step-2">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[var(--color-primary)] text-black text-[10px] font-bold flex items-center justify-center">2</span>
+              <Users className="w-6 h-6 text-[var(--color-primary)] mx-auto mb-2.5 mt-1" />
+              <h3 className="font-medium text-white text-sm mb-1">{"Dodavanje tima"}</h3>
+              <p className="text-[11px] text-[#9CA3AF] leading-relaxed">{"Dodajte zaposlene i dodelite im njihove rasporede."}</p>
+            </div>
+            <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 text-center relative" data-testid="how-to-step-3">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[var(--color-primary)] text-black text-[10px] font-bold flex items-center justify-center">3</span>
+              <Share2 className="w-6 h-6 text-[var(--color-primary)] mx-auto mb-2.5 mt-1" />
+              <h3 className="font-medium text-white text-sm mb-1">{"Podelite link"}</h3>
+              <p className="text-[11px] text-[#9CA3AF] leading-relaxed">{"Dobijate jedinstveni link za salon koji stavljate na Instagram/Facebook za direktno zakazivanje."}</p>
             </div>
           </div>
         </div>
