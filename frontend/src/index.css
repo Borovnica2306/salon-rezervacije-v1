@@ -18,6 +18,18 @@ body {
     background-attachment: fixed;
     color: var(--color-text, #FFFFFF);
     min-height: 100vh;
+    position: relative;
+}
+
+/* SVG pattern overlay — sits behind content, above gradient */
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: var(--bg-pattern);
+    background-repeat: repeat;
+    pointer-events: none;
+    z-index: 0;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -78,6 +90,11 @@ code {
 }
 
 /* Custom scrollbar */
+#root {
+    position: relative;
+    z-index: 1;
+}
+
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
