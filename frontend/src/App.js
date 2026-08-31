@@ -156,13 +156,15 @@ const ProtectedRoute = ({ children }) => {
     return <PageLoader />;
   }
 
+  const loginPath = slug ? `/${slug}/admin/login` : "/login";
+
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
   // Force password change: block dashboard access, send back to login
   if (user.must_change_password) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
   return children;

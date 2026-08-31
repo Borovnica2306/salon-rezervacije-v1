@@ -21,11 +21,14 @@ const AdminDashboard = () => {
   const isWorker = user?.role === "worker";
 
   const handleLogout = async () => {
+    // Capture redirect info BEFORE logout clears user state
+    const role = user?.role;
+    const targetSlug = slug;
     await logout();
-    if (user?.role === "super_admin") {
+    if (role === "super_admin") {
       navigate("/login");
     } else {
-      navigate(`/${slug}/admin/login`);
+      navigate(`/${targetSlug}/admin/login`);
     }
   };
 

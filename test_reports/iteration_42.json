@@ -1,0 +1,38 @@
+{
+  "summary": "Tested brute-force login protection (backend pytest, 9 tests) and logout redirect + role regression (Playwright). Brute-force protection works end-to-end (401 x4 -> 429 lockout -> 429 countdown, per-email counters, counter cleared on success, toast shown in UI). LOGOUT REDIRECT IS BROKEN: both admin and worker land on generic /login instead of /beauty-studio-bor/admin/login. Root cause: ProtectedRoute in App.js renders <Navigate to=\"/login\" replace/> the moment user becomes null after logout(), which wins over the navigate() call in AdminDashboard.handleLogout. Auth hygiene verified: bcrypt $2b$12$ hashes, httpOnly access/refresh cookies on login, app-level CORS returns explicit origin + allow-credentials true.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/login", "issue": "Spec says first 3 wrong attempts show only the generic message, but the 3rd attempt already appends '(2 pokušaj(a) preostalo)' because the condition is `remaining <= 2` (remaining=2 at count=3). Use `remaining <= 1` if the counter should only appear from the 4th attempt."},
+      {"endpoint": "app CORS config (server.py)", "issue": "allow_origins=[FRONTEND_URL, \"*\"] together with allow_credentials=True. Starlette currently echoes the request origin so it works, but the literal \"*\" entry should be removed - with credentials a wildcard is invalid and this is a security/config smell."},
+      {"endpoint": "brute-force tracker", "issue": "_login_attempts is a plain in-memory dict: cleared on every backend restart, not shared across workers, and never garbage-collected (unbounded growth / DoS memory vector). Also no counter window expiry for non-locked entries ('first_attempt' is stored but unused)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Logout redirect (admin)", "issue": "After clicking logout on /beauty-studio-bor/admin, URL becomes /login instead of /beauty-studio-bor/admin/login. handleLogout's navigate() is overridden by ProtectedRoute's <Navigate to=\"/login\"> which fires as soon as AuthContext user turns null.", "affected_selectors": ["[data-testid=\"desktop-logout-btn\"]"]},
+      {"flow": "Logout redirect (worker)", "issue": "Same as admin: worker@salon.com logout ends on /login, not /beauty-studio-bor/admin/login.", "affected_selectors": ["[data-testid=\"desktop-logout-btn\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_brute_force_and_auth.py", "/app/test_reports/pytest/brute_force_iter42.xml"],
+  "action_items": [
+    "Fix ProtectedRoute (and ProtectedSuperAdmin) in /app/frontend/src/App.js to redirect to `/${slug}/admin/login` when a slug param exists, so the tenant-specific login page is used on logout/session loss; keep /login only for super_admin routes. The AdminDashboard.handleLogout change alone cannot work because the router unmounts the dashboard first.",
+    "Optionally change the remaining-attempts threshold from `remaining <= 2` to `remaining <= 1` so the counter appears only on the 4th attempt as specified.",
+    "Remove the literal \"*\" from CORS allow_origins while allow_credentials=True.",
+    "Consider persisting/limiting the brute-force tracker (TTL cleanup or Mongo/Redis) so it survives restarts and cannot grow unbounded."
+  ],
+  "critical_code_review_comments": [
+    "App.js ProtectedRoute hardcodes /login for unauthenticated redirect - this is the actual cause of the wrong logout redirect and also breaks tenant-specific redirect on token expiry.",
+    "auth_routes.py leaks 'remaining attempts' info earlier than specified and mixes lockout state in module-level mutable global; not multi-worker safe."
+  ],
+  "updated_files": ["/app/backend/tests/test_brute_force_and_auth.py"],
+  "success_rate": {"backend": "89% (8/9 pytest)", "frontend": "50% (brute-force UI + role dashboards pass, both logout-redirect cases fail)"},
+  "seed_data_creation": "None persisted. Used throwaway emails (bruteforce-*@example.com, bruteforce-ui-test@example.com) for lockout tests; they are in-memory only. admin@salon.com counter was intentionally exercised with 3 wrong attempts then reset by a successful login (verified cleared). worker@salon.com untouched by lockout.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@salon.com / Admin123!, worker@salon.com / Worker123! (from /app/memory/test_credentials.md) - both valid and working",
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_brute_force_and_auth.py -v -p no:randomly. Note bruteforce-ui-test@example.com is currently locked for 15 min (in-memory; sudo supervisorctl restart backend clears all lockouts). Bulk worker endpoint is /api/workers/account-statuses (admin-only, worker correctly gets 403) - NOT /api/admin/employees/account-statuses. Worker dashboard correctly shows only 'Rezervacije' nav + RADNIK badge + single-column read-only calendar. Retest logout redirect after ProtectedRoute fix using [data-testid=\"desktop-logout-btn\"] and asserting URL endswith /beauty-studio-bor/admin/login.",
+  "rca_of_the_issue": "Logout redirect: logout() clears AuthContext user -> ProtectedRoute re-renders with user=null and returns <Navigate to=\"/login\" replace/>, unmounting AdminDashboard; the subsequent navigate(`/${slug}/admin/login`) in handleLogout is discarded (and even if ordered first, the replace navigation to /login wins). Fix must be in ProtectedRoute, using useParams().slug to build the tenant login path."
+}

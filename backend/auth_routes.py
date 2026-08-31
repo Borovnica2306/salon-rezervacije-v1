@@ -1,7 +1,9 @@
 """
 Auth routes: login, logout, me, change-password.
+Includes brute-force protection (5 attempts → 15 min lockout).
 """
 import logging
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from bson import ObjectId
 
@@ -16,14 +18,79 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
+# In-memory login attempt tracker: {email: {"count": int, "locked_until": datetime|None, "first_attempt": datetime}}
+_login_attempts: dict = {}
+
+
+def _check_brute_force(email: str):
+    """Check if email is locked out. Returns seconds remaining if locked, else 0."""
+    entry = _login_attempts.get(email)
+    if not entry:
+        return 0
+    locked_until = entry.get("locked_until")
+    if locked_until and datetime.now(timezone.utc) < locked_until:
+        remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds())
+        return max(remaining, 1)
+    # Lockout expired — reset
+    if locked_until and datetime.now(timezone.utc) >= locked_until:
+        _login_attempts.pop(email, None)
+    return 0
+
+
+def _record_failed_attempt(email: str):
+    """Record a failed login attempt. Returns True if account is now locked."""
+    entry = _login_attempts.get(email)
+    if not entry:
+        _login_attempts[email] = {"count": 1, "locked_until": None, "first_attempt": datetime.now(timezone.utc)}
+        return False
+
+    entry["count"] += 1
+    if entry["count"] >= MAX_LOGIN_ATTEMPTS:
+        entry["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+        logger.warning(f"Brute-force lockout: {email} locked for {LOCKOUT_MINUTES} min after {entry['count']} failed attempts")
+        return True
+    return False
+
+
+def _clear_attempts(email: str):
+    """Clear failed attempts on successful login."""
+    _login_attempts.pop(email, None)
+
 
 @router.post("/auth/login")
 async def login(request: LoginRequest, response: Response):
     email = request.email.lower().strip()
+
+    # Check lockout
+    lockout_seconds = _check_brute_force(email)
+    if lockout_seconds > 0:
+        minutes = lockout_seconds // 60
+        seconds = lockout_seconds % 60
+        raise HTTPException(
+            status_code=429,
+            detail=f"Previše neuspelih pokušaja. Pokušajte ponovo za {minutes} min {seconds} sek."
+        )
+
     user = await db.users.find_one({"email": email})
 
     if not user or not verify_password(request.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        locked = _record_failed_attempt(email)
+        if locked:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Nalog je privremeno zaključan na {LOCKOUT_MINUTES} minuta zbog previše neuspelih pokušaja."
+            )
+        remaining = MAX_LOGIN_ATTEMPTS - _login_attempts.get(email, {}).get("count", 0)
+        detail = "Pogrešan email ili lozinka"
+        if remaining <= 1:
+            detail += f" ({remaining} pokušaj(a) preostalo)"
+        raise HTTPException(status_code=401, detail=detail)
+
+    # Success — clear attempts
+    _clear_attempts(email)
 
     user_id = str(user["_id"])
     tenant_id = user.get("tenant_id", "")

@@ -1,0 +1,35 @@
+{
+  "summary": "Retested the two fixes from iteration 42: (1) brute-force remaining-count threshold and (2) tenant-aware logout redirect. Backend pytest suite /app/backend/tests/test_brute_force_and_auth.py: 9/9 PASSED. Frontend Playwright: admin and worker logout now correctly land on /beauty-studio-bor/admin/login (previously /login) - BOTH FIXED. Brute-force UI flow verified end-to-end: attempts 1-3 generic 'Pogrešan email ili lozinka', attempt 4 'Pogrešan email ili lozinka (1 pokušaj(a) preostalo)', attempt 5 '...privremeno zaključan na 15 minuta...', attempt 6 '...Pokušajte ponovo za 14 min 57 sek.'. Per-email independent counters and counter-clear-on-success verified via API. Regression: admin dashboard nav (Rezervacije/Crna Lista/Radnici/Usluge/Podešavanja) works with zero console errors; worker dashboard read-only single-column calendar with only 'Rezervacije' + RADNIK badge; /api/workers/account-statuses returns 200 for admin, 403 for worker. Auth hygiene: all password hashes are $2b$12$, httpOnly access_token+refresh_token cookies set on login, app-level CORS returns explicit origin with allow-credentials=true.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "app CORS config (server.py:28)", "issue": "allow_origins=[FRONTEND_URL, \"*\"] with allow_credentials=True - the literal \"*\" should be removed (invalid with credentials, security smell). Still unfixed from iteration 42."},
+      {"endpoint": "brute-force tracker (auth_routes.py)", "issue": "_login_attempts is a module-level in-memory dict: lost on restart, not multi-worker safe, never garbage-collected (unbounded growth), and 'first_attempt' is stored but never used so non-locked counters never expire."},
+      {"endpoint": "seed", "issue": "No seed_admin routine found in backend (grep for 'seed_admin' returns nothing); admin/worker users exist in Mongo but there is no idempotent re-seed/update-password path as described in the playbook checklist."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Tenant admin login (/beauty-studio-bor/admin/login)", "issues": ["Login page uses a blue/navy theme while the admin dashboard uses the gold/dark salon theme - branding inconsistency (cosmetic, pre-existing)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_brute_force_and_auth.py", "/app/test_reports/pytest/brute_force_iter43.xml"],
+  "action_items": [
+    "Remove the literal \"*\" from CORS allow_origins while allow_credentials=True.",
+    "Optional hardening: give the brute-force tracker TTL cleanup or move it to Mongo/Redis so it survives restarts and cannot grow unbounded."
+  ],
+  "critical_code_review_comments": [
+    "ProtectedRoute now correctly derives loginPath from useParams().slug - verified. ProtectedSuperAdmin still hardcodes /login, which is correct for super-admin routes.",
+    "AdminDashboard.handleLogout's navigate() is now redundant given the ProtectedRoute redirect, but harmless."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (9/9 pytest)", "frontend": "100% (logout redirect admin+worker, brute-force UI 6 stages, admin nav regression, worker read-only dashboard)"},
+  "seed_data_creation": "None persisted. Throwaway in-memory lockout emails used: bruteforce-*@example.com (pytest, random), bf-iter43-ui@x.com (UI, locked ~15 min in memory only). admin@salon.com exercised with 3 wrong attempts then reset by successful login (verified generic message afterwards). worker@salon.com not locked.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@salon.com / Admin123!, worker@salon.com / Worker123! - both valid",
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_brute_force_and_auth.py -v -p no:randomly. Threshold is now remaining<=1 (counter only from 4th attempt) and matches tests. bf-iter43-ui@x.com is locked in-memory for ~15 min; 'sudo supervisorctl restart backend' clears all lockouts. Logout redirect fix lives in ProtectedRoute (App.js:153-167) using useParams().slug. Remaining open items are non-blocking: CORS wildcard entry and in-memory tracker durability.",
+  "rca_of_the_issue": "Both reported bugs are resolved. Previous logout bug RCA (ProtectedRoute hardcoding /login) was addressed by building loginPath from the slug route param; brute-force message leak was addressed by changing the condition to remaining <= 1."
+}
