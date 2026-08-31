@@ -46,6 +46,9 @@ async def startup_event():
     await db.blacklisted_phones.create_index("phone")
     await db.tenants.create_index("slug", unique=True)
     await db.tenants.create_index("tenant_id", unique=True)
+    # TTL index: auto-delete failed_logins docs 30 min after last update
+    await db.failed_logins.create_index("updated_at", expireAfterSeconds=1800)
+    await db.failed_logins.create_index("email", unique=True)
 
     # ===== SEED PRIMARY TENANT =====
     existing_tenant = await db.tenants.find_one({"tenant_id": PRIMARY_TENANT_ID})

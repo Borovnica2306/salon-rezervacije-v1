@@ -1,6 +1,6 @@
 """
 Auth routes: login, logout, me, change-password.
-Includes brute-force protection (5 attempts → 15 min lockout).
+Includes brute-force protection (5 attempts → 15 min lockout, persisted in MongoDB).
 """
 import logging
 from datetime import datetime, timezone, timedelta
@@ -21,43 +21,52 @@ router = APIRouter()
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
-# In-memory login attempt tracker: {email: {"count": int, "locked_until": datetime|None, "first_attempt": datetime}}
-_login_attempts: dict = {}
 
-
-def _check_brute_force(email: str):
+async def _check_brute_force(email: str):
     """Check if email is locked out. Returns seconds remaining if locked, else 0."""
-    entry = _login_attempts.get(email)
+    entry = await db.failed_logins.find_one({"email": email})
     if not entry:
         return 0
     locked_until = entry.get("locked_until")
     if locked_until and datetime.now(timezone.utc) < locked_until:
         remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds())
         return max(remaining, 1)
-    # Lockout expired — reset
+    # Lockout expired — clean up
     if locked_until and datetime.now(timezone.utc) >= locked_until:
-        _login_attempts.pop(email, None)
+        await db.failed_logins.delete_one({"email": email})
     return 0
 
 
-def _record_failed_attempt(email: str):
+async def _record_failed_attempt(email: str):
     """Record a failed login attempt. Returns True if account is now locked."""
-    entry = _login_attempts.get(email)
+    now = datetime.now(timezone.utc)
+    entry = await db.failed_logins.find_one({"email": email})
+
     if not entry:
-        _login_attempts[email] = {"count": 1, "locked_until": None, "first_attempt": datetime.now(timezone.utc)}
+        await db.failed_logins.insert_one({"email": email, "count": 1, "locked_until": None, "updated_at": now})
         return False
 
-    entry["count"] += 1
-    if entry["count"] >= MAX_LOGIN_ATTEMPTS:
-        entry["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
-        logger.warning(f"Brute-force lockout: {email} locked for {LOCKOUT_MINUTES} min after {entry['count']} failed attempts")
+    new_count = entry.get("count", 0) + 1
+    update = {"count": new_count, "updated_at": now}
+
+    if new_count >= MAX_LOGIN_ATTEMPTS:
+        update["locked_until"] = now + timedelta(minutes=LOCKOUT_MINUTES)
+        logger.warning(f"Brute-force lockout: {email} locked for {LOCKOUT_MINUTES} min after {new_count} failed attempts")
+        await db.failed_logins.update_one({"email": email}, {"$set": update})
         return True
+
+    await db.failed_logins.update_one({"email": email}, {"$set": update})
     return False
 
 
-def _clear_attempts(email: str):
+async def _clear_attempts(email: str):
     """Clear failed attempts on successful login."""
-    _login_attempts.pop(email, None)
+    await db.failed_logins.delete_one({"email": email})
+
+
+async def _get_attempt_count(email: str) -> int:
+    entry = await db.failed_logins.find_one({"email": email})
+    return entry.get("count", 0) if entry else 0
 
 
 @router.post("/auth/login")
@@ -65,7 +74,7 @@ async def login(request: LoginRequest, response: Response):
     email = request.email.lower().strip()
 
     # Check lockout
-    lockout_seconds = _check_brute_force(email)
+    lockout_seconds = await _check_brute_force(email)
     if lockout_seconds > 0:
         minutes = lockout_seconds // 60
         seconds = lockout_seconds % 60
@@ -77,20 +86,21 @@ async def login(request: LoginRequest, response: Response):
     user = await db.users.find_one({"email": email})
 
     if not user or not verify_password(request.password, user["password_hash"]):
-        locked = _record_failed_attempt(email)
+        locked = await _record_failed_attempt(email)
         if locked:
             raise HTTPException(
                 status_code=429,
                 detail=f"Nalog je privremeno zaključan na {LOCKOUT_MINUTES} minuta zbog previše neuspelih pokušaja."
             )
-        remaining = MAX_LOGIN_ATTEMPTS - _login_attempts.get(email, {}).get("count", 0)
+        count = await _get_attempt_count(email)
+        remaining = MAX_LOGIN_ATTEMPTS - count
         detail = "Pogrešan email ili lozinka"
         if remaining <= 1:
             detail += f" ({remaining} pokušaj(a) preostalo)"
         raise HTTPException(status_code=401, detail=detail)
 
     # Success — clear attempts
-    _clear_attempts(email)
+    await _clear_attempts(email)
 
     user_id = str(user["_id"])
     tenant_id = user.get("tenant_id", "")
