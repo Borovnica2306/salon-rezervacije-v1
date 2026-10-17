@@ -798,6 +798,7 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
             service_worker_pairs=pairs,
             total_price=res.get("total_price", 0),
             total_duration=duration,
+            lang=res.get("lang", "sr"),
         )
 
     return {
