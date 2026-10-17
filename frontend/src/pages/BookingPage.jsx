@@ -44,7 +44,7 @@ const BookingPage = () => {
   const tenant = useTenant();
   const { slug } = useParams();
   const { piUser, loading: piLoading, isSandbox } = usePiAuth();
-  const { t } = useLang();
+  const { t, tc, ts } = useLang();
   const tHeaders = getTenantHeaders(tenant?.tenant_id);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -456,7 +456,7 @@ const BookingPage = () => {
   }, {});
 
   const categoryLabels = Object.fromEntries(
-    categories.map(c => [c.key, c.label])
+    categories.map(c => [c.key, tc(c.key)])
   );
 
   const categoryImages = {
@@ -849,7 +849,10 @@ const BookingPage = () => {
       <Dialog open={showMyReservations} onOpenChange={closeMyReservations}>
         <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">{t("myReservationsTitle")}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">{t("myReservationsTitle")}</DialogTitle>
+              <LanguageSelector />
+            </div>
             <DialogDescription className="text-[#9CA3AF]">
               {t("myReservationsDesc")}
             </DialogDescription>
@@ -1018,7 +1021,7 @@ const BookingPage = () => {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
                     <div className="relative h-full flex flex-col justify-end p-4">
-                      <h3 className="font-medium text-base text-white drop-shadow-md">{cat.label}</h3>
+                      <h3 className="font-medium text-base text-white drop-shadow-md">{tc(cat.key)}</h3>
                       <p className="text-xs text-white/70 mt-0.5">{count} {count === 1 ? "usluga" : count < 5 ? "usluge" : "usluga"}</p>
                     </div>
                   </button>
@@ -1033,7 +1036,7 @@ const BookingPage = () => {
                 <div className="space-y-1">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex justify-between text-sm">
-                      <span>{s.name}</span>
+                      <span>{ts(s.name)}</span>
                       <span className="text-[var(--color-primary)]">{s.price} π</span>
                     </div>
                   ))}
@@ -1089,10 +1092,10 @@ const BookingPage = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium">{service.name}</p>
+                        <p className="font-medium">{ts(service.name)}</p>
                         <p className="text-sm text-[#9CA3AF] mt-1">
                           <Clock className="w-3 h-3 inline mr-1" />
-                          {service.duration} min
+                          {service.duration} {t("min")}
                           {availableWorkers.length === 0 && (
                             <span className="ml-2 text-red-400">• {t("noWorkerAvailable")}</span>
                           )}
@@ -1117,7 +1120,7 @@ const BookingPage = () => {
                 <div className="space-y-1">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex items-center justify-between text-sm">
-                      <span>{s.name} <span className="text-[#9CA3AF]">({categoryLabels[s.category] || s.category})</span></span>
+                      <span>{ts(s.name)} <span className="text-[#9CA3AF]">({categoryLabels[s.category] || s.category})</span></span>
                       <div className="flex items-center gap-2">
                         <span className="text-[var(--color-primary)]">{s.price} π</span>
                         <button
@@ -1168,9 +1171,9 @@ const BookingPage = () => {
                   <div key={service.id} className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-medium">{service.name}</p>
+                        <p className="font-medium">{ts(service.name)}</p>
                         <p className="text-xs text-[#9CA3AF]">
-                          {service.duration} min • {service.price} π
+                          {service.duration} {t("min")} • {service.price} π
                         </p>
                       </div>
                       {selectedWorkerId && (
@@ -1374,7 +1377,7 @@ const BookingPage = () => {
                 <div className="space-y-2">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex items-center justify-between">
-                      <span className="text-[#9CA3AF]">{s.name}:</span>
+                      <span className="text-[#9CA3AF]">{ts(s.name)}:</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[var(--color-primary)]">{getWorkerName(serviceWorkerMap[s.id])}</span>
                         <button

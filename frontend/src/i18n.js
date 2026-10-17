@@ -629,6 +629,83 @@ const T = {
   },
 };
 
+// Category name translations (keyed by category slug from backend)
+const CATEGORIES = {
+  sr: { hair: "Frizura", massage: "Masaža", nails: "Nokti", makeup: "Šminkanje", depilation: "Depilacija", cosmetics: "Kozmetika", eyebrows: "Obrve/Trepavice" },
+  en: { hair: "Hair", massage: "Massage", nails: "Nails", makeup: "Makeup", depilation: "Hair Removal", cosmetics: "Skincare", eyebrows: "Brows & Lashes" },
+  id: { hair: "Rambut", massage: "Pijat", nails: "Kuku", makeup: "Tata Rias", depilation: "Pencabutan Bulu", cosmetics: "Perawatan Kulit", eyebrows: "Alis & Bulu Mata" },
+  tl: { hair: "Buhok", massage: "Masahe", nails: "Kuko", makeup: "Make-up", depilation: "Pagtatanggal ng Balahibo", cosmetics: "Skincare", eyebrows: "Kilay at Pilik-mata" },
+  "pt-BR": { hair: "Cabelo", massage: "Massagem", nails: "Unhas", makeup: "Maquiagem", depilation: "Depilação", cosmetics: "Estética", eyebrows: "Sobrancelhas" },
+  es: { hair: "Cabello", massage: "Masaje", nails: "Uñas", makeup: "Maquillaje", depilation: "Depilación", cosmetics: "Estética", eyebrows: "Cejas y Pestañas" },
+  fr: { hair: "Coiffure", massage: "Massage", nails: "Ongles", makeup: "Maquillage", depilation: "Épilation", cosmetics: "Soins", eyebrows: "Sourcils & Cils" },
+};
+
+// Service name translations (keyed by Serbian service name)
+const SERVICES = {
+  sr: {},
+  en: {
+    "Šišanje": "Haircut", "Farbanje": "Coloring", "Feniranje": "Blow Dry", "Pramenovi": "Highlights",
+    "Nadogradnja kose": "Hair Extensions", "Tretman kose": "Hair Treatment", "Muško šišanje": "Men's Haircut",
+    "Klasična masaža": "Classic Massage", "Relaks masaža": "Relaxation Massage", "Sportska masaža": "Sports Massage",
+    "Masaža leđa": "Back Massage", "Anticelulit masaža": "Anti-cellulite Massage", "Terapeutska masaža": "Therapeutic Massage",
+    "Manikir": "Manicure", "Pedikir": "Pedicure", "Gel nokti": "Gel Nails", "Nadogradnja noktiju": "Nail Extensions",
+    "Lakiranje": "Nail Polish", "Shellac": "Shellac",
+    "Dnevna šminka": "Day Makeup", "Večernja šminka": "Evening Makeup", "Svečana šminka": "Bridal Makeup",
+    "Depilacija nogu": "Leg Waxing", "Depilacija ruku": "Arm Waxing", "Depilacija lica": "Facial Waxing",
+    "Depilacija bikini": "Bikini Waxing", "Brazilska depilacija": "Brazilian Waxing",
+    "Čišćenje lica": "Facial Cleansing", "Tretman lica": "Facial Treatment", "Hemijski piling": "Chemical Peel",
+    "Hijaluron": "Hyaluronic Treatment", "Botoks": "Botox", "Mezoterapija": "Mesotherapy",
+    "Regulacija obrva": "Brow Shaping", "Laminacija obrva": "Brow Lamination",
+    "Nadogradnja trepavica": "Lash Extensions", "Laminacija trepavica": "Lash Lift",
+  },
+  id: {
+    "Šišanje": "Potong Rambut", "Farbanje": "Pewarnaan", "Feniranje": "Blow Dry", "Pramenovi": "Highlight",
+    "Klasična masaža": "Pijat Klasik", "Relaks masaža": "Pijat Relaksasi", "Sportska masaža": "Pijat Olahraga",
+    "Manikir": "Manikur", "Pedikir": "Pedikur", "Gel nokti": "Kuku Gel",
+    "Dnevna šminka": "Riasan Harian", "Večernja šminka": "Riasan Malam", "Svečana šminka": "Riasan Pengantin",
+    "Depilacija nogu": "Waxing Kaki", "Depilacija lica": "Waxing Wajah",
+    "Čišćenje lica": "Pembersihan Wajah", "Tretman lica": "Perawatan Wajah",
+    "Regulacija obrva": "Pembentukan Alis", "Nadogradnja trepavica": "Ekstensi Bulu Mata",
+  },
+  tl: {
+    "Šišanje": "Gupit", "Farbanje": "Pagkulay", "Feniranje": "Blow Dry", "Pramenovi": "Highlights",
+    "Klasična masaža": "Klasikong Masahe", "Relaks masaža": "Relaxation Masahe",
+    "Manikir": "Manikura", "Pedikir": "Pedikura", "Gel nokti": "Gel Nails",
+    "Dnevna šminka": "Pang-araw na Make-up", "Večernja šminka": "Panggabing Make-up",
+    "Depilacija nogu": "Leg Waxing", "Čišćenje lica": "Facial Cleansing",
+    "Regulacija obrva": "Pag-ayos ng Kilay", "Nadogradnja trepavica": "Lash Extensions",
+  },
+  "pt-BR": {
+    "Šišanje": "Corte", "Farbanje": "Coloração", "Feniranje": "Escova", "Pramenovi": "Mechas",
+    "Nadogradnja kose": "Alongamento", "Tretman kose": "Tratamento Capilar",
+    "Klasična masaža": "Massagem Clássica", "Relaks masaža": "Massagem Relaxante", "Sportska masaža": "Massagem Esportiva",
+    "Masaža leđa": "Massagem nas Costas", "Anticelulit masaža": "Massagem Anticelulite",
+    "Manikir": "Manicure", "Pedikir": "Pedicure", "Gel nokti": "Unhas de Gel", "Nadogradnja noktiju": "Alongamento de Unhas",
+    "Dnevna šminka": "Maquiagem Dia", "Večernja šminka": "Maquiagem Noite", "Svečana šminka": "Maquiagem Noiva",
+    "Depilacija nogu": "Depilação Pernas", "Depilacija lica": "Depilação Facial", "Brazilska depilacija": "Depilação Brasileira",
+    "Čišćenje lica": "Limpeza de Pele", "Tretman lica": "Tratamento Facial",
+    "Regulacija obrva": "Design de Sobrancelhas", "Nadogradnja trepavica": "Extensão de Cílios",
+  },
+  es: {
+    "Šišanje": "Corte", "Farbanje": "Coloración", "Feniranje": "Secado", "Pramenovi": "Mechas",
+    "Klasična masaža": "Masaje Clásico", "Relaks masaža": "Masaje Relajante", "Sportska masaža": "Masaje Deportivo",
+    "Manikir": "Manicura", "Pedikir": "Pedicura", "Gel nokti": "Uñas de Gel",
+    "Dnevna šminka": "Maquillaje de Día", "Večernja šminka": "Maquillaje de Noche", "Svečana šminka": "Maquillaje Nupcial",
+    "Depilacija nogu": "Depilación Piernas", "Depilacija lica": "Depilación Facial",
+    "Čišćenje lica": "Limpieza Facial", "Tretman lica": "Tratamiento Facial",
+    "Regulacija obrva": "Diseño de Cejas", "Nadogradnja trepavica": "Extensión de Pestañas",
+  },
+  fr: {
+    "Šišanje": "Coupe", "Farbanje": "Coloration", "Feniranje": "Brushing", "Pramenovi": "Mèches",
+    "Klasična masaža": "Massage Classique", "Relaks masaža": "Massage Relaxant", "Sportska masaža": "Massage Sportif",
+    "Manikir": "Manucure", "Pedikir": "Pédicure", "Gel nokti": "Ongles en Gel",
+    "Dnevna šminka": "Maquillage Jour", "Večernja šminka": "Maquillage Soirée", "Svečana šminka": "Maquillage Mariée",
+    "Depilacija nogu": "Épilation Jambes", "Depilacija lica": "Épilation Visage",
+    "Čišćenje lica": "Nettoyage de Peau", "Tretman lica": "Soin du Visage",
+    "Regulacija obrva": "Restructuration Sourcils", "Nadogradnja trepavica": "Extensions de Cils",
+  },
+};
+
 const LangContext = createContext();
 
 export const SUPPORTED_LANGUAGES = LANGUAGES;
@@ -648,8 +725,19 @@ export const LangProvider = ({ children }) => {
     return T[lang]?.[key] || T[DEFAULT_LANG]?.[key] || key;
   }, [lang]);
 
+  // Translate category key → localized label
+  const tc = useCallback((categoryKey) => {
+    return CATEGORIES[lang]?.[categoryKey] || CATEGORIES[DEFAULT_LANG]?.[categoryKey] || categoryKey;
+  }, [lang]);
+
+  // Translate service name (Serbian original → localized)
+  const ts = useCallback((serviceName) => {
+    if (lang === DEFAULT_LANG) return serviceName;
+    return SERVICES[lang]?.[serviceName] || serviceName;
+  }, [lang]);
+
   return (
-    <LangContext.Provider value={{ lang, setLang, t }}>
+    <LangContext.Provider value={{ lang, setLang, t, tc, ts }}>
       {children}
     </LangContext.Provider>
   );
