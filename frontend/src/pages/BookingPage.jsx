@@ -5,6 +5,8 @@ import { API, useTenant, getTenantHeaders } from "../App";
 import { Clock, Scissors, User, Phone, Calendar, ChevronRight, ChevronLeft, Check, X, Search, ChevronDown, Ban, Copy, Flower2, Gem, Sparkles, Zap, Droplet, Eye, Pencil, Mail, Shield, Plus } from "lucide-react";
 import { PhoneInput, isValidPhone } from "../components/PhoneInput";
 import { usePiAuth } from "../context/PiAuthContext";
+import { useLang } from "../i18n";
+import LanguageSelector from "../components/LanguageSelector";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -27,7 +29,7 @@ import {
 
 const PHONE_PREFIX = "+381";
 
-function fallbackCopy(text) {
+function fallbackCopy(text, successMsg) {
   const ta = document.createElement("textarea");
   ta.value = text;
   ta.style.cssText = "position:fixed;opacity:0;left:-9999px";
@@ -35,13 +37,14 @@ function fallbackCopy(text) {
   ta.select();
   document.execCommand("copy");
   document.body.removeChild(ta);
-  toast.success("Kopirano!");
+  toast.success(successMsg || "Copied!");
 }
 
 const BookingPage = () => {
   const tenant = useTenant();
   const { slug } = useParams();
   const { piUser, loading: piLoading, isSandbox } = usePiAuth();
+  const { t } = useLang();
   const tHeaders = getTenantHeaders(tenant?.tenant_id);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -120,7 +123,7 @@ const BookingPage = () => {
       setSettings(settingsRes.data);
       setCategories(categoriesRes.data);
     } catch (error) {
-      toast.error("Greška pri učitavanju podataka");
+      toast.error(t("toastDataError"));
     }
   };
 
@@ -216,7 +219,7 @@ const BookingPage = () => {
 
   const handleSubmit = async () => {
     if (!piUser?.username || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)) {
-      toast.error("Molimo unesite validan broj telefona i email adresu");
+      toast.error(t("toastPhoneEmailRequired"));
       return;
     }
 
@@ -245,14 +248,14 @@ const BookingPage = () => {
         initiatePiPayment(booking);
       } else {
         setBookingComplete(true);
-        toast.success("Rezervacija uspešno kreirana!");
+        toast.success(t("toastBookingSuccess"));
       }
     } catch (error) {
       const detail = error.response?.data?.detail || "";
       if (detail.toLowerCase().includes("crn") || detail.toLowerCase().includes("blacklist") || detail.toLowerCase().includes("blokiran")) {
         setBlacklistError(true);
       } else {
-        toast.error(detail || "Greška pri kreiranju rezervacije");
+        toast.error(detail || t("toastBookingError"));
       }
     } finally {
       setIsSubmitting(false);
@@ -300,26 +303,26 @@ const BookingPage = () => {
             }, { headers: tHeaders });
             setBookingComplete(true);
             setPiPaymentPending(false);
-            toast.success("Pi plaćanje uspešno!");
+            toast.success(t("toastPiSuccess"));
           } catch (err) {
             console.error("[Pi] Server complete failed:", err);
-            toast.error("Greška pri potvrdi plaćanja");
+            toast.error(t("toastPiError"));
           }
         },
         onCancel: (paymentId) => {
           console.log("[Pi] Payment cancelled:", paymentId);
-          toast.error("Plaćanje otkazano");
+          toast.error(t("toastPiCancelled"));
           setPiPaymentPending(false);
         },
         onError: (error, payment) => {
           console.error("[Pi] Payment error:", error, payment);
-          toast.error("Greška pri plaćanju");
+          toast.error(t("toastPiError"));
           setPiPaymentPending(false);
         },
       });
     } catch (err) {
       console.error("[Pi] createPayment failed:", err);
-      toast.error("Pi SDK greška");
+      toast.error("Pi SDK error");
     }
   };
 
@@ -350,13 +353,13 @@ const BookingPage = () => {
         console.error("[Pi Sandbox] Complete call failed:", err);
       }
       setBookingComplete(true);
-      toast.success("Pi plaćanje uspešno! (Sandbox)");
+      toast.success(t("toastPiSuccess") + " (Sandbox)");
     }, 1000);
   };
 
   const handleSandboxCancel = () => {
     setPiPaymentPending(false);
-    toast.error("Plaćanje otkazano (Sandbox)");
+    toast.error(t("toastPiCancelled") + " (Sandbox)");
   };
 
   const resetBooking = () => {
@@ -378,7 +381,7 @@ const BookingPage = () => {
   // My Reservations functions
   const searchMyReservations = async () => {
     if (!isValidPhone(lookupPhone)) {
-      toast.error("Unesite validan broj telefona");
+      toast.error(t("toastPhoneError"));
       return;
     }
 
@@ -390,7 +393,7 @@ const BookingPage = () => {
       }, { headers: tHeaders });
       setMyReservations(response.data);
     } catch (error) {
-      toast.error("Greška pri pretraživanju");
+      toast.error(t("toastSearchError"));
       setMyReservations([]);
     } finally {
       setIsSearching(false);
@@ -402,10 +405,10 @@ const BookingPage = () => {
       await axios.put(`${API}/my-reservations/${reservationId}/cancel`, {
         phone: lookupPhone,
       }, { headers: tHeaders });
-      toast.success("Rezervacija je uspešno otkazana");
+      toast.success(t("toastCancelSuccess"));
       searchMyReservations();
     } catch (error) {
-      const message = error.response?.data?.detail || "Greška pri otkazivanju";
+      const message = error.response?.data?.detail || t("toastCancelError");
       toast.error(message);
     }
   };
@@ -413,10 +416,10 @@ const BookingPage = () => {
   const reportPayment = async (reservationId) => {
     try {
       await axios.patch(`${API}/reservations/${reservationId}/report-payment`, {}, { headers: tHeaders });
-      toast.success("Uplata prijavljena! Salon će proveriti.");
+      toast.success(t("toastPaymentReported"));
       searchMyReservations();
     } catch (error) {
-      const message = error.response?.data?.detail || "Greška pri prijavi uplate";
+      const message = error.response?.data?.detail || t("toastPaymentReportError");
       toast.error(message);
     }
   };
@@ -576,26 +579,26 @@ const BookingPage = () => {
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2">
               <span className="text-xl font-bold text-white">π</span>
             </div>
-            <h3 className="text-white font-medium text-lg">Pi Wallet</h3>
+            <h3 className="text-white font-medium text-lg">{t("piWallet")}</h3>
             <span className="text-white/60 text-[10px] px-2 py-0.5 bg-white/10 rounded-full">SANDBOX</span>
           </div>
           {/* Body */}
           <div className="px-6 py-5 space-y-4">
             <div className="text-center">
-              <p className="text-[#9CA3AF] text-sm mb-1">{"Odobriti plaćanje?"}</p>
+              <p className="text-[#9CA3AF] text-sm mb-1">{t("approvePayment")}</p>
               <p className="text-3xl font-bold text-white">{totalPi} <span className="text-lg text-purple-400">π</span></p>
             </div>
             <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-1.5">
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B7280]">Usluga</span>
+                <span className="text-[#6B7280]">{t("service")}</span>
                 <span className="text-white text-right max-w-[60%] truncate">{serviceName}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B7280]">Rezervacija</span>
+                <span className="text-[#6B7280]">{t("reservation")}</span>
                 <span className="text-white font-mono">#{booking.booking_id}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#6B7280]">Primalac</span>
+                <span className="text-[#6B7280]">{t("recipient")}</span>
                 <span className="text-white">@salon</span>
               </div>
             </div>
@@ -615,7 +618,7 @@ const BookingPage = () => {
               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white min-h-[48px] font-medium"
               data-testid="sandbox-approve-btn"
             >
-              {"Odobri plaćanje"}
+              {t("approve")}
             </Button>
           </div>
         </div>
@@ -628,7 +631,7 @@ const BookingPage = () => {
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[#9CA3AF] text-sm">{"Povezivanje sa Pi mrežom..."}</p>
+          <p className="text-[#9CA3AF] text-sm">{t("connectingPi")}</p>
         </div>
       </div>
     );
@@ -644,7 +647,7 @@ const BookingPage = () => {
           <div className="w-16 h-16 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center mx-auto mb-6">
             <Check className="w-8 h-8 text-[var(--color-primary)]" />
           </div>
-          <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">Rezervacija Potvrđena</h1>
+          <h1 className="font-['Cormorant_Garamond'] text-3xl font-light mb-2">{t("bookingConfirmed")}</h1>
 
           {/* Booking ID with Copy */}
           {bookingDetails.booking_id && (
@@ -654,44 +657,44 @@ const BookingPage = () => {
                 try {
                   if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(() => {
-                      toast.success("Kopirano!");
+                      toast.success(t("copied"));
                     }).catch(() => {
-                      fallbackCopy(text);
+                      fallbackCopy(text, t("copied"));
                     });
                   } else {
-                    fallbackCopy(text);
+                    fallbackCopy(text, t("copied"));
                   }
                 } catch {
-                  fallbackCopy(text);
+                  fallbackCopy(text, t("copied"));
                 }
               }}
               className="inline-flex items-center gap-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg px-4 py-2.5 mb-4 hover:bg-[var(--color-primary)]/20 transition-colors active:scale-95"
               data-testid="success-booking-id"
             >
-              <span className="text-[#9CA3AF] text-sm">Vaš ID: </span>
+              <span className="text-[#9CA3AF] text-sm">{t("yourId")}: </span>
               <span className="font-mono font-bold text-[var(--color-primary)] text-lg">#{bookingDetails.booking_id}</span>
               <Copy className="w-4 h-4 text-[var(--color-primary)] opacity-70" />
             </button>
           )}
 
-          <p className="text-[#9CA3AF] mb-6">Hvala vam na rezervaciji!</p>
+          <p className="text-[#9CA3AF] mb-6">{t("thankYou")}</p>
 
           {/* Date & Total Info */}
           <div className="bg-[var(--color-background)] rounded-xl p-5 text-left mb-4">
             <div className="flex justify-between mb-3">
-              <span className="text-[#9CA3AF] text-sm">Datum:</span>
+              <span className="text-[#9CA3AF] text-sm">{t("date")}:</span>
               <span className="font-medium text-sm">{bookingDetails.date}</span>
             </div>
             <div className="flex justify-between mb-3">
-              <span className="text-[#9CA3AF] text-sm">Vreme:</span>
+              <span className="text-[#9CA3AF] text-sm">{t("time")}:</span>
               <span className="font-medium text-sm">{bookingDetails.time} - {bookingDetails.end_time}</span>
             </div>
             <div className="flex justify-between mb-3">
-              <span className="text-[#9CA3AF] text-sm">Trajanje:</span>
+              <span className="text-[#9CA3AF] text-sm">{t("duration")}:</span>
               <span className="font-medium text-sm">{bookingDetails.total_duration} min</span>
             </div>
             <div className="flex justify-between mb-3">
-              <span className="text-[#9CA3AF] text-sm">Telefon:</span>
+              <span className="text-[#9CA3AF] text-sm">{t("phone")}:</span>
               <span className="font-medium text-sm">{bookingDetails.client_phone}</span>
             </div>
             <div className="flex justify-between mb-3">
@@ -699,14 +702,14 @@ const BookingPage = () => {
               <span className="font-medium text-sm">{bookingDetails.client_email}</span>
             </div>
             <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
-              <span className="text-[#9CA3AF] text-sm">Ukupno:</span>
+              <span className="text-[#9CA3AF] text-sm">{t("total")}:</span>
               <span className="font-semibold text-[var(--color-primary)]">{bookingDetails.total_price ?? 0} π</span>
             </div>
           </div>
 
           {/* Visual Timeline */}
           <div className="bg-[var(--color-background)] rounded-xl p-5 text-left mb-4" data-testid="service-timeline">
-            <span className="text-[#9CA3AF] text-xs uppercase tracking-wider">Vaš raspored</span>
+            <span className="text-[#9CA3AF] text-xs uppercase tracking-wider">{t("yourSchedule")}</span>
             <div className="mt-4 relative">
               {/* Timeline vertical line */}
               <div className="absolute left-[19px] top-2 bottom-2 w-px bg-[#2A2A2D]" />
@@ -738,7 +741,7 @@ const BookingPage = () => {
                       </div>
                       <div className="flex-1">
                         <div className="text-xs text-[#6B7280] italic">
-                          Pauza {item.startTime} - {item.endTime} ({item.duration} min)
+                          {t("pause")} {item.startTime} - {item.endTime} ({item.duration} {t("min")})
                         </div>
                       </div>
                     </div>
@@ -791,9 +794,9 @@ const BookingPage = () => {
           {/* Confirmation */}
           <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-5 mb-6 text-center" data-testid="pi-confirmation-section">
             <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <h3 className="text-green-400 font-medium mb-1">{"Rezervacija potvrđena"}</h3>
+            <h3 className="text-green-400 font-medium mb-1">{t("bookingConfirmedStatus")}</h3>
             <p className="text-[#9CA3AF] text-sm leading-relaxed">
-              {"Vaš termin je uspešno zakazan. Dobićete obaveštenje sa detaljima."}
+              {t("bookingConfirmedDesc")}
             </p>
           </div>
 
@@ -802,7 +805,7 @@ const BookingPage = () => {
             className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium py-6"
             data-testid="new-booking-btn"
           >
-            Nova Rezervacija
+            {t("newBooking")}
           </Button>
         </div>
       </div>
@@ -815,15 +818,18 @@ const BookingPage = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-[#2A2A2D]">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <span className="text-[#9CA3AF] text-xs">Beauty Studio Bor</span>
-          <button
-            onClick={() => setShowMyReservations(true)}
-            className="text-[#9CA3AF] text-xs hover:text-[var(--color-primary)] transition-colors flex items-center gap-1"
-            data-testid="my-reservations-btn"
-          >
-            <Calendar className="w-3 h-3" />
-            Moje rezervacije
-          </button>
+          <span className="text-[#9CA3AF] text-xs">{settings?.salon_name || "Beauty Studio"}</span>
+          <div className="flex items-center gap-1">
+            <LanguageSelector />
+            <button
+              onClick={() => setShowMyReservations(true)}
+              className="text-[#9CA3AF] text-xs hover:text-[var(--color-primary)] transition-colors flex items-center gap-1"
+              data-testid="my-reservations-btn"
+            >
+              <Calendar className="w-3 h-3" />
+              {t("myReservations")}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -834,7 +840,7 @@ const BookingPage = () => {
             Beauty Studio Bor
           </h1>
           <p className="text-[#9CA3AF] text-base">
-            Izaberite usluge za početak
+            {t("selectServicesIntro")}
           </p>
         </div>
       )}
@@ -843,9 +849,9 @@ const BookingPage = () => {
       <Dialog open={showMyReservations} onOpenChange={closeMyReservations}>
         <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">Moje Rezervacije</DialogTitle>
+            <DialogTitle className="font-['Cormorant_Garamond'] text-2xl">{t("myReservationsTitle")}</DialogTitle>
             <DialogDescription className="text-[#9CA3AF]">
-              Unesite vaš broj telefona da pronađete vaše rezervacije
+              {t("myReservationsDesc")}
             </DialogDescription>
           </DialogHeader>
           
@@ -877,7 +883,7 @@ const BookingPage = () => {
             {!isSearching && hasSearched && myReservations.length === 0 && (
               <div className="text-center py-8 text-[#9CA3AF]">
                 <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nema pronađenih rezervacija za ovaj broj</p>
+                <p>{t("noReservationsFound")}</p>
               </div>
             )}
 
@@ -907,12 +913,12 @@ const BookingPage = () => {
                     <div className="mb-3">
                       {res.payment_status === "confirmed" && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-600/20 text-green-400" data-testid={`payment-badge-${res.id}`}>
-                          <Check className="w-3 h-3" /> Uplata potvrđena
+                          <Check className="w-3 h-3" /> {t("paymentConfirmed")}
                         </span>
                       )}
                       {res.payment_status === "sent_for_verification" && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400" data-testid={`payment-badge-${res.id}`}>
-                          <Clock className="w-3 h-3" /> Uplata u obradi - čeka se provera salona
+                          <Clock className="w-3 h-3" /> {t("paymentProcessing")}
                         </span>
                       )}
                     </div>
@@ -925,7 +931,7 @@ const BookingPage = () => {
                         data-testid={`report-payment-${res.id}`}
                       >
                         <Check className="w-4 h-4 mr-2" />
-                        Potvrdi uplatu avansa
+                        {t("confirmAdvance")}
                       </Button>
                     )}
                     
@@ -938,15 +944,15 @@ const BookingPage = () => {
                         data-testid={`cancel-my-reservation-${res.id}`}
                       >
                         <X className="w-4 h-4 mr-1" />
-                        Otkaži rezervaciju
+                        {t("cancelReservation")}
                       </Button>
                     ) : (
                       <div className="text-center p-2 bg-[#2A2A2D]/30 rounded-lg">
                         <p className="text-xs text-[#9CA3AF]">
-                          Otkazivanje je moguće najkasnije 24h pre termina.
+                          {t("cancelNotice")}
                         </p>
                         <p className="text-xs text-[#9CA3AF] mt-1">
-                          Za hitne izmene, pozovite salon.
+                          {t("cancelContact")}
                         </p>
                       </div>
                     )}
@@ -987,9 +993,9 @@ const BookingPage = () => {
         {step === 1 && !selectedCategory && (
           <div className="animate-fade-in">
             <div className="mb-6">
-              <p className="overline mb-2">Korak 1</p>
-              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Kategoriju</h2>
-              <p className="text-[#9CA3AF] text-sm mt-2">Odaberite vrstu usluge koju želite</p>
+              <p className="overline mb-2">{t("step")} 1</p>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">{t("selectCategory")}</h2>
+              <p className="text-[#9CA3AF] text-sm mt-2">{t("selectCategoryDesc")}</p>
             </div>
             <div className="grid grid-cols-2 gap-3 stagger-children">
               {categories.map((cat) => {
@@ -1023,7 +1029,7 @@ const BookingPage = () => {
             {/* Show selected services summary if any */}
             {selectedServices.length > 0 && (
               <div className="mt-6 p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-primary)]/30">
-                <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge:</p>
+                <p className="text-sm text-[#9CA3AF] mb-2">{t("selectedServices")}:</p>
                 <div className="space-y-1">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex justify-between text-sm">
@@ -1033,7 +1039,7 @@ const BookingPage = () => {
                   ))}
                 </div>
                 <div className="border-t border-[#2A2A2D] mt-3 pt-3 flex justify-between font-medium">
-                  <span>Ukupno</span>
+                  <span>{t("total")}</span>
                   <span className="text-[var(--color-primary)]">{selectedServices.reduce((sum, s) => sum + s.price, 0)} π</span>
                 </div>
               </div>
@@ -1050,7 +1056,7 @@ const BookingPage = () => {
                 data-testid="back-to-categories-btn"
               >
                 <ChevronLeft className="w-5 h-5 text-[var(--color-primary)]" />
-                <span className="text-sm font-medium">Nazad na kategorije</span>
+                <span className="text-sm font-medium">{t("backToCategories")}</span>
               </button>
               <h2 className="font-['Cormorant_Garamond'] text-3xl font-light flex items-center gap-3">
                 {categoryImages[selectedCategory] && (
@@ -1088,7 +1094,7 @@ const BookingPage = () => {
                           <Clock className="w-3 h-3 inline mr-1" />
                           {service.duration} min
                           {availableWorkers.length === 0 && (
-                            <span className="ml-2 text-red-400">• Nema radnika</span>
+                            <span className="ml-2 text-red-400">• {t("noWorkerAvailable")}</span>
                           )}
                         </p>
                       </div>
@@ -1107,7 +1113,7 @@ const BookingPage = () => {
             {/* Selected services summary — across ALL categories */}
             {selectedServices.length > 0 && (
               <div className="mt-6 p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-primary)]/30">
-                <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge ({selectedServices.length}):</p>
+                <p className="text-sm text-[#9CA3AF] mb-2">{t("selectedServices")} ({selectedServices.length}):</p>
                 <div className="space-y-1">
                   {selectedServices.map(s => (
                     <div key={s.id} className="flex items-center justify-between text-sm">
@@ -1126,7 +1132,7 @@ const BookingPage = () => {
                   ))}
                 </div>
                 <div className="border-t border-[#2A2A2D] mt-3 pt-3 flex justify-between font-medium">
-                  <span>Ukupno</span>
+                  <span>{t("total")}</span>
                   <span className="text-[var(--color-primary)]">{selectedServices.reduce((sum, s) => sum + s.price, 0)} π</span>
                 </div>
               </div>
@@ -1139,7 +1145,7 @@ const BookingPage = () => {
               data-testid="add-from-other-category-btn"
             >
               <Plus className="w-4 h-4" />
-              <span className="text-sm">Dodaj uslugu iz druge kategorije</span>
+              <span className="text-sm">{t("addFromOtherCategory")}</span>
             </button>
           </div>
         )}
@@ -1148,9 +1154,9 @@ const BookingPage = () => {
         {step === 2 && (
           <div className="animate-fade-in">
             <div className="mb-6">
-              <p className="overline mb-2">Korak 2</p>
-              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Radnike</h2>
-              <p className="text-[#9CA3AF] text-sm mt-2">Izaberite radnika za svaku uslugu</p>
+              <p className="overline mb-2">{t("step")} 2</p>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">{t("selectWorkers")}</h2>
+              <p className="text-[#9CA3AF] text-sm mt-2">{t("selectWorkerDesc")}</p>
             </div>
 
             <div className="space-y-4 stagger-children">
@@ -1203,7 +1209,7 @@ const BookingPage = () => {
 
             {!allServicesHaveWorkers && (
               <p className="text-center text-[#9CA3AF] text-sm mt-4">
-                Izaberite radnika za svaku uslugu da biste nastavili
+                {t("selectWorkerToContinue")}
               </p>
             )}
           </div>
@@ -1213,13 +1219,13 @@ const BookingPage = () => {
         {step === 3 && (
           <div className="animate-fade-in">
             <div className="mb-6">
-              <p className="overline mb-2">Korak 3</p>
-              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Izaberite Termin</h2>
+              <p className="overline mb-2">{t("step")} 3</p>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">{t("selectAppointment")}</h2>
             </div>
 
             {/* Date Selection */}
             <div className="mb-6">
-              <p className="text-sm text-[#9CA3AF] mb-3">Datum</p>
+              <p className="text-sm text-[#9CA3AF] mb-3">{t("date")}</p>
               <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
                 {dates.map((date) => {
                   const isSelected = selectedDate && isSameDay(date, selectedDate);
@@ -1260,7 +1266,7 @@ const BookingPage = () => {
             {/* Time Selection */}
             {selectedDate && (
               <div className="animate-fade-in">
-                <p className="text-sm text-[#9CA3AF] mb-3">Dostupni termini</p>
+                <p className="text-sm text-[#9CA3AF] mb-3">{t("availableTimes")}</p>
                 {availableSlots.length > 0 ? (
                   <div className="grid grid-cols-4 gap-2">
                     {availableSlots.map((time) => {
@@ -1280,8 +1286,8 @@ const BookingPage = () => {
                 ) : (
                   <div className="text-center py-8 text-[#9CA3AF]">
                     <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Nema dostupnih termina za ovaj datum</p>
-                    <p className="text-xs mt-1">Proverite da li su svi radnici dostupni</p>
+                    <p>{t("noSlotsAvailable")}</p>
+                    <p className="text-xs mt-1">{t("checkWorkerAvailability")}</p>
                   </div>
                 )}
               </div>
@@ -1293,14 +1299,14 @@ const BookingPage = () => {
         {step === 4 && (
           <div className="animate-fade-in">
             <div className="mb-6">
-              <p className="overline mb-2">Korak 4</p>
-              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Vaši Podaci</h2>
+              <p className="overline mb-2">{t("step")} 4</p>
+              <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">{t("yourDetails")}</h2>
             </div>
 
             <div className="space-y-4">
               {/* Pi Identity */}
               <div>
-                <label className="text-sm text-[#9CA3AF] mb-2 block">Pi Nalog</label>
+                <label className="text-sm text-[#9CA3AF] mb-2 block">{t("piAccount")}</label>
                 <div className="flex items-center gap-3 bg-[var(--color-surface)] border border-[#2A2A2D] rounded-lg px-4 h-14" data-testid="pi-identity-card">
                   <Shield className="w-5 h-5 text-[var(--color-primary)]" />
                   <span className="text-white font-medium">@{piUser?.username || "—"}</span>
@@ -1311,7 +1317,7 @@ const BookingPage = () => {
               </div>
 
               <div>
-                <label className="text-sm text-[#9CA3AF] mb-2 block">Broj Telefona</label>
+                <label className="text-sm text-[#9CA3AF] mb-2 block">{t("phoneNumber")}</label>
                 <PhoneInput
                   value={clientPhone}
                   onChange={setClientPhone}
@@ -1321,20 +1327,20 @@ const BookingPage = () => {
               </div>
 
               <div>
-                <label className="text-sm text-[#9CA3AF] mb-2 block">Email Adresa</label>
+                <label className="text-sm text-[#9CA3AF] mb-2 block">{t("emailAddress")}</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
                   <Input
                     type="email"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
-                    placeholder="primer@mail.com"
+                    placeholder={t("emailPlaceholder")}
                     className={`pl-12 bg-[var(--color-surface)] focus:border-[var(--color-primary)] h-14 ${clientEmail && !isValidEmail(clientEmail) ? "border-red-400" : "border-[#2A2A2D]"}`}
                     data-testid="client-email-input"
                   />
                 </div>
                 {clientEmail && !isValidEmail(clientEmail) && (
-                  <p className="text-xs text-red-400 mt-1" data-testid="email-error">Molimo unesite ispravnu email adresu (npr. ime@gmail.com)</p>
+                  <p className="text-xs text-red-400 mt-1" data-testid="email-error">{t("emailError")}</p>
                 )}
               </div>
             </div>
@@ -1343,9 +1349,9 @@ const BookingPage = () => {
             {blacklistError && (
               <div className="mt-6 p-5 bg-red-500/10 border border-red-500/30 rounded-xl text-center" data-testid="blacklist-error">
                 <Ban className="w-8 h-8 text-red-400 mx-auto mb-3" />
-                <p className="font-medium text-red-400 mb-1">Zakazivanje nije moguće</p>
+                <p className="font-medium text-red-400 mb-1">{t("bookingBlocked")}</p>
                 <p className="text-sm text-[#9CA3AF]">
-                  Nažalost, zakazivanje nije moguće sa ovog broja telefona. Molimo kontaktirajte salon direktno.
+                  {t("bookingBlockedDesc")}
                 </p>
               </div>
             )}
@@ -1353,14 +1359,14 @@ const BookingPage = () => {
             {/* Booking Summary */}
             <div className="mt-8 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">Pregled Rezervacije</h3>
+                <h3 className="font-medium">{t("bookingSummary")}</h3>
                 <button
                   onClick={() => { setStep(1); setSelectedCategory(null); }}
                   className="flex items-center gap-1.5 text-xs text-[var(--color-primary)] hover:text-[#B89970] transition-colors"
                   data-testid="edit-services-link"
                 >
                   <Pencil className="w-3 h-3" />
-                  Izmeni usluge
+                  {t("editServices")}
                 </button>
               </div>
               <div className="space-y-3 text-sm">
@@ -1384,35 +1390,34 @@ const BookingPage = () => {
                 </div>
                 
                 <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
-                  <span className="text-[#9CA3AF]">Datum:</span>
+                  <span className="text-[#9CA3AF]">{t("date")}:</span>
                   <span>{selectedDate && format(selectedDate, "d. MMMM yyyy", { locale: sr })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#9CA3AF]">Vreme:</span>
+                  <span className="text-[#9CA3AF]">{t("time")}:</span>
                   <span>{selectedTime}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#9CA3AF]">Trajanje:</span>
-                  <span>{totalDuration} min</span>
+                  <span className="text-[#9CA3AF]">{t("duration")}:</span>
+                  <span>{totalDuration} {t("min")}</span>
                 </div>
                 <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
-                  <span className="font-medium">Ukupno:</span>
+                  <span className="font-medium">{t("total")}:</span>
                   <span className="font-semibold text-[var(--color-primary)] text-lg">{totalPrice} π</span>
                 </div>
               </div>
             </div>
 
             <p className="text-xs text-[#9CA3AF] mt-4 text-center">
-              Klikom na "Potvrdi Rezervaciju" prihvatate uslove korišćenja.
-              Avans je obavezan 24h pre termina.
+              {t("tosNote")}
             </p>
 
             {/* Urgent slot warning */}
             {isUrgentSlot && (
               <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl" data-testid="urgent-slot-warning">
-                <p className="text-sm text-orange-400 font-medium mb-1">Napomena: Izabrali ste termin za danas.</p>
+                <p className="text-sm text-orange-400 font-medium mb-1">{t("urgentNote")}</p>
                 <p className="text-xs text-[#9CA3AF]">
-                  Molimo vas da odmah nakon zakazivanja pošaljete dokaz o uplati kako bismo osigurali vaše mesto, ili nas pozovite telefonom.
+                  {t("urgentDesc")}
                 </p>
               </div>
             )}
@@ -1427,7 +1432,7 @@ const BookingPage = () => {
           {selectedServices.length > 0 && step < 4 && (
             <div className="flex justify-between items-center mb-3 text-sm">
               <span className="text-[#9CA3AF]">
-                {selectedServices.length} usluga · {totalDuration} min
+                {selectedServices.length} {t("serviceCount_1")} · {totalDuration} {t("min")}
               </span>
               <span className="font-semibold text-[var(--color-primary)]">{totalPrice} π</span>
             </div>
@@ -1443,7 +1448,7 @@ const BookingPage = () => {
                 data-testid="prev-step-btn"
               >
                 <ChevronLeft className="w-5 h-5 mr-2" />
-                Nazad
+                {t("back")}
               </Button>
             )}
 
@@ -1458,7 +1463,7 @@ const BookingPage = () => {
                 className="flex-1 h-14 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-50"
                 data-testid="next-step-btn"
               >
-                Dalje
+                {t("next")}
                 <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             ) : (
@@ -1468,7 +1473,7 @@ const BookingPage = () => {
                 className="flex-1 h-14 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium disabled:opacity-50"
                 data-testid="confirm-booking-btn"
               >
-                {isSubmitting ? "Obrada..." : "Potvrdi Rezervaciju"}
+                {isSubmitting ? t("processing") : t("confirmBooking")}
               </Button>
             )}
           </div>
@@ -1480,7 +1485,7 @@ const BookingPage = () => {
               className="text-[#3A3A3D] text-xs hover:text-[#9CA3AF] transition-colors"
               data-testid="admin-link-footer"
             >
-              Admin Login
+              {t("adminLogin")}
             </a>
           </div>
         </div>

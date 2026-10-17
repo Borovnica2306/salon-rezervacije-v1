@@ -5,6 +5,7 @@ import axios from "axios";
 import { initAuthStorage, getToken, setToken, removeToken } from "./authStorage";
 import { applyTheme, DEFAULT_THEME } from "./config";
 import { PiAuthProvider } from "./context/PiAuthContext";
+import { LangProvider } from "./i18n";
 
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -183,6 +184,7 @@ const ProtectedSuperAdmin = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
+      <LangProvider>
       <div className="App min-h-screen bg-transparent">
         <Toaster
           position="top-center"
@@ -233,6 +235,7 @@ function App() {
           </Suspense>
         </BrowserRouter>
       </div>
+      </LangProvider>
     </AuthProvider>
   );
 }
