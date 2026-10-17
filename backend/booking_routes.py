@@ -698,11 +698,23 @@ async def client_cancel_reservation(reservation_id: str, request_body: ClientRes
 
 # ================== RESCHEDULE ==================
 
+def _ttm(t: str) -> int:
+    """Time string 'HH:MM' to minutes."""
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
+
+def _mtt(m: int) -> str:
+    """Minutes to 'HH:MM' string."""
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
 @router.put("/reservations/{reservation_id}/reschedule")
 async def reschedule_reservation(reservation_id: str, body: dict, request: Request, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
     tid = user.get("tenant_id", "") or request.headers.get("X-Tenant-ID", "")
     new_time = body.get("new_time", "")
     new_worker_id = body.get("new_worker_id", "")
+    block_index = body.get("block_index")  # Which block was dragged (None = single-service)
+
     if not new_time or not new_worker_id:
         raise HTTPException(status_code=400, detail="new_time and new_worker_id required")
 
@@ -716,72 +728,178 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
 
     old_time = res.get("time", "")
     old_worker_name = res.get("worker_name", "")
-    duration = res.get("total_duration", 30)
+    blocks = res.get("worker_time_blocks", [])
+    pairs = res.get("service_worker_pairs", [])
+    date = res["date"]
 
-    start_min = int(new_time.split(":")[0]) * 60 + int(new_time.split(":")[1])
-    end_min = start_min + duration
-    new_end_time = f"{end_min // 60:02d}:{end_min % 60:02d}"
+    # ===== MULTI-SERVICE PACKAGE RESCHEDULE =====
+    if blocks and len(blocks) > 1:
+        # Determine which block was dragged
+        dragged_idx = block_index if block_index is not None and 0 <= block_index < len(blocks) else 0
+        dragged_block = blocks[dragged_idx]
 
-    overlap = await db.reservations.find_one({
-        "_id": {"$ne": ObjectId(reservation_id)},
-        "tenant_id": tid,
-        "date": res["date"],
-        "status": "confirmed",
-        "$or": [
-            {"worker_id": new_worker_id},
-            {"service_worker_pairs.worker_id": new_worker_id},
-        ],
-        "time": {"$lt": new_end_time},
-        "end_time": {"$gt": new_time},
-    })
-    if overlap:
-        raise HTTPException(status_code=400, detail="Termin je zauzet")
+        # Calculate time delta
+        old_dragged_start = _ttm(dragged_block["start_time"])
+        new_dragged_start = _ttm(new_time)
+        delta = new_dragged_start - old_dragged_start
 
-    # Anti-Conflict: check if the SAME CLIENT already has an overlapping booking
-    client_phone = res.get("client_phone", "")
-    if client_phone:
-        client_overlap = await db.reservations.find_one({
+        # Shift ALL blocks by delta; only dragged block gets new worker
+        new_blocks = []
+        for i, b in enumerate(blocks):
+            old_start = _ttm(b["start_time"])
+            old_end = _ttm(b["end_time"])
+            shifted_start = old_start + delta
+            shifted_end = old_end + delta
+
+            nb = {**b}
+            nb["start_time"] = _mtt(shifted_start)
+            nb["end_time"] = _mtt(shifted_end)
+
+            if i == dragged_idx:
+                nb["worker_id"] = new_worker_id
+                if pairs and i < len(pairs):
+                    pairs[i]["worker_id"] = new_worker_id
+                    pairs[i]["worker_name"] = new_worker["name"]
+
+            new_blocks.append(nb)
+
+        # Overall reservation time range
+        package_start = min(_ttm(b["start_time"]) for b in new_blocks)
+        package_end = max(_ttm(b["end_time"]) for b in new_blocks)
+
+        # ===== OVERLAP CHECK FOR EVERY WORKER IN THE PACKAGE =====
+        checked_workers = {}
+        for b in new_blocks:
+            wid = b["worker_id"]
+            b_start = b["start_time"]
+            b_end = b["end_time"]
+
+            # Fetch worker name for error messages
+            if wid not in checked_workers:
+                w = await db.workers.find_one({"_id": ObjectId(wid)}, {"name": 1})
+                checked_workers[wid] = w["name"] if w else wid
+
+            overlap = await db.reservations.find_one({
+                "_id": {"$ne": ObjectId(reservation_id)},
+                "tenant_id": tid,
+                "date": date,
+                "status": {"$ne": "cancelled"},
+                "$or": [
+                    {"worker_id": wid},
+                    {"service_worker_pairs.worker_id": wid},
+                    {"worker_time_blocks.worker_id": wid},
+                ],
+                "time": {"$lt": b_end},
+                "end_time": {"$gt": b_start},
+            })
+            if overlap:
+                svc_name = ""
+                if pairs and new_blocks.index(b) < len(pairs):
+                    svc_name = pairs[new_blocks.index(b)].get("service_name", "")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Radnik {checked_workers[wid]} je zauzet u {b_start}-{b_end}" +
+                           (f" (usluga: {svc_name})" if svc_name else "") +
+                           ". Ceo paket nije moguće premestiti."
+                )
+
+        # Client overlap check for the full package time range
+        client_phone = res.get("client_phone", "")
+        if client_phone:
+            client_overlap = await db.reservations.find_one({
+                "_id": {"$ne": ObjectId(reservation_id)},
+                "tenant_id": tid,
+                "date": date,
+                "status": {"$ne": "cancelled"},
+                "client_phone": client_phone,
+                "time": {"$lt": _mtt(package_end)},
+                "end_time": {"$gt": _mtt(package_start)},
+            })
+            if client_overlap:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Klijent već ima zakazan termin koji se preklapa sa ovim vremenom."
+                )
+
+        # All checks passed — update
+        update = {
+            "time": _mtt(package_start),
+            "end_time": _mtt(package_end),
+            "worker_time_blocks": new_blocks,
+            "service_worker_pairs": pairs,
+            "is_rescheduled": True,
+        }
+        # Update primary worker_id to the first block's worker
+        update["worker_id"] = new_blocks[0]["worker_id"]
+        w0 = await db.workers.find_one({"_id": ObjectId(new_blocks[0]["worker_id"])}, {"name": 1})
+        update["worker_name"] = w0["name"] if w0 else ""
+
+        new_end_time = _mtt(package_end)
+        new_start_time = _mtt(package_start)
+
+    else:
+        # ===== SINGLE-SERVICE RESCHEDULE (original logic) =====
+        duration = res.get("total_duration", 30)
+        start_min = _ttm(new_time)
+        end_min = start_min + duration
+        new_end_time = _mtt(end_min)
+        new_start_time = new_time
+
+        # Worker overlap
+        overlap = await db.reservations.find_one({
             "_id": {"$ne": ObjectId(reservation_id)},
             "tenant_id": tid,
-            "date": res["date"],
+            "date": date,
             "status": {"$ne": "cancelled"},
-            "client_phone": client_phone,
+            "$or": [
+                {"worker_id": new_worker_id},
+                {"service_worker_pairs.worker_id": new_worker_id},
+            ],
             "time": {"$lt": new_end_time},
             "end_time": {"$gt": new_time},
         })
-        if client_overlap:
-            raise HTTPException(
-                status_code=400,
-                detail="Klijent već ima zakazan termin koji se preklapa sa ovim vremenom."
-            )
+        if overlap:
+            raise HTTPException(status_code=400, detail="Termin je zauzet")
 
-    update = {
-        "time": new_time,
-        "end_time": new_end_time,
-        "worker_id": new_worker_id,
-        "worker_name": new_worker["name"],
-        "is_rescheduled": True,
-    }
-    pairs = res.get("service_worker_pairs", [])
-    blocks = res.get("worker_time_blocks", [])
-    if pairs:
-        for p in pairs:
-            p["worker_id"] = new_worker_id
-            p["worker_name"] = new_worker["name"]
-        update["service_worker_pairs"] = pairs
-    if blocks:
-        block_start = start_min
-        for b in blocks:
-            dur = int(b.get("end_time", "00:00").split(":")[0]) * 60 + int(b.get("end_time", "00:00").split(":")[1]) - int(b.get("start_time", "00:00").split(":")[0]) * 60 - int(b.get("start_time", "00:00").split(":")[1])
-            b["worker_id"] = new_worker_id
-            b["worker_name"] = new_worker["name"]
-            b["start_time"] = f"{block_start // 60:02d}:{block_start % 60:02d}"
-            block_start += dur + b.get("gap", 0)
-            b["end_time"] = f"{(block_start - b.get('gap', 0)) // 60:02d}:{(block_start - b.get('gap', 0)) % 60:02d}"
-        update["worker_time_blocks"] = blocks
+        # Client overlap
+        client_phone = res.get("client_phone", "")
+        if client_phone:
+            client_overlap = await db.reservations.find_one({
+                "_id": {"$ne": ObjectId(reservation_id)},
+                "tenant_id": tid,
+                "date": date,
+                "status": {"$ne": "cancelled"},
+                "client_phone": client_phone,
+                "time": {"$lt": new_end_time},
+                "end_time": {"$gt": new_time},
+            })
+            if client_overlap:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Klijent već ima zakazan termin koji se preklapa sa ovim vremenom."
+                )
+
+        update = {
+            "time": new_time,
+            "end_time": new_end_time,
+            "worker_id": new_worker_id,
+            "worker_name": new_worker["name"],
+            "is_rescheduled": True,
+        }
+        if pairs:
+            for p in pairs:
+                p["worker_id"] = new_worker_id
+                p["worker_name"] = new_worker["name"]
+            update["service_worker_pairs"] = pairs
+        if blocks and len(blocks) == 1:
+            blocks[0]["worker_id"] = new_worker_id
+            blocks[0]["start_time"] = new_time
+            blocks[0]["end_time"] = new_end_time
+            update["worker_time_blocks"] = blocks
 
     await db.reservations.update_one({"_id": ObjectId(reservation_id)}, {"$set": update})
 
+    # Send email notification
     client_email = res.get("client_email", "")
     if client_email:
         settings_doc = await db.settings.find_one({"type": "salon", "tenant_id": tid})
@@ -792,19 +910,19 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
             salon_name=salon_name,
             booking_id=res.get("booking_id", ""),
             client_name=res.get("client_name", ""),
-            date=res.get("date", ""),
-            time=new_time,
+            date=date,
+            time=new_start_time,
             end_time=new_end_time,
             service_worker_pairs=pairs,
             total_price=res.get("total_price", 0),
-            total_duration=duration,
+            total_duration=res.get("total_duration", 30),
             lang=res.get("lang", "sr"),
         )
 
     return {
         "message": "Rescheduled",
         "old_time": old_time,
-        "new_time": new_time,
+        "new_time": new_start_time,
         "old_worker": old_worker_name,
         "new_worker": new_worker["name"],
     }

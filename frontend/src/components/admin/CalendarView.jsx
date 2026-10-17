@@ -160,6 +160,22 @@ const ReservationsPage = () => {
 
     const newTime = mtt(slotMin);
     const targetWorker = workers.find(w => w.id === workerId);
+
+    // Determine which block index was dragged (for multi-service packages)
+    const blocks = dragData.res.worker_time_blocks || [];
+    let draggedBlockIndex = -1;
+    if (blocks.length > 1 && dragData.block) {
+      draggedBlockIndex = blocks.findIndex(b =>
+        b.worker_id === dragData.block.res?.worker_time_blocks?.find(
+          wb => wb.start_time === mtt(dragData.block.startMin) && wb.worker_id === dragData.block.res?.worker_id
+        )?.worker_id && b.start_time === mtt(dragData.block.startMin)
+      );
+      // Fallback: match by start_time
+      if (draggedBlockIndex === -1) {
+        draggedBlockIndex = blocks.findIndex(b => b.start_time === mtt(dragData.block.startMin));
+      }
+    }
+
     setRescheduleModal({
       res: dragData.res,
       oldTime: dragData.res.time,
@@ -167,6 +183,7 @@ const ReservationsPage = () => {
       newTime,
       newWorkerId: workerId,
       newWorker: targetWorker?.name || "",
+      blockIndex: draggedBlockIndex >= 0 ? draggedBlockIndex : undefined,
     });
     setDragData(null);
     setDropTarget(null);
@@ -178,10 +195,14 @@ const ReservationsPage = () => {
     if (!rescheduleModal) return;
     setRescheduling(true);
     try {
-      await axios.put(`${API}/reservations/${rescheduleModal.res.id}/reschedule`, {
+      const payload = {
         new_time: rescheduleModal.newTime,
         new_worker_id: rescheduleModal.newWorkerId,
-      }, { headers });
+      };
+      if (rescheduleModal.blockIndex !== undefined) {
+        payload.block_index = rescheduleModal.blockIndex;
+      }
+      await axios.put(`${API}/reservations/${rescheduleModal.res.id}/reschedule`, payload, { headers });
       toast.success("Termin uspešno premešten");
       setRescheduleModal(null);
       fetchReservations();
