@@ -737,6 +737,24 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
     if overlap:
         raise HTTPException(status_code=400, detail="Termin je zauzet")
 
+    # Anti-Conflict: check if the SAME CLIENT already has an overlapping booking
+    client_phone = res.get("client_phone", "")
+    if client_phone:
+        client_overlap = await db.reservations.find_one({
+            "_id": {"$ne": ObjectId(reservation_id)},
+            "tenant_id": tid,
+            "date": res["date"],
+            "status": {"$ne": "cancelled"},
+            "client_phone": client_phone,
+            "time": {"$lt": new_end_time},
+            "end_time": {"$gt": new_time},
+        })
+        if client_overlap:
+            raise HTTPException(
+                status_code=400,
+                detail="Klijent već ima zakazan termin koji se preklapa sa ovim vremenom."
+            )
+
     update = {
         "time": new_time,
         "end_time": new_end_time,
