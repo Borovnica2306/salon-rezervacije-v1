@@ -11,6 +11,12 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
 import { sr } from "date-fns/locale";
+import { srLatn } from "date-fns/locale/sr-Latn";
+import { enUS } from "date-fns/locale/en-US";
+import { id as idLocale } from "date-fns/locale/id";
+import { ptBR } from "date-fns/locale/pt-BR";
+import { es as esLocale } from "date-fns/locale/es";
+import { fr as frLocale } from "date-fns/locale/fr";
 import { useParams } from "react-router-dom";
 import {
   Dialog,
@@ -45,6 +51,9 @@ const BookingPage = () => {
   const { slug } = useParams();
   const { piUser, loading: piLoading, isSandbox } = usePiAuth();
   const { t, tc, ts } = useLang();
+  const { lang } = useLang();
+  const DATE_LOCALES = { sr: srLatn, en: enUS, id: idLocale, tl: enUS, "pt-BR": ptBR, es: esLocale, fr: frLocale };
+  const dateLocale = DATE_LOCALES[lang] || srLatn;
   const tHeaders = getTenantHeaders(tenant?.tenant_id);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
@@ -456,7 +465,7 @@ const BookingPage = () => {
   }, {});
 
   const categoryLabels = Object.fromEntries(
-    categories.map(c => [c.key, tc(c.key)])
+    categories.map(c => [c.key, tc(c.key, c.label)])
   );
 
   const categoryImages = {
@@ -1021,8 +1030,8 @@ const BookingPage = () => {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
                     <div className="relative h-full flex flex-col justify-end p-4">
-                      <h3 className="font-medium text-base text-white drop-shadow-md">{tc(cat.key)}</h3>
-                      <p className="text-xs text-white/70 mt-0.5">{count} {count === 1 ? "usluga" : count < 5 ? "usluge" : "usluga"}</p>
+                      <h3 className="font-medium text-base text-white drop-shadow-md">{categoryLabels[cat.key] || cat.label}</h3>
+                      <p className="text-xs text-white/70 mt-0.5">{count} {count === 1 ? t("serviceCount_1") : count < 5 ? t("serviceCount_2_4") : t("serviceCount_5")}</p>
                     </div>
                   </button>
                 );
@@ -1254,11 +1263,11 @@ const BookingPage = () => {
                       data-testid={`date-${dateKey}`}
                     >
                       <p className="text-xs text-[#9CA3AF] uppercase">
-                        {format(date, "EEE", { locale: sr })}
+                        {format(date, "EEE", { locale: dateLocale })}
                       </p>
                       <p className="text-lg font-medium">{format(date, "d")}</p>
                       <p className="text-xs text-[#9CA3AF]">
-                        {format(date, "MMM", { locale: sr })}
+                        {format(date, "MMM", { locale: dateLocale })}
                       </p>
                     </button>
                   );
@@ -1394,7 +1403,7 @@ const BookingPage = () => {
                 
                 <div className="border-t border-[#2A2A2D] pt-3 flex justify-between">
                   <span className="text-[#9CA3AF]">{t("date")}:</span>
-                  <span>{selectedDate && format(selectedDate, "d. MMMM yyyy", { locale: sr })}</span>
+                  <span>{selectedDate && format(selectedDate, "d. MMMM yyyy", { locale: dateLocale })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#9CA3AF]">{t("time")}:</span>

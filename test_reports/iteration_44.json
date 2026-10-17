@@ -1,0 +1,36 @@
+{
+  "summary": "Frontend-only test of 3 i18n fixes on /beauty-studio-bor (desktop 1920x1080). PhoneInput: 19 countries incl. ID/PH/BR/ES/US/FR; selecting Indonesia/Philippines works, leading 0 stripped (0812345678 -> 812345678). My Reservations modal: LanguageSelector visible inside the modal next to the title; switching sr->en->es updates the title/description inside the modal, the modal stays open, the choice is saved to localStorage and the header updates too. Category cards translate correctly in sr/en/pt-BR/es/fr. Service names translate for the services the review named (Šišanje->Haircut/Corte/Coupe, Manikir->Manicure/Manicura/Manucure), in Step 1, the Step 2 worker cards and the Step 4 summary. Language persists after reload. Serbian regression OK. Booking flow reaches Step 4 summary end-to-end (confirm not clicked). MAIN GAP: most real tenant services are NOT translated because the SERVICES dict keys do not match the DB service names.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "i18n.js SERVICES dict / ts()", "issue": "Only 6 of 21 real beauty-studio-bor services match in EN (5 in es/fr). Untranslated DB names, e.g.: 'Farbanje kose' (dict has 'Farbanje'), 'Relax masaža' (dict 'Relaks masaža'), 'Sportska masaza' (no diacritic), 'Izvlacenje pramenova', 'Anti stres masaza', ' Izlivanje noktiju' / ' Higijensko čišćenje lica' / ' Nadogradnja trepavica (1 na 1)' (leading spaces), 'Svečana/Večernja šminka', 'Probna šminka za mlade', 'Depilacija ruku (hladni vosak)', 'Intimna depilacija (šećerna pasta)', 'Klasičan tretman lica', 'Anti-age tretman sa hijaluronom', 'Korekcija i farbanje obrva'. Verified in UI: in EN, the Hair category shows 'Haircut', 'Farbanje kose', 'Izvlacenje pramenova'.", "selector": "[data-testid='service-69d3b77e0b47ad8f729e9ba3']", "priority": "HIGH"},
+      {"component": "BookingPage category card", "issue": "Service count label hardcoded in Serbian: '3 usluge' / 'usluga' shows in every language (line ~1025)", "selector": "[data-testid^='category-card-'] p", "priority": "MEDIUM"},
+      {"component": "BookingPage dates", "issue": "date-fns locale is hardcoded to `sr` (Cyrillic). In EN, the Step 3 date strip shows 'СУБ/ОКТ' and the Step 4 summary date shows '19. октобар 2026'. Should map lang -> date-fns locale (enUS, es, fr, ptBR, id, srLatn).", "selector": "[data-testid^='date-']", "priority": "MEDIUM"},
+      {"component": "i18n.js tc()", "issue": "tc() ignores the backend category `label`. For a custom tenant category whose key is not in CATEGORIES, it falls back to the raw slug key (e.g. 'solarium') even in Serbian, instead of the label from the DB. Fallback should be cat.label.", "selector": "[data-testid^='category-card-']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PhoneInput", "issues": ["Validation error text hardcoded in Serbian (PhoneInput.jsx lines 108, 129) - not translated", "Default country is always Srbija regardless of selected language (optional: default by language, e.g. id->ID, tl->PH, pt-BR->BR)"]},
+      {"screen": "Header", "issues": ["Header shows 'Beauty Studio Marko' while hero shows 'Beauty Studio Bor' (inconsistent naming)"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Make service translation robust: trim names in ts() (and/or in the DB), add dict entries for the actual tenant service names, or better, store per-language names on the service document (service.translations[lang]) and edit them in admin",
+    "Translate the category card count label ('usluga/usluge') via t()",
+    "Use a date-fns locale based on the current language instead of the hardcoded `sr`",
+    "tc(): fall back to the backend category label instead of the key; pass the cat object or label",
+    "Translate PhoneInput error message"
+  ],
+  "critical_code_review_comments": [
+    "BookingPage.jsx is 1500+ lines - split it into step components",
+    "ts() does an exact-match lookup on free-text admin-entered names - brittle; whitespace/diacritic variations break it",
+    "Two elements with data-testid='language-selector-btn' exist while the modal is open (header + modal) - give the modal one a unique testid"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "85% (13/14 requested checks pass; service translation only partially works on real data)"},
+  "seed_data_creation": "None. No reservations created (Confirm Booking not clicked).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Tenant beauty-studio-bor. Services API: GET /api/services with X-Tenant-ID: tenant_bsb_001. Language via localStorage 'salon_lang'. Time slot testids: time-HH:MM; dates: date-YYYY-MM-DD (no date preselected - click one); worker: worker-{serviceId}-{workerId}; next-step-btn. Haircut id 69d3b77e0b47ad8f729e9ba2, Manikir id 69d3b77e0b47ad8f729e9ba4."
+}

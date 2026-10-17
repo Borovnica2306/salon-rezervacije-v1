@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Input } from "./ui/input";
 import { Phone } from "lucide-react";
+import { useLang } from "../i18n";
 
 const COUNTRIES = [
   { code: "RS", name: "Srbija", prefix: "+381" },
@@ -55,6 +56,7 @@ export const PhoneInput = ({
   className = "",
   "data-testid": testId = "phone-input",
 }) => {
+  const { t } = useLang();
   const detected = detectCountryFromValue(value);
   const [country, setCountry] = useState(detected);
   const localNum = extractLocalNumber(value, country.prefix);
@@ -105,7 +107,7 @@ export const PhoneInput = ({
       </div>
       {hasError && (
         <p className="text-xs text-red-400 mt-1" data-testid={`${testId}-error`}>
-          Broj telefona mora imati između {MIN_LOCAL_DIGITS} i {MAX_LOCAL_DIGITS} cifara (ne računajući pozivni broj)
+          {t("phoneValidationError")}
         </p>
       )}
     </div>
