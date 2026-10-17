@@ -66,7 +66,6 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
   const [piPaymentPending, setPiPaymentPending] = useState(false);
   const [piPaymentData, setPiPaymentData] = useState(null);
-  const [showAddService, setShowAddService] = useState(false);
 
   // My Reservations state
   const [showMyReservations, setShowMyReservations] = useState(false);
@@ -1105,15 +1104,24 @@ const BookingPage = () => {
               })}
             </div>
 
-            {/* Selected services summary */}
+            {/* Selected services summary — across ALL categories */}
             {selectedServices.length > 0 && (
               <div className="mt-6 p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-primary)]/30">
                 <p className="text-sm text-[#9CA3AF] mb-2">Izabrane usluge ({selectedServices.length}):</p>
                 <div className="space-y-1">
                   {selectedServices.map(s => (
-                    <div key={s.id} className="flex justify-between text-sm">
+                    <div key={s.id} className="flex items-center justify-between text-sm">
                       <span>{s.name} <span className="text-[#9CA3AF]">({categoryLabels[s.category] || s.category})</span></span>
-                      <span className="text-[var(--color-primary)]">{s.price} π</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[var(--color-primary)]">{s.price} π</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleServiceToggle(s); }}
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-[#6B7280] hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                          data-testid={`remove-step1-${s.id}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1123,6 +1131,16 @@ const BookingPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Add service from another category */}
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="w-full mt-4 p-3 rounded-xl border border-dashed border-[#2A2A2D] hover:border-[var(--color-primary)]/50 text-[#9CA3AF] hover:text-[var(--color-primary)] transition-all flex items-center justify-center gap-2"
+              data-testid="add-from-other-category-btn"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm">Dodaj uslugu iz druge kategorije</span>
+            </button>
           </div>
         )}
 
@@ -1182,65 +1200,6 @@ const BookingPage = () => {
                 );
               })}
             </div>
-
-            {/* Add additional service button */}
-            {!showAddService ? (
-              <button
-                onClick={() => setShowAddService(true)}
-                className="w-full mt-4 p-3 rounded-xl border border-dashed border-[#2A2A2D] hover:border-[var(--color-primary)]/50 text-[#9CA3AF] hover:text-[var(--color-primary)] transition-all flex items-center justify-center gap-2"
-                data-testid="add-service-btn"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="text-sm">{"Dodaj još jednu uslugu"}</span>
-              </button>
-            ) : (
-              <div className="mt-4 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] p-4 animate-fade-in" data-testid="add-service-picker">
-                <div className="flex justify-between items-center mb-3">
-                  <p className="text-sm font-medium">{"Izaberite dodatnu uslugu"}</p>
-                  <button onClick={() => setShowAddService(false)} className="text-[#9CA3AF] hover:text-white">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {services
-                    .filter(s => s.active && !selectedServices.find(sel => sel.id === s.id))
-                    .filter(s => getWorkersForService(s.id).length > 0)
-                    .map(service => (
-                      <button
-                        key={service.id}
-                        onClick={() => {
-                          handleServiceToggle(service);
-                          setShowAddService(false);
-                        }}
-                        className="w-full p-3 rounded-lg border border-[#2A2A2D] bg-[var(--color-background)] hover:border-[var(--color-primary)]/50 text-left transition-all"
-                        data-testid={`add-service-${service.id}`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-sm font-medium">{service.name}</p>
-                            <p className="text-xs text-[#9CA3AF]">{service.duration} min</p>
-                          </div>
-                          <span className="text-sm text-[var(--color-primary)]">{service.price} π</span>
-                        </div>
-                      </button>
-                    ))
-                  }
-                  {services.filter(s => s.active && !selectedServices.find(sel => sel.id === s.id) && getWorkersForService(s.id).length > 0).length === 0 && (
-                    <p className="text-center text-[#6B7280] text-sm py-4">{"Nema dodatnih dostupnih usluga"}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Summary bar */}
-            {selectedServices.length > 1 && (
-              <div className="mt-4 p-3 bg-[var(--color-surface)] rounded-xl border border-[var(--color-primary)]/20">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#9CA3AF]">{selectedServices.length} usluge · {selectedServices.reduce((s, svc) => s + svc.duration, 0)} min</span>
-                  <span className="text-[var(--color-primary)] font-medium">{selectedServices.reduce((s, svc) => s + svc.price, 0)} π</span>
-                </div>
-              </div>
-            )}
 
             {!allServicesHaveWorkers && (
               <p className="text-center text-[#9CA3AF] text-sm mt-4">
