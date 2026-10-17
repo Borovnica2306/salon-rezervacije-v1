@@ -248,6 +248,7 @@ const BookingPage = () => {
         client_email: clientEmail.trim().toLowerCase(),
         pi_username: piUser.username,
         pi_uid: piUser.uid,
+        lang: lang,
       }, { headers: tHeaders });
       
       const booking = response.data;

@@ -759,14 +759,36 @@ const SERVICES = {
   },
 };
 
+const SUPPORTED_CODES = LANGUAGES.map(l => l.code);
+
+function detectBrowserLang() {
+  try {
+    const nav = (navigator.language || "").toLowerCase();
+    // Exact match (e.g. pt-br → pt-BR)
+    const exact = SUPPORTED_CODES.find(c => c.toLowerCase() === nav);
+    if (exact) return exact;
+    // Prefix match (e.g. fr-FR → fr, es-MX → es, id-ID → id)
+    const prefix = nav.split("-")[0];
+    const match = SUPPORTED_CODES.find(c => c.toLowerCase() === prefix || c.toLowerCase().startsWith(prefix));
+    if (match) return match;
+  } catch {}
+  return DEFAULT_LANG;
+}
+
 const LangContext = createContext();
 
 export const SUPPORTED_LANGUAGES = LANGUAGES;
 
 export const LangProvider = ({ children }) => {
   const [lang, setLangState] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_LANG; }
-    catch { return DEFAULT_LANG; }
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) return stored;
+    } catch {}
+    // First visit — auto-detect from browser
+    const detected = detectBrowserLang();
+    try { localStorage.setItem(STORAGE_KEY, detected); } catch {}
+    return detected;
   });
 
   const setLang = useCallback((code) => {

@@ -86,6 +86,7 @@ class ReservationCreate(BaseModel):
     client_email: str = ""
     pi_username: Optional[str] = None
     pi_uid: Optional[str] = None
+    lang: str = "sr"
 
 class ReservationResponse(BaseModel):
     id: str

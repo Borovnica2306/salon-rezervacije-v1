@@ -207,6 +207,7 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
         "client_email": reservation.client_email.strip().lower(),
         "pi_username": reservation.pi_username or "",
         "pi_uid": reservation.pi_uid or "",
+        "lang": reservation.lang or "sr",
         "status": "confirmed",
         "payment_status": "pending_pi_payment" if PAYMENT_MODE == "PI_ECOSYSTEM" else "pending",
         "advance_required": True,
@@ -237,6 +238,7 @@ async def create_reservation(reservation: ReservationCreate, request: Request, b
             service_worker_pairs=service_worker_pairs,
             total_price=total_price,
             total_duration=actual_duration,
+            lang=reservation.lang or "sr",
         )
 
     return ReservationResponse(
