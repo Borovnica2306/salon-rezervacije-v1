@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { Scissors, Building2, ChevronRight, LogIn } from "lucide-react";
+import { Sparkles, Building2, ChevronRight, LogIn } from "lucide-react";
 
 const LandingPage = () => {
   return (
@@ -21,20 +21,20 @@ const LandingPage = () => {
       <div className="flex-1 flex flex-col items-center justify-center px-6 -mt-16">
         <div className="text-center max-w-md mx-auto">
           <div className="w-16 h-16 rounded-2xl bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center mx-auto mb-6">
-            <Scissors className="w-7 h-7 text-[var(--color-primary)]" />
+            <Sparkles className="w-7 h-7 text-[var(--color-primary)]" />
           </div>
           <h1 className="font-['Cormorant_Garamond'] text-4xl sm:text-5xl font-light mb-3 tracking-tight">
-            Beauty Booking
+            BeautyMePi
           </h1>
           <p className="text-[#9CA3AF] text-base mb-10 leading-relaxed">
-            {"Pronađite i zakažite termin u omiljenom salonu lepote"}
+            {"Automatsko zakazivanje i upravljanje vašim salonima na Pi Network mreži."}
           </p>
 
           <div className="space-y-3">
-            <Link to="/info" data-testid="book-appointment-btn">
+            <Link to="/beauty-studio-bor" data-testid="demo-salon-btn">
               <Button className="w-full min-h-[56px] bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium text-base rounded-xl">
-                <Scissors className="w-5 h-5 mr-2" />
-                {"Želim da zakažem termin"}
+                <Sparkles className="w-5 h-5 mr-2" />
+                {"Isprobajte Demo Salon"}
                 <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
