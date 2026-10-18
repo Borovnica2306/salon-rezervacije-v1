@@ -34,3 +34,6 @@ sr (Srpski), en (English), id (Bahasa Indonesia), tl (Filipino/Tagalog), pt-BR (
 
 ## Backlog
 - [ ] P4: Store service translations in DB (admin-editable per tenant)
+
+## 2026-06 Owners page Feature Showcase
+- /vlasnici: video placeholders replaced with browser-frame mockup showcase (4 tabs), images at /frontend/public/mockups/{settings,services,workers,calendar}.png with fallback placeholder; activation card with Pi @Markonijus23 + bornaja23@gmail.com

@@ -1,118 +1,113 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Settings, Tag, Users, CalendarDays, Play, Sparkles, Send } from "lucide-react";
+import { ChevronLeft, Settings, Tag, Users, CalendarDays, Sparkles, Send, ImageIcon } from "lucide-react";
 
-const TUTORIALS = [
-  {
-    id: "setup",
-    icon: Settings,
-    title: "Osnovna podešavanja salona",
-    desc: "Kako podesiti radno vreme, naziv i osnovne informacije o salonu.",
-  },
-  {
-    id: "services",
-    icon: Tag,
-    title: "Dodavanje usluga i cena",
-    desc: "Kreiranje kategorija, unos trajanja i cene svake usluge.",
-  },
-  {
-    id: "workers",
-    icon: Users,
-    title: "Dodavanje radnika i rasporeda",
-    desc: "Kreiranje radnika, smena, pauza i dodela usluga timu.",
-  },
-  {
-    id: "calendar",
-    icon: CalendarDays,
-    title: "Pregled kalendara i rezervacija",
-    desc: "Drag-and-drop raspored, otkazivanje i upravljanje terminima.",
-  },
+// Postavite skrinšotove u /app/frontend/public/mockups/ sa navedenim imenima
+const FEATURES = [
+  { id: "setup", icon: Settings, title: "Osnovna podešavanja", image: "/mockups/settings.png", desc: "Radno vreme, naziv, tema i osnovne informacije o salonu." },
+  { id: "services", icon: Tag, title: "Usluge i cene", image: "/mockups/services.png", desc: "Kategorije, trajanje i cena svake usluge na jednom mestu." },
+  { id: "workers", icon: Users, title: "Radnici i rasporedi", image: "/mockups/workers.png", desc: "Radnici, smene, pauze i nalozi za pristup timu." },
+  { id: "calendar", icon: CalendarDays, title: "Kalendar i rezervacije", image: "/mockups/calendar.png", desc: "Pregled termina po radnicima uz drag-and-drop pomeranje." },
 ];
 
-const VideoPlaceholder = ({ label }) => (
-  <div className="relative aspect-video bg-[#0A0D14] rounded-xl border border-[#2A2A2D] flex items-center justify-center group cursor-pointer overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-    <div className="w-14 h-14 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/40 flex items-center justify-center transition-transform group-hover:scale-110">
-      <Play className="w-6 h-6 text-[var(--color-primary)] ml-0.5" />
+const MockupPlaceholder = ({ title }) => (
+  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0A0D14]" data-testid="mockup-placeholder">
+    <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 flex items-center justify-center">
+      <ImageIcon className="w-5 h-5 text-[var(--color-primary)]" />
     </div>
-    <span className="absolute bottom-3 left-3 text-[11px] text-[#6B7280]">{label}</span>
+    <span className="text-xs text-[#6B7280]">Prikaz ekrana: {title}</span>
   </div>
 );
 
+const BrowserMockup = ({ feature }) => {
+  const [failed, setFailed] = useState({});
+  return (
+    <div className="relative" data-testid="feature-mockup">
+      <div className="absolute -inset-4 bg-[var(--color-primary)]/15 blur-3xl rounded-3xl pointer-events-none" />
+      <div className="relative rounded-xl border border-[#2A2A2D] bg-[#111318] shadow-2xl shadow-black/60 overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#2A2A2D] bg-[#0D0F14]">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
+          <div className="ml-3 flex-1 h-5 rounded-md bg-[#1A1D24] flex items-center px-2 text-[10px] text-[#6B7280] truncate">
+            beautymepi.app/vas-salon/admin
+          </div>
+        </div>
+        <div className="relative aspect-[16/10]">
+          {failed[feature.id] ? (
+            <MockupPlaceholder title={feature.title} />
+          ) : (
+            <img
+              key={feature.id}
+              src={feature.image}
+              alt={feature.title}
+              onError={() => setFailed((f) => ({ ...f, [feature.id]: true }))}
+              className="absolute inset-0 w-full h-full object-cover object-top animate-in fade-in duration-500"
+              data-testid={`mockup-image-${feature.id}`}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OwnersPage = () => {
   const [activeTab, setActiveTab] = useState("setup");
-  const active = TUTORIALS.find(t => t.id === activeTab) || TUTORIALS[0];
+  const active = FEATURES.find((f) => f.id === activeTab) || FEATURES[0];
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <Link
-          to="/"
-          className="flex items-center gap-1 text-[#9CA3AF] hover:text-white mb-10 transition-colors text-sm"
-          data-testid="owners-back-link"
-        >
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <Link to="/" className="flex items-center gap-1 text-[#9CA3AF] hover:text-white mb-10 transition-colors text-sm" data-testid="owners-back-link">
           <ChevronLeft className="w-4 h-4" />
           Nazad
         </Link>
 
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="font-['Cormorant_Garamond'] text-3xl sm:text-4xl font-light mb-3">
-            {"Za vlasnike salona"}
-          </h1>
-          <p className="text-[#9CA3AF] leading-relaxed max-w-md mx-auto">
-            {"Naučite kako da podesite i koristite BeautyMePi platformu za vaš salon."}
-          </p>
+        <div className="text-center mb-10">
+          <h1 className="font-['Cormorant_Garamond'] text-3xl sm:text-4xl font-light mb-3">Za vlasnike salona</h1>
+          <p className="text-[#9CA3AF] leading-relaxed max-w-md mx-auto">Pogledajte kako izgleda upravljanje vašim salonom u BeautyMePi aplikaciji.</p>
         </div>
 
-        {/* Video Tutorials */}
-        <div className="mb-14">
-          {/* Tab bar */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-            {TUTORIALS.map((tut) => {
-              const Icon = tut.icon;
-              const isActive = tut.id === activeTab;
+        <section className="mb-16" data-testid="feature-showcase">
+          <h2 className="text-xs uppercase tracking-[0.2em] text-[#6B7280] mb-4 text-center">Prikaz funkcionalnosti</h2>
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-8 sm:justify-center scrollbar-hide">
+            {FEATURES.map((f) => {
+              const Icon = f.icon;
+              const isActive = f.id === activeTab;
               return (
                 <button
-                  key={tut.id}
-                  onClick={() => setActiveTab(tut.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-all shrink-0 ${
+                  key={f.id}
+                  onClick={() => setActiveTab(f.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors shrink-0 ${
                     isActive
                       ? "bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/40 text-[var(--color-primary)]"
                       : "bg-[var(--color-surface)] border border-[#2A2A2D] text-[#9CA3AF] hover:border-[#3A3A3D]"
                   }`}
-                  data-testid={`tutorial-tab-${tut.id}`}
+                  data-testid={`feature-tab-${f.id}`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {tut.title}
+                  {f.title}
                 </button>
               );
             })}
           </div>
 
-          {/* Active tutorial */}
-          <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-2xl overflow-hidden" data-testid="tutorial-active-card">
-            <VideoPlaceholder label={active.title} />
-            <div className="p-5">
-              <div className="flex items-center gap-2.5 mb-2">
-                <active.icon className="w-4 h-4 text-[var(--color-primary)]" />
-                <h3 className="font-medium text-white">{active.title}</h3>
-              </div>
-              <p className="text-sm text-[#9CA3AF] leading-relaxed">{active.desc}</p>
-            </div>
-          </div>
-        </div>
+          <BrowserMockup feature={active} />
 
-        {/* Activation CTA */}
+          <div className="mt-6 text-center" data-testid="feature-active-desc">
+            <h3 className="font-medium text-white mb-1">{active.title}</h3>
+            <p className="text-sm text-[#9CA3AF]">{active.desc}</p>
+          </div>
+        </section>
+
         <div className="bg-gradient-to-br from-[var(--color-primary)]/8 to-transparent border border-[var(--color-primary)]/20 rounded-2xl p-8 text-center" data-testid="owners-activation-cta">
           <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-6 h-6 text-[var(--color-primary)]" />
           </div>
-          <h2 className="font-['Cormorant_Garamond'] text-2xl font-light mb-2">
-            {"Zatražite aktivaciju vašeg salona"}
-          </h2>
+          <h2 className="font-['Cormorant_Garamond'] text-2xl font-light mb-2">Registracija salona uskoro</h2>
           <p className="text-sm text-[#9CA3AF] leading-relaxed mb-6 max-w-sm mx-auto">
-            {"Pošaljite nam poruku sa nazivom salona i kontakt podacima. Aktiviraćemo vaš profil u roku od 24h."}
+            Pošaljite nam poruku sa nazivom salona i kontakt podacima. Aktiviraćemo vaš profil u roku od 24h.
           </p>
           <div className="flex flex-col items-center gap-3">
             <a
@@ -123,7 +118,7 @@ const OwnersPage = () => {
               <Send className="w-4 h-4" />
               bornaja23@gmail.com
             </a>
-            <span className="text-xs text-[#6B7280]">Pi username: @MarkoBornaja</span>
+            <span className="text-xs text-[#9CA3AF]" data-testid="activation-pi-username">Pi username: @Markonijus23</span>
           </div>
         </div>
       </div>
