@@ -847,7 +847,7 @@ const BookingPage = () => {
       {step === 1 && (
         <div className="max-w-lg mx-auto px-4 pt-8 pb-4 text-center animate-fade-in">
           <h1 className="font-['Cormorant_Garamond'] text-4xl sm:text-5xl font-light tracking-tight mb-3">
-            Beauty Studio Bor
+            {settings?.salon_name || "Beauty Salon"}
           </h1>
           <p className="text-[#9CA3AF] text-base">
             {t("selectServicesIntro")}
@@ -1489,17 +1489,6 @@ const BookingPage = () => {
                 {isSubmitting ? t("processing") : t("confirmBooking")}
               </Button>
             )}
-          </div>
-          
-          {/* Footer inside bottom bar */}
-          <div className="text-center pt-3 border-t border-[#2A2A2D] mt-3">
-            <a 
-              href={`/${slug}/admin`} 
-              className="text-[#3A3A3D] text-xs hover:text-[#9CA3AF] transition-colors"
-              data-testid="admin-link-footer"
-            >
-              {t("adminLogin")}
-            </a>
           </div>
         </div>
       </div>
