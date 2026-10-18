@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Settings, Tag, Users, CalendarDays, Sparkles, Send, ImageIcon } from "lucide-react";
+import { ChevronLeft, Settings, Tag, Users, CalendarDays, Sparkles, Send, ImageIcon, Maximize2 } from "lucide-react";
 
 // Postavite skrinšotove u /app/frontend/public/mockups/ sa navedenim imenima
 const FEATURES = [
@@ -19,7 +20,7 @@ const MockupPlaceholder = ({ title }) => (
   </div>
 );
 
-const BrowserMockup = ({ feature }) => {
+const BrowserMockup = ({ feature, onZoom }) => {
   const [failed, setFailed] = useState({});
   return (
     <div className="relative" data-testid="feature-mockup">
@@ -33,7 +34,7 @@ const BrowserMockup = ({ feature }) => {
             beautymepi.app/vas-salon/admin
           </div>
         </div>
-        <div className="relative aspect-[16/10]">
+        <div className="relative aspect-[16/10] group">
           {failed[feature.id] ? (
             <MockupPlaceholder title={feature.title} />
           ) : (
@@ -42,9 +43,21 @@ const BrowserMockup = ({ feature }) => {
               src={feature.image}
               alt={feature.title}
               onError={() => setFailed((f) => ({ ...f, [feature.id]: true }))}
-              className="absolute inset-0 w-full h-full object-cover object-top animate-in fade-in duration-500"
+              onClick={onZoom}
+              className="absolute inset-0 w-full h-full object-cover object-top cursor-zoom-in animate-in fade-in duration-500"
               data-testid={`mockup-image-${feature.id}`}
             />
+          )}
+          {!failed[feature.id] && (
+            <button
+              type="button"
+              onClick={onZoom}
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-xs text-white opacity-80 group-hover:opacity-100 transition-opacity"
+              data-testid="mockup-zoom-btn"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              Uvećaj
+            </button>
           )}
         </div>
       </div>
@@ -54,7 +67,18 @@ const BrowserMockup = ({ feature }) => {
 
 const OwnersPage = () => {
   const [activeTab, setActiveTab] = useState("setup");
+  const [paused, setPaused] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const active = FEATURES.find((f) => f.id === activeTab) || FEATURES[0];
+
+  useEffect(() => {
+    if (paused || zoomOpen) return;
+    const t = setTimeout(() => {
+      const i = FEATURES.findIndex((f) => f.id === activeTab);
+      setActiveTab(FEATURES[(i + 1) % FEATURES.length].id);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [activeTab, paused, zoomOpen]);
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -69,7 +93,7 @@ const OwnersPage = () => {
           <p className="text-[#9CA3AF] leading-relaxed max-w-md mx-auto">Pogledajte kako izgleda upravljanje vašim salonom u BeautyMePi aplikaciji.</p>
         </div>
 
-        <section className="mb-16" data-testid="feature-showcase">
+        <section className="mb-16" data-testid="feature-showcase" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
           <h2 className="text-xs uppercase tracking-[0.2em] text-[#6B7280] mb-4 text-center">Prikaz funkcionalnosti</h2>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-8 sm:justify-center scrollbar-hide">
             {FEATURES.map((f) => {
@@ -93,13 +117,26 @@ const OwnersPage = () => {
             })}
           </div>
 
-          <BrowserMockup feature={active} />
+          <BrowserMockup feature={active} onZoom={() => setZoomOpen(true)} />
+          <div className="flex justify-center gap-1.5 mt-5" data-testid="feature-progress">
+            {FEATURES.map((f) => (
+              <span key={f.id} className={`h-1 rounded-full transition-all duration-300 ${f.id === activeTab ? "w-6 bg-[var(--color-primary)]" : "w-1.5 bg-[#2A2A2D]"}`} />
+            ))}
+          </div>
 
           <div className="mt-6 text-center" data-testid="feature-active-desc">
             <h3 className="font-medium text-white mb-1">{active.title}</h3>
             <p className="text-sm text-[#9CA3AF]">{active.desc}</p>
           </div>
         </section>
+
+        <Dialog open={zoomOpen} onOpenChange={setZoomOpen}>
+          <DialogContent className="w-[96vw] max-w-6xl p-2 bg-[#0A0D14] border-[#2A2A2D]" data-testid="mockup-lightbox">
+            <DialogTitle className="sr-only">{active.title}</DialogTitle>
+            <DialogDescription className="sr-only">{active.desc}</DialogDescription>
+            <img src={active.image} alt={active.title} className="w-full h-auto max-h-[88vh] object-contain rounded-lg" data-testid="mockup-lightbox-image" />
+          </DialogContent>
+        </Dialog>
 
         <div className="bg-gradient-to-br from-[var(--color-primary)]/8 to-transparent border border-[var(--color-primary)]/20 rounded-2xl p-8 text-center" data-testid="owners-activation-cta">
           <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center mx-auto mb-4">
