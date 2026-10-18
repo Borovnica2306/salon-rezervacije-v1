@@ -1,171 +1,51 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, ChevronLeft, Sparkles, BarChart3, Clock, Globe, ClipboardList, Users, Share2, X, ChevronRight } from "lucide-react";
+import { ChevronLeft, Settings, Tag, Users, CalendarDays, Play, Sparkles, Send } from "lucide-react";
 
-const GUIDE_STEPS = [
+const TUTORIALS = [
   {
-    icon: ClipboardList,
-    title: "Registracija i podešavanje",
-    short: "Prijavite salon, podesite radno vreme i unesite usluge.",
-    sections: [
-      {
-        heading: "Kreiranje salona",
-        items: [
-          "Super Admin kreira novi salon u sistemu sa nazivom, gradom i emailom vlasnika.",
-          "Automatski se generiše jedinstveni slug (npr. beauty-studio-bor) koji postaje deo vašeg booking linka.",
-        ],
-      },
-      {
-        heading: "Podešavanje radnog vremena",
-        items: [
-          "U Admin Dashboard > Podešavanja unesite početak i kraj radnog vremena salona.",
-          "Ovo je globalni okvir — radnici ne mogu imati smene izvan ovih granica.",
-        ],
-      },
-      {
-        heading: "Kreiranje usluga",
-        items: [
-          "Idite na Admin Dashboard > Usluge i kliknite 'Dodaj uslugu'.",
-          "Unesite naziv, izaberite kategoriju (Kosa, Nokti, Kozmetika...), trajanje u minutima i cenu.",
-          "Usluge možete naknadno deaktivirati bez brisanja — neće se prikazivati klijentima.",
-        ],
-      },
-    ],
+    id: "setup",
+    icon: Settings,
+    title: "Osnovna podešavanja salona",
+    desc: "Kako podesiti radno vreme, naziv i osnovne informacije o salonu.",
   },
   {
+    id: "services",
+    icon: Tag,
+    title: "Dodavanje usluga i cena",
+    desc: "Kreiranje kategorija, unos trajanja i cene svake usluge.",
+  },
+  {
+    id: "workers",
     icon: Users,
-    title: "Dodavanje tima",
-    short: "Dodajte zaposlene i dodelite im njihove rasporede.",
-    sections: [
-      {
-        heading: "Kreiranje radnika",
-        items: [
-          "U Admin Dashboard > Radnici kliknite 'Dodaj Radnika'.",
-          "Unesite ime, odaberite kategorije usluga koje radnik pruža, radno vreme i neradne dane.",
-          "Pauza se podešava odvojeno (npr. 13:00–13:30) i automatski se blokira u kalendaru.",
-        ],
-      },
-      {
-        heading: "Kreiranje naloga za prijavu",
-        items: [
-          "Na kartici radnika kliknite 'Kreiraj nalog za prijavu'.",
-          "Unesite email radnika — sistem automatski generiše privremenu lozinku.",
-          "Kopirajte lozinku i prosledite radniku. Pri prvom loginu, moraće da postavi svoju lozinku.",
-        ],
-      },
-      {
-        heading: "Uloge i pristup",
-        items: [
-          "Radnik (Worker) vidi samo svoj raspored za narednih 7 dana u read-only modu.",
-          "Ne može menjati, otkazivati ili dodavati rezervacije — to ostaje na adminu.",
-          "Admin može u svakom trenutku resetovati lozinku radnika ili obrisati nalog.",
-        ],
-      },
-    ],
+    title: "Dodavanje radnika i rasporeda",
+    desc: "Kreiranje radnika, smena, pauza i dodela usluga timu.",
   },
   {
-    icon: Share2,
-    title: "Podelite link",
-    short: "Dobijate jedinstveni link za salon koji stavljate na Instagram/Facebook.",
-    sections: [
-      {
-        heading: "Vaš jedinstveni URL",
-        items: [
-          "Svaki salon dobija link u formatu: vasadomena.com/beauty-studio-bor",
-          "Ovaj link vodi direktno na stranicu za zakazivanje — klijent ne mora da se registruje.",
-        ],
-      },
-      {
-        heading: "Gde ga podeliti",
-        items: [
-          "Instagram bio — stavite link u bio sekciju vašeg poslovnog profila.",
-          "Facebook stranica — dodajte kao 'Book Now' dugme ili u opis.",
-          "Viber/WhatsApp grupa — pošaljite link u grupu sa stalnim klijentima.",
-          "Google Maps — dodajte link u opis vaše lokacije.",
-        ],
-      },
-      {
-        heading: "Kako klijent zakazuje",
-        items: [
-          "Klijent otvara link, bira usluge i radnike, vidi slobodne termine u realnom vremenu.",
-          "Sistem automatski sprečava dupla zakazivanja i poštuje pauze i neradne dane.",
-          "Klijent unosi ime, telefon i email — potvrda dolazi odmah.",
-        ],
-      },
-    ],
+    id: "calendar",
+    icon: CalendarDays,
+    title: "Pregled kalendara i rezervacija",
+    desc: "Drag-and-drop raspored, otkazivanje i upravljanje terminima.",
   },
 ];
 
-const GuideModal = ({ step, onClose }) => {
-  if (!step) return null;
-  const Icon = step.icon;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} data-testid="guide-modal-backdrop">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative bg-[var(--color-surface)] border border-[#2A2A2D] rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-        data-testid="guide-modal-content"
-      >
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-[var(--color-surface)] border-b border-[#2A2A2D] px-5 py-4 flex items-center justify-between rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center">
-              <Icon className="w-4 h-4 text-[var(--color-primary)]" />
-            </div>
-            <h2 className="font-['Cormorant_Garamond'] text-xl font-light">{step.title}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-[var(--color-background)] flex items-center justify-center transition-colors"
-            data-testid="guide-modal-close"
-          >
-            <X className="w-4 h-4 text-[#9CA3AF]" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="px-5 py-4 space-y-5">
-          {step.sections.map((section, sIdx) => (
-            <div key={sIdx}>
-              <h3 className="text-sm font-medium text-[var(--color-primary)] mb-2.5 flex items-center gap-1.5">
-                <ChevronRight className="w-3.5 h-3.5" />
-                {section.heading}
-              </h3>
-              <ul className="space-y-2">
-                {section.items.map((item, iIdx) => (
-                  <li key={iIdx} className="flex items-start gap-2.5 text-[13px] text-[#BFBFC4] leading-relaxed">
-                    <span className="w-1 h-1 rounded-full bg-[#6B7280] mt-2 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-[var(--color-surface)] border-t border-[#2A2A2D] px-5 py-3 rounded-b-2xl">
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 rounded-lg bg-[var(--color-background)] hover:bg-[var(--color-primary)]/10 text-sm text-[#9CA3AF] hover:text-white transition-colors"
-            data-testid="guide-modal-close-btn"
-          >
-            Zatvori
-          </button>
-        </div>
-      </div>
+const VideoPlaceholder = ({ label }) => (
+  <div className="relative aspect-video bg-[#0A0D14] rounded-xl border border-[#2A2A2D] flex items-center justify-center group cursor-pointer overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+    <div className="w-14 h-14 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/40 flex items-center justify-center transition-transform group-hover:scale-110">
+      <Play className="w-6 h-6 text-[var(--color-primary)] ml-0.5" />
     </div>
-  );
-};
+    <span className="absolute bottom-3 left-3 text-[11px] text-[#6B7280]">{label}</span>
+  </div>
+);
 
 const OwnersPage = () => {
-  const [activeGuide, setActiveGuide] = useState(null);
+  const [activeTab, setActiveTab] = useState("setup");
+  const active = TUTORIALS.find(t => t.id === activeTab) || TUTORIALS[0];
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      <div className="max-w-lg mx-auto px-6 py-16">
+      <div className="max-w-2xl mx-auto px-6 py-12">
         <Link
           to="/"
           className="flex items-center gap-1 text-[#9CA3AF] hover:text-white mb-10 transition-colors text-sm"
@@ -175,80 +55,78 @@ const OwnersPage = () => {
           Nazad
         </Link>
 
-        <div className="text-center mb-10">
-          <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center mx-auto mb-5">
-            <Building2 className="w-7 h-7 text-[var(--color-primary)]" />
-          </div>
+        {/* Header */}
+        <div className="text-center mb-12">
           <h1 className="font-['Cormorant_Garamond'] text-3xl sm:text-4xl font-light mb-3">
             {"Za vlasnike salona"}
           </h1>
-          <p className="text-[#9CA3AF] leading-relaxed">
-            {"Digitalizujte vaš salon i omogućite klijentima zakazivanje termina 24/7."}
+          <p className="text-[#9CA3AF] leading-relaxed max-w-md mx-auto">
+            {"Naučite kako da podesite i koristite BeautyMePi platformu za vaš salon."}
           </p>
         </div>
 
-        <div className="space-y-4 mb-10">
-          <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 flex items-start gap-3">
-            <Clock className="w-5 h-5 text-[var(--color-primary)] mt-0.5 shrink-0" />
-            <div>
-              <h3 className="font-medium text-white text-sm mb-0.5">{"Online zakazivanje 24/7"}</h3>
-              <p className="text-xs text-[#9CA3AF]">{"Klijenti zakazuju termine bez poziva, u bilo koje doba dana."}</p>
-            </div>
-          </div>
-          <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 flex items-start gap-3">
-            <BarChart3 className="w-5 h-5 text-[var(--color-primary)] mt-0.5 shrink-0" />
-            <div>
-              <h3 className="font-medium text-white text-sm mb-0.5">{"Admin dashboard"}</h3>
-              <p className="text-xs text-[#9CA3AF]">{"Pregled rasporeda, upravljanje zaposlenima i uslugama na jednom mestu."}</p>
-            </div>
-          </div>
-          <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 flex items-start gap-3">
-            <Globe className="w-5 h-5 text-[var(--color-primary)] mt-0.5 shrink-0" />
-            <div>
-              <h3 className="font-medium text-white text-sm mb-0.5">{"Jedinstveni link za vaš salon"}</h3>
-              <p className="text-xs text-[#9CA3AF]">{"Delite link na društvenim mrežama i klijenti direktno zakazuju."}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* How To Section — Interactive */}
-        <div className="mb-10">
-          <h2 className="font-['Cormorant_Garamond'] text-2xl font-light text-center mb-2">{"Kako funkcioniše"}</h2>
-          <p className="text-[11px] text-[#6B7280] text-center mb-6">Kliknite na korak za detaljna uputstva</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {GUIDE_STEPS.map((step, idx) => {
-              const Icon = step.icon;
+        {/* Video Tutorials */}
+        <div className="mb-14">
+          {/* Tab bar */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+            {TUTORIALS.map((tut) => {
+              const Icon = tut.icon;
+              const isActive = tut.id === activeTab;
               return (
                 <button
-                  key={idx}
-                  onClick={() => setActiveGuide(step)}
-                  className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-xl p-4 text-center relative cursor-pointer transition-all duration-200 hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-primary)]/5 active:scale-[0.97] group"
-                  data-testid={`how-to-step-${idx + 1}`}
+                  key={tut.id}
+                  onClick={() => setActiveTab(tut.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-all shrink-0 ${
+                    isActive
+                      ? "bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/40 text-[var(--color-primary)]"
+                      : "bg-[var(--color-surface)] border border-[#2A2A2D] text-[#9CA3AF] hover:border-[#3A3A3D]"
+                  }`}
+                  data-testid={`tutorial-tab-${tut.id}`}
                 >
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[var(--color-primary)] text-black text-[10px] font-bold flex items-center justify-center">{idx + 1}</span>
-                  <Icon className="w-6 h-6 text-[var(--color-primary)] mx-auto mb-2.5 mt-1 transition-transform group-hover:scale-110" />
-                  <h3 className="font-medium text-white text-sm mb-1">{step.title}</h3>
-                  <p className="text-[11px] text-[#9CA3AF] leading-relaxed">{step.short}</p>
+                  <Icon className="w-3.5 h-3.5" />
+                  {tut.title}
                 </button>
               );
             })}
           </div>
+
+          {/* Active tutorial */}
+          <div className="bg-[var(--color-surface)] border border-[#2A2A2D] rounded-2xl overflow-hidden" data-testid="tutorial-active-card">
+            <VideoPlaceholder label={active.title} />
+            <div className="p-5">
+              <div className="flex items-center gap-2.5 mb-2">
+                <active.icon className="w-4 h-4 text-[var(--color-primary)]" />
+                <h3 className="font-medium text-white">{active.title}</h3>
+              </div>
+              <p className="text-sm text-[#9CA3AF] leading-relaxed">{active.desc}</p>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-gradient-to-br from-[#C5A880]/10 to-[#C5A880]/5 border border-[var(--color-primary)]/20 rounded-xl p-6 text-center" data-testid="owners-coming-soon">
-          <Sparkles className="w-6 h-6 text-[var(--color-primary)] mx-auto mb-3" />
-          <h2 className="font-medium text-white text-lg mb-2">{"Uskoro otvaramo registraciju"}</h2>
-          <p className="text-sm text-[#9CA3AF] leading-relaxed mb-4">
-            {"Prijavite se na listu čekanja i budite među prvima koji će registrovati svoj salon na platformi."}
+        {/* Activation CTA */}
+        <div className="bg-gradient-to-br from-[var(--color-primary)]/8 to-transparent border border-[var(--color-primary)]/20 rounded-2xl p-8 text-center" data-testid="owners-activation-cta">
+          <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="w-6 h-6 text-[var(--color-primary)]" />
+          </div>
+          <h2 className="font-['Cormorant_Garamond'] text-2xl font-light mb-2">
+            {"Zatražite aktivaciju vašeg salona"}
+          </h2>
+          <p className="text-sm text-[#9CA3AF] leading-relaxed mb-6 max-w-sm mx-auto">
+            {"Pošaljite nam poruku sa nazivom salona i kontakt podacima. Aktiviraćemo vaš profil u roku od 24h."}
           </p>
-          <p className="text-xs text-[#6B7280]">
-            {"Kontakt: "}
-            <a href="mailto:bornaja23@gmail.com" className="text-[var(--color-primary)] hover:underline">bornaja23@gmail.com</a>
-          </p>
+          <div className="flex flex-col items-center gap-3">
+            <a
+              href="mailto:bornaja23@gmail.com?subject=Aktivacija salona - BeautyMePi"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium text-sm transition-colors"
+              data-testid="activation-email-btn"
+            >
+              <Send className="w-4 h-4" />
+              bornaja23@gmail.com
+            </a>
+            <span className="text-xs text-[#6B7280]">Pi username: @MarkoBornaja</span>
+          </div>
         </div>
       </div>
-
-      <GuideModal step={activeGuide} onClose={() => setActiveGuide(null)} />
     </div>
   );
 };
