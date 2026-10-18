@@ -4,7 +4,7 @@ import axios from "axios";
 import { API, useTenant, getTenantHeaders, getToken } from "../../App";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Scissors, Clock, Plus, Edit2, Trash2 } from "lucide-react";
+import { Scissors, Clock, Plus, Edit2, Trash2, ChevronDown, ChevronsDown, ChevronsUp } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "../ui/dialog";
@@ -16,6 +16,7 @@ const ServicesPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [openCats, setOpenCats] = useState(null);
   const [form, setForm] = useState({
     name: "",
     category: "hair",
@@ -113,6 +114,13 @@ const ServicesPage = () => {
   const categoryLabels = Object.fromEntries(
     categories.map(c => [c.key, c.label])
   );
+  const usedCats = Object.keys(categoryLabels).filter(k => services.some(s => s.category === k));
+  const openSet = openCats ?? new Set(usedCats.slice(0, 1));
+  const toggleCat = (key) => {
+    const next = new Set(openSet);
+    next.has(key) ? next.delete(key) : next.add(key);
+    setOpenCats(next);
+  };
 
   return (
     <div className="animate-fade-in">
@@ -217,15 +225,38 @@ const ServicesPage = () => {
           <p className="text-[#9CA3AF]">Nema usluga</p>
         </div>
       ) : (
-        <div className="space-y-4 stagger-children">
+        <>
+        <div className="flex justify-end gap-2 mb-4">
+          <Button variant="outline" size="sm" onClick={() => setOpenCats(new Set(usedCats))} className="border-[#2A2A2D] bg-transparent text-[#9CA3AF] hover:text-white" data-testid="expand-all-categories-btn">
+            <ChevronsDown className="w-4 h-4 mr-1" />Otvori sve
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenCats(new Set())} className="border-[#2A2A2D] bg-transparent text-[#9CA3AF] hover:text-white" data-testid="collapse-all-categories-btn">
+            <ChevronsUp className="w-4 h-4 mr-1" />Zatvori sve
+          </Button>
+        </div>
+        <div className="space-y-3 stagger-children">
           {Object.entries(categoryLabels).map(([category, label]) => {
             const categoryServices = services.filter(s => s.category === category);
             if (categoryServices.length === 0) return null;
+            const isOpen = openSet.has(category);
             
             return (
-              <div key={category}>
-                <h3 className="text-sm text-[#9CA3AF] uppercase tracking-wider mb-3">{label}</h3>
-                <div className="space-y-2">
+              <div key={category} className="bg-[var(--color-surface)]/60 rounded-xl border border-[#2A2A2D] overflow-hidden" data-testid={`category-section-${category}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleCat(category)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--color-background)]/50 transition-colors"
+                  aria-expanded={isOpen}
+                  data-testid={`category-toggle-${category}`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm text-white uppercase tracking-wider">{label}</span>
+                    <span className="text-xs text-[#6B7280]">({categoryServices.length})</span>
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-[#9CA3AF] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+                {isOpen && (
+                <div className="space-y-2 px-3 pb-3" data-testid={`category-services-${category}`}>
                   {categoryServices.map((service) => (
                     <div
                       key={service.id}
@@ -271,10 +302,12 @@ const ServicesPage = () => {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

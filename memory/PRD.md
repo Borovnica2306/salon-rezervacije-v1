@@ -37,3 +37,5 @@ sr (Srpski), en (English), id (Bahasa Indonesia), tl (Filipino/Tagalog), pt-BR (
 
 ## 2026-06 Owners page Feature Showcase
 - /vlasnici: video placeholders replaced with browser-frame mockup showcase (4 tabs), images at /frontend/public/mockups/{settings,services,workers,calendar}.png with fallback placeholder; activation card with Pi @Markonijus23 + bornaja23@gmail.com
+- Demo salon renamed to Beauty Studio Bor; Pi wallet seeded
+- Admin Usluge: categories as collapsible sections (first open by default), "Otvori sve"/"Zatvori sve" buttons
