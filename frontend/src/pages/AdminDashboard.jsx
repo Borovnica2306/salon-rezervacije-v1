@@ -151,7 +151,7 @@ const AdminDashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-64 p-4 lg:p-8">
+        <main className="flex-1 min-w-0 lg:ml-64 p-4 lg:p-8">
           <Routes>
             <Route index element={<ReservationsPage />} />
             {!isWorker && (

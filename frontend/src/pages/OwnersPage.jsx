@@ -5,10 +5,10 @@ import { ChevronLeft, Settings, Tag, Users, CalendarDays, Sparkles, Send, ImageI
 
 // Postavite skrinšotove u /app/frontend/public/mockups/ sa navedenim imenima
 const FEATURES = [
-  { id: "setup", icon: Settings, title: "Osnovna podešavanja", image: "/mockups/settings.png", desc: "Radno vreme, naziv, tema i osnovne informacije o salonu." },
-  { id: "services", icon: Tag, title: "Usluge i cene", image: "/mockups/services.png", desc: "Kategorije, trajanje i cena svake usluge na jednom mestu." },
-  { id: "workers", icon: Users, title: "Radnici i rasporedi", image: "/mockups/workers.png", desc: "Radnici, smene, pauze i nalozi za pristup timu." },
-  { id: "calendar", icon: CalendarDays, title: "Kalendar i rezervacije", image: "/mockups/calendar.png", desc: "Pregled termina po radnicima uz drag-and-drop pomeranje." },
+  { id: "setup", icon: Settings, title: "Osnovna podešavanja", image: "/mockups/settings.png", mobileImage: "/mockups/settings-mobile.png", desc: "Radno vreme, naziv, tema i osnovne informacije o salonu." },
+  { id: "services", icon: Tag, title: "Usluge i cene", image: "/mockups/services.png", mobileImage: "/mockups/services-mobile.png", desc: "Kategorije, trajanje i cena svake usluge na jednom mestu." },
+  { id: "workers", icon: Users, title: "Radnici i rasporedi", image: "/mockups/workers.png", mobileImage: "/mockups/workers-mobile.png", desc: "Radnici, smene, pauze i nalozi za pristup timu." },
+  { id: "calendar", icon: CalendarDays, title: "Kalendar i rezervacije", image: "/mockups/calendar.png", mobileImage: "/mockups/calendar-mobile.png", desc: "Pregled termina po radnicima uz drag-and-drop pomeranje." },
 ];
 
 const MockupPlaceholder = ({ title }) => (
@@ -17,6 +17,49 @@ const MockupPlaceholder = ({ title }) => (
       <ImageIcon className="w-5 h-5 text-[var(--color-primary)]" />
     </div>
     <span className="text-xs text-[#6B7280]">Prikaz ekrana: {title}</span>
+  </div>
+);
+
+const useIsMobile = () => {
+  const [m, setM] = useState(() => window.matchMedia("(max-width: 639px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const h = (e) => setM(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
+  return m;
+};
+
+const ZoomButton = ({ onZoom }) => (
+  <button
+    type="button"
+    onClick={onZoom}
+    className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-xs text-white opacity-80 group-hover:opacity-100 transition-opacity"
+    data-testid="mockup-zoom-btn"
+  >
+    <Maximize2 className="w-3.5 h-3.5" />
+    Uvećaj
+  </button>
+);
+
+const PhoneMockup = ({ feature, onZoom }) => (
+  <div className="relative mx-auto w-[260px]" data-testid="feature-mockup-phone">
+    <div className="absolute -inset-6 bg-[var(--color-primary)]/15 blur-3xl rounded-[3rem] pointer-events-none" />
+    <div className="relative rounded-[2.5rem] border-[6px] border-[#1F2229] bg-[#0A0D14] shadow-2xl shadow-black/70 overflow-hidden ring-1 ring-white/5">
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-5 rounded-full bg-black z-10" />
+      <div className="relative aspect-[390/844] group">
+        <img
+          key={feature.id}
+          src={feature.mobileImage}
+          alt={feature.title}
+          onClick={onZoom}
+          className="absolute inset-0 w-full h-full object-cover object-top cursor-zoom-in animate-in fade-in duration-500"
+          data-testid={`mockup-phone-image-${feature.id}`}
+        />
+        <ZoomButton onZoom={onZoom} />
+      </div>
+    </div>
   </div>
 );
 
@@ -48,17 +91,7 @@ const BrowserMockup = ({ feature, onZoom }) => {
               data-testid={`mockup-image-${feature.id}`}
             />
           )}
-          {!failed[feature.id] && (
-            <button
-              type="button"
-              onClick={onZoom}
-              className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-xs text-white opacity-80 group-hover:opacity-100 transition-opacity"
-              data-testid="mockup-zoom-btn"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-              Uvećaj
-            </button>
-          )}
+          {!failed[feature.id] && <ZoomButton onZoom={onZoom} />}
         </div>
       </div>
     </div>
@@ -69,6 +102,7 @@ const OwnersPage = () => {
   const [activeTab, setActiveTab] = useState("setup");
   const [paused, setPaused] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
+  const isMobile = useIsMobile();
   const active = FEATURES.find((f) => f.id === activeTab) || FEATURES[0];
 
   useEffect(() => {
@@ -117,7 +151,9 @@ const OwnersPage = () => {
             })}
           </div>
 
-          <BrowserMockup feature={active} onZoom={() => setZoomOpen(true)} />
+          {isMobile
+            ? <PhoneMockup feature={active} onZoom={() => setZoomOpen(true)} />
+            : <BrowserMockup feature={active} onZoom={() => setZoomOpen(true)} />}
           <div className="flex justify-center gap-1.5 mt-5" data-testid="feature-progress">
             {FEATURES.map((f) => (
               <span key={f.id} className={`h-1 rounded-full transition-all duration-300 ${f.id === activeTab ? "w-6 bg-[var(--color-primary)]" : "w-1.5 bg-[#2A2A2D]"}`} />
@@ -134,7 +170,7 @@ const OwnersPage = () => {
           <DialogContent className="w-[96vw] max-w-6xl p-2 bg-[#0A0D14] border-[#2A2A2D]" data-testid="mockup-lightbox">
             <DialogTitle className="sr-only">{active.title}</DialogTitle>
             <DialogDescription className="sr-only">{active.desc}</DialogDescription>
-            <img src={active.image} alt={active.title} className="w-full h-auto max-h-[88vh] object-contain rounded-lg" data-testid="mockup-lightbox-image" />
+            <img src={isMobile ? active.mobileImage : active.image} alt={active.title} className="w-full h-auto max-h-[88vh] object-contain rounded-lg" data-testid="mockup-lightbox-image" />
           </DialogContent>
         </Dialog>
 

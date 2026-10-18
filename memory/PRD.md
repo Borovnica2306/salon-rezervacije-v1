@@ -40,3 +40,5 @@ sr (Srpski), en (English), id (Bahasa Indonesia), tl (Filipino/Tagalog), pt-BR (
 - Demo salon renamed to Beauty Studio Bor; Pi wallet seeded
 - Admin Usluge: categories as collapsible sections (first open by default), "Otvori sve"/"Zatvori sve" buttons
 - /vlasnici: mockup lightbox (Uvećaj / click image), auto-rotating tabs every 5s (pauses on hover & while lightbox open), progress dots; settings.png cropped (browser bar removed)
+- /vlasnici: phone-frame mockup with *-mobile.png screenshots on screens <640px (desktop keeps browser frame); lightbox uses matching image. Script: /app/scripts/capture_mobile_mockups.py (needs playwright, PLAYWRIGHT_BROWSERS_PATH=/pw-browsers)
+- Fix: admin <main> min-w-0 — services page no longer overflows horizontally on mobile when categories expanded
