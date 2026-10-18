@@ -232,6 +232,7 @@ async def startup_event():
             "work_start": "09:00",
             "work_end": "21:00",
             "advance_instructions": "Uplata avansa je obavezna 24h pre termina.",
+            "pi_wallet_address": "GBX2TESTWALLETADDRESS1234567890BCDEF",
         })
 
     # Write test credentials
