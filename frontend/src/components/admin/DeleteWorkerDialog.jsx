@@ -5,7 +5,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "../ui/dialog";
 
-const DeleteWorkerDialog = ({ worker, onClose, onDelete }) => {
+const DeleteWorkerDialog = ({ worker, onClose, onDelete, itemLabel = "radnika" }) => {
   return (
     <Dialog open={!!worker} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm">
@@ -15,7 +15,7 @@ const DeleteWorkerDialog = ({ worker, onClose, onDelete }) => {
             Potvrda brisanja
           </DialogTitle>
           <DialogDescription className="text-[#9CA3AF]">
-            Da li ste sigurni da želite trajno da obrišete radnika <span className="text-white font-medium">{worker?.name}</span>? Ova akcija se ne može poništiti.
+            Da li ste sigurni da želite trajno da obrišete {itemLabel} <span className="text-white font-medium">{worker?.name}</span>? Ova akcija se ne može poništiti.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-3 mt-4">

@@ -8,6 +8,7 @@ import { Scissors, Clock, Plus, Edit2, Trash2, ChevronDown, ChevronsDown, Chevro
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "../ui/dialog";
+import DeleteWorkerDialog from "./DeleteWorkerDialog";
 
 const ServicesPage = () => {
   const tenant = useTenant();
@@ -17,6 +18,7 @@ const ServicesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [openCats, setOpenCats] = useState(null);
+  const [serviceToDelete, setServiceToDelete] = useState(null);
   const [form, setForm] = useState({
     name: "",
     category: "hair",
@@ -105,6 +107,7 @@ const ServicesPage = () => {
     try {
       await axios.delete(`${API}/services/${id}`, { headers });
       toast.success("Usluga je trajno obrisana");
+      setServiceToDelete(null);
       fetchServices();
     } catch (error) {
       toast.error("Greška pri brisanju");
@@ -124,6 +127,7 @@ const ServicesPage = () => {
 
   return (
     <div className="animate-fade-in">
+      <DeleteWorkerDialog worker={serviceToDelete} itemLabel="uslugu" onClose={() => setServiceToDelete(null)} onDelete={handleDelete} />
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">Usluge</h2>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -290,7 +294,7 @@ const ServicesPage = () => {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => handleDelete(service.id)}
+                              onClick={() => setServiceToDelete(service)}
                               className="h-8 w-8 hover:bg-red-400/10 text-red-400"
                               data-testid={`delete-service-${service.id}`}
                             >
