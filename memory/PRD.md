@@ -43,3 +43,4 @@ sr (Srpski), en (English), id (Bahasa Indonesia), tl (Filipino/Tagalog), pt-BR (
 - /vlasnici: phone-frame mockup with *-mobile.png screenshots on screens <640px (desktop keeps browser frame); lightbox uses matching image. Script: /app/scripts/capture_mobile_mockups.py (needs playwright, PLAYWRIGHT_BROWSERS_PATH=/pw-browsers)
 - Fix: admin <main> min-w-0 — services page no longer overflows horizontally on mobile when categories expanded
 - Admin Usluge: delete confirmation dialog (reuses DeleteWorkerDialog with itemLabel prop)
+- Pi SDK script tag in index.html; PiAuthContext: mock Pi user only on preview hosts (localhost/emergentagent.com); production requires Pi Browser (UA PiBrowser) else BookingPage shows PiBrowserRequired screen (7 langs). Pi.init sandbox:false (Testnet chosen via Dev Portal app registration). Backend is_sandbox mock payment path kept per user choice.

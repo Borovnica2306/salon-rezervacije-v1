@@ -7,6 +7,7 @@ import { PhoneInput, isValidPhone } from "../components/PhoneInput";
 import { usePiAuth } from "../context/PiAuthContext";
 import { useLang } from "../i18n";
 import LanguageSelector from "../components/LanguageSelector";
+import PiBrowserRequired from "../components/PiBrowserRequired";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
@@ -49,7 +50,7 @@ function fallbackCopy(text, successMsg) {
 const BookingPage = () => {
   const tenant = useTenant();
   const { slug } = useParams();
-  const { piUser, loading: piLoading, isSandbox } = usePiAuth();
+  const { piUser, loading: piLoading, isSandbox, canBook } = usePiAuth();
   const { t, tc, ts } = useLang();
   const { lang } = useLang();
   const DATE_LOCALES = { sr: srLatn, en: enUS, id: idLocale, tl: enUS, "pt-BR": ptBR, es: esLocale, fr: frLocale };
@@ -227,6 +228,7 @@ const BookingPage = () => {
   };
 
   const handleSubmit = async () => {
+    if (!canBook) return;
     if (!piUser?.username || !isValidPhone(clientPhone) || !isValidEmail(clientEmail)) {
       toast.error(t("toastPhoneEmailRequired"));
       return;
@@ -645,6 +647,10 @@ const BookingPage = () => {
         </div>
       </div>
     );
+  }
+
+  if (!canBook) {
+    return <PiBrowserRequired salonName={settings?.salon_name} />;
   }
 
   if (bookingComplete && bookingDetails) {
