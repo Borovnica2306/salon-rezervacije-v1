@@ -5,10 +5,10 @@ import { API, useAuth, useTenant, getTenantHeaders, getToken } from "../../App";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
-  Calendar, Users, Clock, Ban, Check, ChevronLeft, ChevronRight,
-  Plus, Bell, Loader2, Download, Phone, User, X, RotateCcw
+  Calendar as CalendarIcon, Users, Clock, Ban, Check, ChevronLeft, ChevronRight,
+  Plus, Bell, Loader2, Download, RotateCcw, CalendarDays
 } from "lucide-react";
-import { format, addDays, subDays } from "date-fns";
+import { format, addDays, subDays, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from "date-fns";
 import { sr } from "date-fns/locale";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -18,19 +18,20 @@ import {
 } from "../ui/table";
 import ManualBookingModal from "./ManualBookingModal";
 
-const SLOT_HEIGHT = 48;
+const SLOT_HEIGHT = 32;
 const COLORS = ["#C5A880", "#7C9EB2", "#A8C686", "#D4A574", "#B294BB", "#86C1B9", "#DCA68B"];
 
-const ReservationsPage = () => {
+const CalendarView = () => {
   const { user } = useAuth();
   const tenant = useTenant();
   const isWorker = user?.role === "worker";
   const [reservations, setReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [blacklist, setBlacklist] = useState([]);
   const [workers, setWorkers] = useState([]);
-  const [services, setServices] = useState([]);
+  const [, setServices] = useState([]);
   const [settings, setSettings] = useState(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -40,23 +41,29 @@ const ReservationsPage = () => {
   const [selectedRes, setSelectedRes] = useState(null);
   const [sendingReminders, setSendingReminders] = useState(false);
 
-  // Drag-and-drop state (disabled for workers)
   const [dragData, setDragData] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [dateDropTarget, setDateDropTarget] = useState(null);
   const [rescheduleModal, setRescheduleModal] = useState(null);
   const [rescheduling, setRescheduling] = useState(false);
 
-  // Worker date limit: today + 7 days
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfDay(new Date());
   const maxWorkerDate = addDays(today, 7);
 
   const token = getToken();
   const headers = { Authorization: `Bearer ${token}`, ...getTenantHeaders(tenant?.tenant_id) };
   const gridRef = useRef(null);
 
-  useEffect(() => { fetchWorkers(); fetchServices(); fetchSettings(); }, []);
-  useEffect(() => { fetchReservations(); fetchBlacklist(); }, [selectedDate]);
+  useEffect(() => {
+    fetchWorkers();
+    fetchServices();
+    fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    fetchReservations();
+    fetchBlacklist();
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!loading && activeTab === "grid" && gridRef.current) {
@@ -68,28 +75,59 @@ const ReservationsPage = () => {
     }
   }, [loading, activeTab, selectedDate]);
 
-  const ttm = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const ttm = (t) => {
+    if (!t) return 0;
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  
   const mtt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
   const fetchSettings = async () => { try { const r = await axios.get(`${API}/settings`, { headers }); setSettings(r.data); } catch (e) { console.error(e); } };
   const fetchWorkers = async () => { try { const r = await axios.get(`${API}/workers`, { headers }); setWorkers(r.data); } catch (e) { console.error(e); } };
   const fetchServices = async () => { try { const r = await axios.get(`${API}/services`, { headers }); setServices(r.data); } catch (e) { console.error(e); } };
+  
   const fetchReservations = async () => {
     setLoading(true);
     try {
       const params = isWorker ? {} : { date: format(selectedDate, "yyyy-MM-dd") };
       const r = await axios.get(`${API}/reservations`, { params, headers });
       setReservations(r.data);
+    } catch (e) {
+      toast.error("Greška pri učitavanju");
+    } finally {
+      setLoading(false);
     }
-    catch (e) { toast.error("Greška pri učitavanju"); } finally { setLoading(false); }
   };
+
   const fetchBlacklist = async () => { try { const r = await axios.get(`${API}/blacklist`, { headers }); setBlacklist(r.data.map(b => b.phone)); } catch (e) { console.error(e); } };
+  
   const handleSendReminders = async () => {
     setSendingReminders(true);
-    try { const r = await axios.post(`${API}/admin/reservations/trigger-reminders`, {}, { headers }); const d = r.data; toast.success(`Sutra (${d.date}): ${d.total_reservations} termina`); }
-    catch (e) { toast.error("Greška pri proveri podsetnika"); } finally { setSendingReminders(false); }
+    try {
+      const r = await axios.post(`${API}/admin/reservations/trigger-reminders`, {}, { headers });
+      const d = r.data;
+      toast.success(`Sutra (${d.date}): ${d.total_reservations} termina`);
+    } catch (e) {
+      toast.error("Greška pri proveri podsetnika");
+    } finally {
+      setSendingReminders(false);
+    }
   };
-  const handleCancel = async (id) => { try { await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers }); toast.success("Otkazano"); setCancelDialogOpen(false); setCancelTarget(null); setSelectedRes(null); fetchReservations(); } catch (e) { toast.error("Greška"); } };
+
+  const handleCancel = async (id) => {
+    try {
+      await axios.put(`${API}/reservations/${id}/cancel`, {}, { headers });
+      toast.success("Otkazano");
+      setCancelDialogOpen(false);
+      setCancelTarget(null);
+      setSelectedRes(null);
+      fetchReservations();
+    } catch (e) {
+      toast.error("Greška");
+    }
+  };
+
   const openCancelDialog = (res) => { setCancelTarget(res); setCancelDialogOpen(true); };
   const handleBlacklist = async (phone) => { try { await axios.post(`${API}/blacklist?phone=${encodeURIComponent(phone)}`, {}, { headers }); toast.success("Blokirano"); fetchBlacklist(); } catch (e) { toast.error("Greška"); } };
   const handleRemoveFromBlacklist = async (phone) => { try { await axios.delete(`${API}/blacklist/${encodeURIComponent(phone)}`, { headers }); toast.success("Odblokirano"); fetchBlacklist(); } catch (e) { toast.error("Greška"); } };
@@ -97,16 +135,33 @@ const ReservationsPage = () => {
   const handleExportCSV = () => {
     const all = [...activeReservations, ...archivedReservations];
     if (all.length === 0) { toast.error("Nema podataka za export"); return; }
-    const header = "Booking ID,Datum,Vreme,Kraj,Klijent,Telefon,Email,Usluge,Radnik,Ukupna cena,Status,Placanje,Kreiran";
-    const rows = all.map(r => [r.booking_id||"",r.date||"",r.time||"",r.end_time||"",`"${(r.client_name||"").replace(/"/g,'""')}"`,r.client_phone||"",r.client_email||"",`"${(r.service_names||[]).join(", ").replace(/"/g,'""')}"`,`"${(r.service_worker_pairs||[]).map(p=>p.worker_name).join(", ").replace(/"/g,'""')}"`,r.total_price||0,r.status||"",r.payment_status||"",r.created_at||""].join(","));
+    const header = "Booking ID,Datum,Vreme,Kraj,Klijent,Telefon,Email,Usluge,Radnik,Ukupna cena,Status,Plaćanje,Kreiran";
+    const rows = all.map(r => [
+      r.booking_id || "",
+      r.date || "",
+      r.time || "",
+      r.end_time || "",
+      `"${(r.client_name || "").replace(/"/g, '""')}"`,
+      r.client_phone || "",
+      r.client_email || "",
+      `"${(r.service_names || []).join(", ").replace(/"/g, '""')}"`,
+      `"${(r.service_worker_pairs || []).map(p => p.worker_name).join(", ").replace(/"/g, '""')}"`,
+      r.total_price || 0,
+      r.status || "",
+      r.payment_status || "",
+      r.created_at || ""
+    ].join(","));
     const csv = "\uFEFF" + header + "\n" + rows.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `rezervacije_${format(selectedDate, "yyyy-MM-dd")}.csv`; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rezervacije_${format(selectedDate, "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
     toast.success(`Exportovano ${all.length} rezervacija`);
   };
 
-  // === Drag-and-drop helpers ===
   const getServiceIdsForReservation = (res) => {
     return (res.service_worker_pairs || []).map(p => p.service_id).filter(Boolean);
   };
@@ -120,6 +175,7 @@ const ReservationsPage = () => {
   const handleDragStart = (e, res, block) => {
     if (isWorker) { e.preventDefault(); return; }
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/json", JSON.stringify({ res, block }));
     setDragData({ res, block, serviceIds: getServiceIdsForReservation(res) });
   };
 
@@ -131,25 +187,119 @@ const ReservationsPage = () => {
     if (canDrop) setDropTarget({ workerId, slotMin });
   };
 
-  const handleDragLeave = () => { /* dropTarget cleared on drop/end */ };
+  const handleDateDragOver = (e, targetDate) => {
+    e.preventDefault();
+    if (isWorker) return;
+    if (isBefore(targetDate, today)) return;
+    e.dataTransfer.dropEffect = "move";
+    setDateDropTarget(format(targetDate, "yyyy-MM-dd"));
+  };
+
+  const handleDateDrop = (e, targetDate) => {
+    e.preventDefault();
+    setDateDropTarget(null);
+    if (isWorker) return;
+
+    let currentDrag = dragData;
+    if (!currentDrag) {
+      try {
+        const raw = e.dataTransfer.getData("application/json");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          currentDrag = { res: parsed.res, block: parsed.block, serviceIds: getServiceIdsForReservation(parsed.res) };
+        }
+      } catch (err) {
+        console.error("Greska pri citanju drag podataka", err);
+      }
+    }
+
+    if (!currentDrag || !currentDrag.res) return;
+
+    const originalDate = currentDrag.res.date;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    if (originalDate < todayStr) {
+      toast.error("Nije moguće premestiti rezervaciju iz prošlog dana.");
+      setDragData(null);
+      return;
+    }
+
+    if (isBefore(targetDate, today)) {
+      toast.error("Nije moguće premestiti rezervaciju u prošlost.");
+      setDragData(null);
+      return;
+    }
+
+    const formattedTargetDate = format(targetDate, "yyyy-MM-dd");
+    const defaultWorkerId = currentDrag.res.worker_id || currentDrag.res.service_worker_pairs?.[0]?.worker_id;
+    const targetWorker = workers.find(w => w.id === defaultWorkerId) || workers[0];
+
+    setRescheduleModal({
+      res: currentDrag.res,
+      oldTime: `${format(selectedDate, "dd.MM.")} u ${currentDrag.res.time}`,
+      oldWorker: currentDrag.res.worker_name || currentDrag.res.service_worker_pairs?.[0]?.worker_name || "",
+      newDate: formattedTargetDate,
+      newTime: currentDrag.res.time || "09:00",
+      newWorkerId: targetWorker?.id,
+      newWorker: targetWorker?.name || "",
+    });
+
+    setDragData(null);
+  };
 
   const handleDrop = (e, workerId, slotMin) => {
     e.preventDefault();
-    if (isWorker || !dragData) return;
-    if (!workerCanDoServices(workerId, dragData.serviceIds)) {
+    if (isWorker) return;
+
+    let currentDrag = dragData;
+    if (!currentDrag) {
+      try {
+        const raw = e.dataTransfer.getData("application/json");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          currentDrag = { res: parsed.res, block: parsed.block, serviceIds: getServiceIdsForReservation(parsed.res) };
+        }
+      } catch (err) {
+        console.error("Greska pri citanju drag podataka", err);
+      }
+    }
+
+    if (!currentDrag || !currentDrag.res) return;
+
+    const originalDate = currentDrag.res.date;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    if (originalDate < todayStr) {
+      toast.error("Nije moguće premestiti rezervaciju iz prošlog dana.");
+      setDragData(null);
+      setDropTarget(null);
+      return;
+    }
+
+    if (isPast) {
+      toast.error("Nije moguce premestiti rezervaciju u prošli dan.");
+      setDragData(null);
+      setDropTarget(null);
+      return;
+    }
+    if (isToday && slotMin < nowMins) {
+      toast.error("Nije moguce premestiti rezervaciju u prošlo vreme.");
+      setDragData(null);
+      setDropTarget(null);
+      return;
+    }
+
+    if (!workerCanDoServices(workerId, currentDrag.serviceIds)) {
       toast.error("Radnik ne pruža ovu uslugu");
       setDragData(null);
       setDropTarget(null);
       return;
     }
 
-    // Overlap check: does the new time block collide with existing reservations for this worker?
-    const duration = dragData.res.total_duration || 30;
+    const duration = currentDrag.res.total_duration || 30;
     const newStartMin = slotMin;
     const newEndMin = slotMin + duration;
     const workerBlocks = buildWorkerBlocks(workerId);
     const hasOverlap = workerBlocks.some(b =>
-      b.res.id !== dragData.res.id && newStartMin < b.endMin && newEndMin > b.startMin
+      b.res.id !== currentDrag.res.id && newStartMin < b.endMin && newEndMin > b.startMin
     );
     if (hasOverlap) {
       toast.error("Ovaj termin je već zauzet kod izabranog radnika.");
@@ -161,25 +311,24 @@ const ReservationsPage = () => {
     const newTime = mtt(slotMin);
     const targetWorker = workers.find(w => w.id === workerId);
 
-    // Determine which block index was dragged (for multi-service packages)
-    const blocks = dragData.res.worker_time_blocks || [];
+    const blocks = currentDrag.res.worker_time_blocks || [];
     let draggedBlockIndex = -1;
-    if (blocks.length > 1 && dragData.block) {
+    if (blocks.length > 1 && currentDrag.block) {
       draggedBlockIndex = blocks.findIndex(b =>
-        b.worker_id === dragData.block.res?.worker_time_blocks?.find(
-          wb => wb.start_time === mtt(dragData.block.startMin) && wb.worker_id === dragData.block.res?.worker_id
-        )?.worker_id && b.start_time === mtt(dragData.block.startMin)
+        b.worker_id === currentDrag.block.res?.worker_time_blocks?.find(
+          wb => wb.start_time === mtt(currentDrag.block.startMin) && wb.worker_id === currentDrag.block.res?.worker_id
+        )?.worker_id && b.start_time === mtt(currentDrag.block.startMin)
       );
-      // Fallback: match by start_time
       if (draggedBlockIndex === -1) {
-        draggedBlockIndex = blocks.findIndex(b => b.start_time === mtt(dragData.block.startMin));
+        draggedBlockIndex = blocks.findIndex(b => b.start_time === mtt(currentDrag.block.startMin));
       }
     }
 
     setRescheduleModal({
-      res: dragData.res,
-      oldTime: dragData.res.time,
-      oldWorker: dragData.res.worker_name || dragData.res.service_worker_pairs?.[0]?.worker_name || "",
+      res: currentDrag.res,
+      oldTime: currentDrag.res.time,
+      oldWorker: currentDrag.res.worker_name || currentDrag.res.service_worker_pairs?.[0]?.worker_name || "",
+      newDate: format(selectedDate, "yyyy-MM-dd"),
       newTime,
       newWorkerId: workerId,
       newWorker: targetWorker?.name || "",
@@ -189,22 +338,39 @@ const ReservationsPage = () => {
     setDropTarget(null);
   };
 
-  const handleDragEnd = () => { setDragData(null); setDropTarget(null); };
+  const handleDragEnd = () => { setDragData(null); setDropTarget(null); setDateDropTarget(null); };
 
   const handleRescheduleConfirm = async () => {
     if (!rescheduleModal) return;
+
+    // Provera da li je izabrano vreme u prošlosti za današnji dan
+    if (rescheduleModal.newDate === format(now, "yyyy-MM-dd")) {
+      const selectedMins = ttm(rescheduleModal.newTime);
+      if (selectedMins < nowMins) {
+        toast.error("Nije moguće premestiti rezervaciju u prošlo vreme.");
+        return;
+      }
+    }
+
     setRescheduling(true);
     try {
       const payload = {
         new_time: rescheduleModal.newTime,
         new_worker_id: rescheduleModal.newWorkerId,
       };
+      if (rescheduleModal.newDate) {
+        payload.new_date = rescheduleModal.newDate;
+      }
       if (rescheduleModal.blockIndex !== undefined) {
         payload.block_index = rescheduleModal.blockIndex;
       }
       await axios.put(`${API}/reservations/${rescheduleModal.res.id}/reschedule`, payload, { headers });
       toast.success("Termin uspešno premešten");
+      
+      const targetDateObj = rescheduleModal.newDate ? new Date(rescheduleModal.newDate + "T00:00:00") : selectedDate;
       setRescheduleModal(null);
+      
+      setSelectedDate(targetDateObj);
       fetchReservations();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Greška pri premeštanju");
@@ -213,7 +379,6 @@ const ReservationsPage = () => {
     }
   };
 
-  // === Computed ===
   const workStart = settings ? ttm(settings.work_start) : 540;
   const workEnd = settings ? ttm(settings.work_end) : 1260;
   const timeSlots = [];
@@ -222,14 +387,12 @@ const ReservationsPage = () => {
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const isToday = format(selectedDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
-  const isPast = selectedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isPast = isBefore(startOfDay(selectedDate), today);
 
-  // Worker: filter workers to only show their own column
   const displayWorkers = isWorker
     ? workers.filter(w => w.id === user?.worker_id)
     : workers;
 
-  // Worker: filter reservations by selected date (backend returns all 7 days)
   const displayReservations = isWorker
     ? reservations.filter(r => r.date === format(selectedDate, "yyyy-MM-dd"))
     : reservations;
@@ -264,29 +427,26 @@ const ReservationsPage = () => {
 
   const nowLineTop = isToday ? ((nowMins - workStart) / 30) * SLOT_HEIGHT : -1;
 
-  // Check if a worker column should be dimmed during drag
   const isWorkerDimmed = (workerId) => {
     if (!dragData) return false;
     return !workerCanDoServices(workerId, dragData.serviceIds);
   };
 
-  // Worker date navigation helpers
   const canGoPrev = isWorker ? format(selectedDate, "yyyy-MM-dd") > format(today, "yyyy-MM-dd") : true;
   const canGoNext = isWorker ? format(selectedDate, "yyyy-MM-dd") < format(maxWorkerDate, "yyyy-MM-dd") : true;
 
-  const handlePrevDay = () => {
-    if (!canGoPrev) return;
-    setSelectedDate(subDays(selectedDate, 1));
-  };
-  const handleNextDay = () => {
-    if (!canGoNext) return;
-    setSelectedDate(addDays(selectedDate, 1));
-  };
+  const handlePrevDay = () => { if (!canGoPrev) return; setSelectedDate(subDays(selectedDate, 1)); };
+  const handleNextDay = () => { if (!canGoNext) return; setSelectedDate(addDays(selectedDate, 1)); };
   const handleToday = () => setSelectedDate(new Date());
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="font-['Cormorant_Garamond'] text-3xl font-light">{isWorker ? "Moj Raspored" : "Rezervacije"}</h2>
@@ -300,7 +460,17 @@ const ReservationsPage = () => {
                 {sendingReminders ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Bell className="w-4 h-4 mr-1.5" />}
                 Podsetnici za sutra
               </Button>
-              <Button onClick={() => setManualBookingOpen(true)} className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" data-testid="admin-new-reservation-btn">
+              <Button 
+                onClick={() => {
+                  if (isPast) {
+                    toast.error("Nije moguće kreirati rezervaciju u prošlosti.");
+                    return;
+                  }
+                  setManualBookingOpen(true);
+                }} 
+                className="bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" 
+                data-testid="admin-new-reservation-btn"
+              >
                 <Plus className="w-4 h-4 mr-1" /> Nova Rezervacija
               </Button>
             </>
@@ -311,12 +481,11 @@ const ReservationsPage = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       {!isWorker && (
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <div className="flex gap-1 bg-[var(--color-background)] rounded-lg p-1 w-fit" data-testid="view-tabs">
             <button onClick={() => setActiveTab("grid")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "grid" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-grid">
-              <Calendar className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
+              <CalendarIcon className="w-4 h-4 inline mr-1.5" />Mreža{activeReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({activeReservations.length})</span>}
             </button>
             <button onClick={() => setActiveTab("archive")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "archive" ? "bg-[var(--color-primary)] text-black" : "text-[#9CA3AF] hover:text-white"}`} data-testid="tab-archive">
               <Clock className="w-4 h-4 inline mr-1.5" />Arhiva{archivedReservations.length > 0 && <span className="ml-1.5 text-xs opacity-70">({archivedReservations.length})</span>}
@@ -330,7 +499,6 @@ const ReservationsPage = () => {
         </div>
       )}
 
-      {/* Cancel Dialog - admin only */}
       {!isWorker && (
         <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
           <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D]">
@@ -350,52 +518,79 @@ const ReservationsPage = () => {
         </Dialog>
       )}
 
-      {/* Reschedule Confirmation Modal - admin only */}
+      {/* MODAL ZA PREMEŠTANJE SA PADAJUĆIM MENIJEM I DATUMOM */}
       {!isWorker && (
         <Dialog open={!!rescheduleModal} onOpenChange={(v) => !v && setRescheduleModal(null)}>
           <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm" data-testid="reschedule-modal">
-          <DialogHeader>
-            <DialogTitle className="text-white">{"Premesti termin?"}</DialogTitle>
-            <DialogDescription className="text-[#9CA3AF]">
-              {"Da li ste sigurni da želite da promenite termin za klijenta"} <strong className="text-white">{rescheduleModal?.res?.client_name}</strong>?
-            </DialogDescription>
-          </DialogHeader>
-          {rescheduleModal && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <p className="text-[10px] text-red-400 uppercase tracking-wider mb-1">Staro</p>
-                  <p className="text-sm text-white font-medium">{rescheduleModal.oldTime}</p>
-                  <p className="text-xs text-[#9CA3AF]">{rescheduleModal.oldWorker}</p>
+            <DialogHeader>
+              <DialogTitle className="text-white">Premesti termin?</DialogTitle>
+              <DialogDescription className="text-[#9CA3AF]">
+                Za klijenta: <strong className="text-white">{rescheduleModal?.res?.client_name}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            {rescheduleModal && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    <p className="text-[10px] text-red-400 uppercase tracking-wider mb-1">Staro</p>
+                    <p className="text-sm text-white font-medium">{rescheduleModal.oldTime}</p>
+                    <p className="text-xs text-[#9CA3AF]">{rescheduleModal.oldWorker}</p>
+                  </div>
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                    <p className="text-[10px] text-green-400 uppercase tracking-wider mb-1">Novo</p>
+                    <p className="text-sm text-white font-medium">
+                      {rescheduleModal.newDate ? format(new Date(rescheduleModal.newDate + "T00:00:00"), "dd.MM.yyyy") : ""}
+                    </p>
+                    <p className="text-xs text-[#9CA3AF]">{rescheduleModal.newWorker}</p>
+                  </div>
                 </div>
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                  <p className="text-[10px] text-green-400 uppercase tracking-wider mb-1">Novo</p>
-                  <p className="text-sm text-white font-medium">{rescheduleModal.newTime}</p>
-                  <p className="text-xs text-[#9CA3AF]">{rescheduleModal.newWorker}</p>
+
+                {/* Padajući meni sa slotovima u 24h formatu */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-[#9CA3AF]">Novo vreme početka:</label>
+                  <select
+                    value={rescheduleModal.newTime}
+                    onChange={(e) => setRescheduleModal({ ...rescheduleModal, newTime: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md bg-[var(--color-background)] border border-[#2A2A2D] text-white text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                  >
+                    {timeSlots.map((m) => {
+                      const timeStr = mtt(m);
+                      const isPastSlot = rescheduleModal.newDate === format(now, "yyyy-MM-dd") && m < nowMins;
+                      return (
+                        <option 
+                          key={m} 
+                          value={timeStr} 
+                          disabled={isPastSlot} 
+                          className={`bg-[var(--color-surface)] text-white ${isPastSlot ? "opacity-40 text-gray-500" : ""}`}
+                        >
+                          {timeStr} {isPastSlot ? "(Prošlo vreme)" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <p className="text-xs text-[#6B7280]">Klijent će dobiti email obaveštenje o novom terminu.</p>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 border-[#2A2A2D]" onClick={() => setRescheduleModal(null)} disabled={rescheduling}>Otkaži</Button>
+                  <Button className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" onClick={handleRescheduleConfirm} disabled={rescheduling} data-testid="reschedule-confirm-btn">
+                    {rescheduling ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                    Potvrdi
+                  </Button>
                 </div>
               </div>
-              <p className="text-xs text-[#6B7280]">{"Klijent će dobiti email obaveštenje o novom terminu."}</p>
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1 border-[#2A2A2D]" onClick={() => setRescheduleModal(null)} disabled={rescheduling}>{"Otkaži"}</Button>
-                <Button className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] text-black font-medium" onClick={handleRescheduleConfirm} disabled={rescheduling} data-testid="reschedule-confirm-btn">
-                  {rescheduling ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
-                  {"Potvrdi"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
+            )}
+          </DialogContent>
         </Dialog>
       )}
 
-      {/* Detail Dialog */}
       <Dialog open={!!selectedRes} onOpenChange={(v) => !v && setSelectedRes(null)}>
         <DialogContent className="bg-[var(--color-surface)] border-[#2A2A2D] max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <span className="font-mono text-[var(--color-primary)] text-sm bg-[var(--color-primary)]/10 px-2 py-0.5 rounded">#{selectedRes?.booking_id}</span>
               {selectedRes?.client_name}
-              {selectedRes?.is_rescheduled && <RotateCcw className="w-3.5 h-3.5 text-amber-400" title="Premešten" />}
+              {selectedRes?.is_rescheduled && <RotateCcw className="w-3.5 h-3.5 text-amber-400" title="Premesten" />}
             </DialogTitle>
             <DialogDescription className="text-[#9CA3AF]">{selectedRes?.time} - {selectedRes?.end_time} · {selectedRes?.total_duration} min</DialogDescription>
           </DialogHeader>
@@ -410,7 +605,7 @@ const ReservationsPage = () => {
                   const pair = selectedRes.service_worker_pairs?.[idx];
                   return (
                     <div key={idx}>
-                      {block.gap > 0 && idx > 0 && <div className="text-[10px] text-[#6B7280] italic pl-1 py-0.5">☕ Pauza ({block.gap} min)</div>}
+                      {block.gap > 0 && idx > 0 && <div className="text-[10px] text-[#6B7280] italic pl-1 py-0.5">Pauza ({block.gap} min)</div>}
                       <div className="flex justify-between text-xs bg-[var(--color-background)] rounded px-2 py-1.5">
                         <span className="text-white">{block.start_time}-{block.end_time} {pair?.service_name}</span>
                         <span className="text-[var(--color-primary)]">{pair?.worker_name}</span>
@@ -438,131 +633,203 @@ const ReservationsPage = () => {
         </DialogContent>
       </Dialog>
 
-      {!isWorker && <ManualBookingModal open={manualBookingOpen} onClose={() => setManualBookingOpen(false)} onSuccess={() => fetchReservations()} workers={workers} selectedDate={selectedDate} />}
-
-      {/* ===== GRID TAB ===== */}
       {activeTab === "grid" && (
-        loading ? <div className="text-center py-12 text-[#9CA3AF]">Učitavanje...</div> :
+        loading ? <div className="text-center py-12 text-[#9CA3AF]">Ucitavanje...</div> :
         displayWorkers.length === 0 ? (
           <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]"><Users className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">{isWorker ? "Nemate dodeljene smene" : "Nema aktivnih radnika"}</p></div>
         ) : (
-          <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]" data-testid="timeline-grid">
-            <div className="overflow-auto max-h-[70vh]" ref={gridRef} data-testid="grid-body">
-              {/* Header */}
-              <div className="flex sticky top-0 z-20 bg-[var(--color-surface)] border-b border-[#2A2A2D]">
-                <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D] sticky left-0 z-30 bg-[var(--color-surface)]">Vreme</div>
-                {displayWorkers.map(w => (
-                  <div key={w.id} className={`flex-1 min-w-[120px] flex-shrink-0 p-2 text-center border-r border-[#2A2A2D] last:border-r-0 transition-opacity ${isWorkerDimmed(w.id) ? "opacity-25" : ""}`}>
-                    <div className="text-xs font-medium text-white truncate">{w.name}</div>
-                    <div className="text-[10px] text-[#6B7280]">{w.work_start}-{w.work_end}</div>
+          <div className="flex flex-col lg:flex-row gap-4 items-start">
+            
+            {/* LEFT SIDEBAR: Mini-Kalendar */}
+            {!isWorker && (
+              <div className="w-full lg:w-60 shrink-0 bg-[var(--color-surface)] p-3 rounded-xl border border-[#2A2A2D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-white flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                    {format(currentMonth, "MMMM yyyy", { locale: sr })}
+                  </span>
+                  <div className="flex gap-1">
+                    <button onClick={() => setCurrentMonth(subDays(startOfMonth(currentMonth), 1))} className="p-1 text-[#9CA3AF] hover:text-white rounded hover:bg-[#2A2A2D]">
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => setCurrentMonth(addDays(endOfMonth(currentMonth), 1))} className="p-1 text-[#9CA3AF] hover:text-white rounded hover:bg-[#2A2A2D]">
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                ))}
-              </div>
-              {/* Body */}
-              <div className="relative">
-                {nowLineTop > 0 && nowLineTop < timeSlots.length * SLOT_HEIGHT && (
-                  <div className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top: `${nowLineTop}px` }}>
-                    <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 -ml-1" /><div className="flex-1 h-px bg-red-500/60" /></div>
+                </div>
+
+                {dragData && (
+                  <div className="space-y-1.5 bg-[var(--color-primary)]/10 p-2 rounded-lg border border-[var(--color-primary)]/30">
+                    <div className="text-[10px] text-[var(--color-primary)] font-semibold text-center">Spustite rezervaciju na željeni datum 👇</div>
                   </div>
                 )}
-                {timeSlots.map((slotMin) => (
-                  <div key={slotMin} className="flex border-b border-[#1E1E22]" style={{ height: `${SLOT_HEIGHT}px` }}>
-                    <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22] sticky left-0 z-10 bg-[var(--color-surface)]">{mtt(slotMin)}</div>
-                    {displayWorkers.map(w => {
-                      const blocks = buildWorkerBlocks(w.id);
-                      const cellBlocks = blocks.filter(b => b.startMin >= slotMin && b.startMin < slotMin + 30);
-                      const dimmed = isWorkerDimmed(w.id);
-                      const isDropHere = !isWorker && dropTarget?.workerId === w.id && dropTarget?.slotMin === slotMin;
-                      return (
-                        <div
-                          key={w.id}
-                          className={`flex-1 min-w-[120px] flex-shrink-0 border-r border-[#1E1E22] last:border-r-0 relative transition-all ${dimmed ? "opacity-20 bg-red-900/10" : ""} ${isDropHere ? "bg-[var(--color-primary)]/10" : ""}`}
-                          onDragOver={isWorker ? undefined : (e) => handleDragOver(e, w.id, slotMin)}
-                          onDragLeave={isWorker ? undefined : handleDragLeave}
-                          onDrop={isWorker ? undefined : (e) => handleDrop(e, w.id, slotMin)}
-                          style={isWorker ? { pointerEvents: "auto" } : undefined}
-                        >
-                          {cellBlocks.map((block, bIdx) => {
-                            const topOff = ((block.startMin - slotMin) / 30) * SLOT_HEIGHT;
-                            const blockH = Math.max(((block.endMin - block.startMin) / 30) * SLOT_HEIGHT, 24);
-                            const blockColor = block.color;
-                            const isRescheduled = block.res.is_rescheduled;
-                            return (
-                              <div
-                                key={bIdx}
-                                draggable={isWorker ? false : !block.isArchived}
-                                onDragStart={isWorker ? undefined : (e) => !block.isArchived && handleDragStart(e, block.res, block)}
-                                onDragEnd={isWorker ? undefined : handleDragEnd}
-                                onClick={isWorker ? undefined : () => setSelectedRes(block.res)}
-                                className={`absolute left-1 right-1 rounded-md px-1.5 py-0.5 overflow-hidden transition-all ${
-                                  isWorker
-                                    ? "cursor-default select-none"
-                                    : `cursor-grab hover:brightness-110 hover:shadow-lg ${block.isArchived ? "opacity-40 cursor-default" : ""} ${dragData?.res?.id === block.res.id ? "opacity-50 ring-2 ring-[var(--color-primary)]" : ""}`
-                                }`}
-                                style={{
-                                  top: `${topOff}px`,
-                                  height: `${blockH}px`,
-                                  backgroundColor: `${blockColor}18`,
-                                  borderLeft: `3px solid ${blockColor}`,
-                                  zIndex: 5,
-                                  ...(isWorker ? { pointerEvents: "none" } : {}),
-                                }}
-                                data-testid={`grid-block-${block.res.id}`}
-                              >
-                                <div className="text-[10px] font-medium truncate flex items-center gap-1" style={{ color: blockColor }}>
-                                  {isRescheduled && <RotateCcw className="w-2.5 h-2.5 shrink-0" />}
-                                  {block.serviceName}
+
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {["P", "U", "S", "Č", "P", "S", "N"].map((d, i) => (
+                    <div key={i} className="text-[10px] text-[#6B7280] font-medium py-1">{d}</div>
+                  ))}
+                  {calendarDays.map((day, idx) => {
+                    const isSelected = isSameDay(day, selectedDate);
+                    const isCurrentDay = isSameDay(day, today);
+                    const isBeforeToday = isBefore(day, today);
+                    const formattedDateStr = format(day, "yyyy-MM-dd");
+                    const isHoveredTarget = dateDropTarget === formattedDateStr;
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedDate(day)}
+                        onDragOver={(e) => handleDateDragOver(e, day)}
+                        onDrop={(e) => handleDateDrop(e, day)}
+                        className={`text-xs py-1.5 rounded-md cursor-pointer transition-all relative ${
+                          isSelected ? "bg-[var(--color-primary)] text-black font-semibold" :
+                          isCurrentDay ? "border border-[var(--color-primary)] text-[var(--color-primary)]" :
+                          isBeforeToday ? "text-[#4B5563]" : "text-[#D1D5DB] hover:bg-[#2A2A2D]"
+                        } ${isHoveredTarget ? "ring-2 ring-[var(--color-primary)] bg-[var(--color-primary)] text-white font-bold scale-110 z-10" : ""}`}
+                      >
+                        {format(day, "d")}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* MAIN GRID */}
+            <div className="flex-1 w-full bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden" data-testid="timeline-grid">
+              <div className="overflow-auto max-h-[72vh]" ref={gridRef} data-testid="grid-body">
+                <div className="flex sticky top-0 z-20 bg-[var(--color-surface)] border-b border-[#2A2A2D] w-full min-w-max">
+                  <div className="w-16 flex-shrink-0 p-2 text-center text-[10px] text-[#6B7280] border-r border-[#2A2A2D] sticky left-0 z-30 bg-[var(--color-surface)]">Vreme</div>
+                  {displayWorkers.map(w => (
+                    <div key={w.id} className={`flex-1 min-w-[130px] flex-shrink-0 p-2 text-center border-r border-[#2A2A2D] last:border-r-0 transition-opacity ${isWorkerDimmed(w.id) ? "opacity-25" : ""}`}>
+                      <div className="text-xs font-medium text-white truncate">{w.name}</div>
+                      <div className="text-[10px] text-[#6B7280]">{w.work_start}-{w.work_end}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="relative w-full min-w-max">
+                  {nowLineTop > 0 && nowLineTop < timeSlots.length * SLOT_HEIGHT && (
+                    <div className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top: `${nowLineTop}px` }}>
+                      <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 -ml-1" /><div className="flex-1 h-px bg-red-500/60" /></div>
+                    </div>
+                  )}
+                  {timeSlots.map((slotMin) => (
+                    <div key={slotMin} className="flex border-b border-[#1E1E22]" style={{ height: `${SLOT_HEIGHT}px` }}>
+                      <div className="w-16 flex-shrink-0 flex items-start justify-center pt-1 text-[10px] text-[#6B7280] border-r border-[#1E1E22] sticky left-0 z-10 bg-[var(--color-surface)]">{mtt(slotMin)}</div>
+                      {displayWorkers.map(w => {
+                        const blocks = buildWorkerBlocks(w.id);
+                        const cellBlocks = blocks.filter(b => b.startMin >= slotMin && b.startMin < slotMin + 30);
+                        const dimmed = isWorkerDimmed(w.id);
+                        const isDropHere = !isWorker && dropTarget?.workerId === w.id && dropTarget?.slotMin === slotMin;
+                        return (
+                          <div
+                            key={w.id}
+                            className={`flex-1 min-w-[130px] flex-shrink-0 border-r border-[#1E1E22] last:border-r-0 relative transition-all ${dimmed ? "opacity-20 bg-red-900/10" : ""} ${isDropHere ? "bg-[var(--color-primary)]/10" : ""}`}
+                            onDragOver={isWorker ? undefined : (e) => handleDragOver(e, w.id, slotMin)}
+                            onDragLeave={isWorker ? undefined : handleDragEnd}
+                            onDrop={isWorker ? undefined : (e) => handleDrop(e, w.id, slotMin)}
+                            style={isWorker ? { pointerEvents: "auto" } : undefined}
+                          >
+                            {cellBlocks.map((block, bIdx) => {
+                              const topOff = ((block.startMin - slotMin) / 30) * SLOT_HEIGHT;
+                              const blockH = Math.max(((block.endMin - block.startMin) / 30) * SLOT_HEIGHT, 22);
+                              const blockColor = block.color;
+                              const isRescheduled = block.res.is_rescheduled;
+                              const canDragThisBlock = !isWorker;
+                              return (
+                                <div
+                                  key={bIdx}
+                                  draggable={canDragThisBlock}
+                                  onDragStart={canDragThisBlock ? (e) => handleDragStart(e, block.res, block) : undefined}
+                                  onDragEnd={canDragThisBlock ? handleDragEnd : undefined}
+                                  onClick={isWorker ? undefined : () => setSelectedRes(block.res)}
+                                  className={`absolute left-1 right-1 rounded px-1.5 py-0.5 overflow-hidden transition-all ${
+                                    isWorker
+                                      ? "cursor-default select-none"
+                                      : `cursor-grab hover:brightness-110 hover:shadow-lg ${dragData?.res?.id === block.res.id ? "opacity-50 ring-2 ring-[var(--color-primary)]" : ""}`
+                                  }`}
+                                  style={{
+                                    top: `${topOff}px`,
+                                    height: `${blockH}px`,
+                                    backgroundColor: `${blockColor}18`,
+                                    borderLeft: `3px solid ${blockColor}`,
+                                    zIndex: 5,
+                                  }}
+                                  data-testid={`grid-block-${block.res.id}`}
+                                >
+                                  <div className="text-[10px] font-medium truncate flex items-center gap-1" style={{ color: blockColor }}>
+                                    {isRescheduled && <RotateCcw className="w-2.5 h-2.5 shrink-0" />}
+                                    {block.serviceName}
+                                  </div>
+                                  {blockH > 24 && <div className="text-[9px] text-[#9CA3AF] truncate leading-tight">{block.res.client_name}</div>}
                                 </div>
-                                {blockH > 28 && <div className="text-[9px] text-[#9CA3AF] truncate">{block.res.client_name}</div>}
-                                {blockH > 42 && <div className="flex items-center gap-1 mt-0.5"><span className="text-[9px] font-mono text-[#6B7280]">#{block.bookingId}</span></div>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+
           </div>
         )
       )}
 
-      {/* ===== ARCHIVE TAB ===== */}
       {activeTab === "archive" && (
         <div data-testid="archive-view">
           <div className="mb-4">
-            <Input placeholder="Pretraži po imenu, telefonu, ID-u..." value={archiveSearch} onChange={e => setArchiveSearch(e.target.value)} className="bg-[var(--color-surface)] border-[#2A2A2D] text-white max-w-sm" data-testid="archive-search" />
+            <Input placeholder="Pretrazi po imenu, telefonu, ID-u..." value={archiveSearch} onChange={e => setArchiveSearch(e.target.value)} className="bg-[var(--color-surface)] border-[#2A2A2D] text-white" />
           </div>
-          {filteredArchive.length === 0 ? (
-            <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D]"><Clock className="w-12 h-12 mx-auto text-[#9CA3AF] mb-4" /><p className="text-[#9CA3AF]">{isPast ? "Nema rezervacija" : "Nema arhiviranih termina"}</p></div>
-          ) : (
-            <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-[#2A2A2D] hover:bg-transparent">
-                    <TableHead className="text-[#9CA3AF]">ID</TableHead><TableHead className="text-[#9CA3AF]">Vreme</TableHead><TableHead className="text-[#9CA3AF]">Klijent</TableHead><TableHead className="text-[#9CA3AF]">Usluge</TableHead><TableHead className="text-[#9CA3AF] text-right">Cena</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredArchive.sort((a, b) => a.time.localeCompare(b.time)).map(res => (
-                    <TableRow key={res.id} className="border-[#2A2A2D] opacity-70 hover:opacity-100 cursor-pointer" onClick={() => setSelectedRes(res)}>
-                      <TableCell><span className="font-mono text-xs text-[var(--color-primary)]">#{res.booking_id}</span></TableCell>
-                      <TableCell><span className="text-sm text-[var(--color-primary)]">{res.time}-{res.end_time}</span></TableCell>
-                      <TableCell><span className="text-sm">{res.client_name}</span><br /><span className="text-xs text-[#6B7280]">{res.client_phone}</span></TableCell>
-                      <TableCell><span className="text-xs text-[#9CA3AF]">{res.service_names?.join(", ")}</span></TableCell>
-                      <TableCell className="text-right text-sm font-medium text-[var(--color-primary)]">{res.total_price ?? 0} π</TableCell>
+          <div className="bg-[var(--color-surface)] rounded-xl border border-[#2A2A2D] overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[#2A2A2D] hover:bg-transparent">
+                  <TableHead className="text-[#9CA3AF]">ID / Datum</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Klijent</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Usluge i radnici</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Vreme</TableHead>
+                  <TableHead className="text-[#9CA3AF]">Cena</TableHead>
+                  <TableHead className="text-[#9CA3AF] text-right">Akcija</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredArchive.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-[#9CA3AF]">Nema arhiviranih rezervacija</TableCell></TableRow>
+                ) : (
+                  filteredArchive.map(res => (
+                    <TableRow key={res.id} className="border-[#2A2A2D] hover:bg-[var(--color-background)]/50">
+                      <TableCell>
+                        <span className="font-mono text-[var(--color-primary)] text-xs">#{res.booking_id}</span>
+                        <div className="text-[10px] text-[#6B7280]">{res.date}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-white text-sm font-medium">{res.client_name}</div>
+                        <div className="text-xs text-[#9CA3AF]">{res.client_phone}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-white">{res.service_names?.join(", ")}</div>
+                        <div className="text-[10px] text-[#6B7280]">
+                          {res.service_worker_pairs?.map(p => `${p.service_name} (${p.worker_name})`).join(" · ")}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-[#9CA3AF]">{res.time} - {res.end_time}</TableCell>
+                      <TableCell className="text-xs font-medium text-[var(--color-primary)]">{res.total_price ?? 0} π</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedRes(res)} className="text-xs text-[#9CA3AF] hover:text-white">Detalji</Button>
+                      </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>
   );
 };
 
-export default ReservationsPage;
+export default CalendarView;

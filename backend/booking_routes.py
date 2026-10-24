@@ -21,7 +21,8 @@ from logic import (
 )
 from mail_service import send_booking_confirmation_email, PAYMENT_MODE
 from tenant import check_tenant_access
-from route_utils import _get_tid, _get_salon_today, PI_API_KEY, PI_API_BASE
+from route_utils import _get_tid, _get_salon_today, PI_API_KEY, PI_API_BASE, COUNTRY_TIMEZONES
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -714,6 +715,7 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
     new_time = body.get("new_time", "")
     new_worker_id = body.get("new_worker_id", "")
     block_index = body.get("block_index")  # Which block was dragged (None = single-service)
+    new_date = body.get("new_date", "")
 
     if not new_time or not new_worker_id:
         raise HTTPException(status_code=400, detail="new_time and new_worker_id required")
@@ -730,7 +732,21 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
     old_worker_name = res.get("worker_name", "")
     blocks = res.get("worker_time_blocks", [])
     pairs = res.get("service_worker_pairs", [])
-    date = res["date"]
+    old_date = res["date"]
+    date = new_date or old_date
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Neispravan datum")
+
+    # Zabrana premeštanja u prošlost (po vremenskoj zoni salona)
+    tenant = await db.tenants.find_one({"tenant_id": tid}, {"country": 1})
+    tz_name = COUNTRY_TIMEZONES.get((tenant or {}).get("country", "RS"), "Europe/Belgrade")
+    salon_now = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d %H:%M")
+    if old_date < salon_now[:10]:
+        raise HTTPException(status_code=400, detail="Nije moguće premestiti rezervaciju iz prošlog dana.")
+    if f"{date} {new_time}" < salon_now:
+        raise HTTPException(status_code=400, detail="Nije moguće premestiti rezervaciju u prošlost.")
 
     # ===== MULTI-SERVICE PACKAGE RESCHEDULE =====
     if blocks and len(blocks) > 1:
@@ -828,6 +844,7 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
             "worker_time_blocks": new_blocks,
             "service_worker_pairs": pairs,
             "is_rescheduled": True,
+            "date": date,
         }
         # Update primary worker_id to the first block's worker
         update["worker_id"] = new_blocks[0]["worker_id"]
@@ -885,6 +902,7 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
             "worker_id": new_worker_id,
             "worker_name": new_worker["name"],
             "is_rescheduled": True,
+            "date": date,
         }
         if pairs:
             for p in pairs:
@@ -925,6 +943,7 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
         "new_time": new_start_time,
         "old_worker": old_worker_name,
         "new_worker": new_worker["name"],
+        "new_date": date,
     }
 
 

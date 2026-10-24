@@ -25,7 +25,7 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
+    allow_origins=[o.strip() for o in os.environ["FRONTEND_URL"].split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -236,7 +236,8 @@ async def startup_event():
         })
 
     # Write test credentials
-    os.makedirs("/app/memory", exist_ok=True)
+    if not os.path.isdir("/app/memory"):
+        return
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write("# Test Credentials\n\n")
         f.write("## Super-Admin\n")
