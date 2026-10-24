@@ -9,7 +9,7 @@ import {
   Plus, Bell, Loader2, Download, RotateCcw, CalendarDays
 } from "lucide-react";
 import { format, addDays, subDays, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn as sr } from "date-fns/locale";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "../ui/dialog";
@@ -275,13 +275,13 @@ const CalendarView = () => {
     }
 
     if (isPast) {
-      toast.error("Nije moguce premestiti rezervaciju u prošli dan.");
+      toast.error("Nije moguće premestiti rezervaciju u prošli dan.");
       setDragData(null);
       setDropTarget(null);
       return;
     }
     if (isToday && slotMin < nowMins) {
-      toast.error("Nije moguce premestiti rezervaciju u prošlo vreme.");
+      toast.error("Nije moguće premestiti rezervaciju u prošlo vreme.");
       setDragData(null);
       setDropTarget(null);
       return;
@@ -681,6 +681,7 @@ const CalendarView = () => {
                         onClick={() => setSelectedDate(day)}
                         onDragOver={(e) => handleDateDragOver(e, day)}
                         onDrop={(e) => handleDateDrop(e, day)}
+                        data-testid={`mini-cal-day-${formattedDateStr}`}
                         className={`text-xs py-1.5 rounded-md cursor-pointer transition-all relative ${
                           isSelected ? "bg-[var(--color-primary)] text-black font-semibold" :
                           isCurrentDay ? "border border-[var(--color-primary)] text-[var(--color-primary)]" :
@@ -726,7 +727,7 @@ const CalendarView = () => {
                             key={w.id}
                             className={`flex-1 min-w-[130px] flex-shrink-0 border-r border-[#1E1E22] last:border-r-0 relative transition-all ${dimmed ? "opacity-20 bg-red-900/10" : ""} ${isDropHere ? "bg-[var(--color-primary)]/10" : ""}`}
                             onDragOver={isWorker ? undefined : (e) => handleDragOver(e, w.id, slotMin)}
-                            onDragLeave={isWorker ? undefined : handleDragEnd}
+                            onDragLeave={isWorker ? undefined : () => setDropTarget(null)}
                             onDrop={isWorker ? undefined : (e) => handleDrop(e, w.id, slotMin)}
                             style={isWorker ? { pointerEvents: "auto" } : undefined}
                           >

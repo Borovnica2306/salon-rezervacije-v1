@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Phone, Ban, Check, Shield, Trash2, Plus } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn as sr } from "date-fns/locale";
 import { PhoneInput } from "../PhoneInput";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,

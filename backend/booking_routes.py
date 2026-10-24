@@ -710,7 +710,9 @@ def _mtt(m: int) -> str:
 
 
 @router.put("/reservations/{reservation_id}/reschedule")
-async def reschedule_reservation(reservation_id: str, body: dict, request: Request, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
+async def reschedule_reservation(reservation_id: str, body: dict, request: Request, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
     tid = user.get("tenant_id", "") or request.headers.get("X-Tenant-ID", "")
     new_time = body.get("new_time", "")
     new_worker_id = body.get("new_worker_id", "")
@@ -720,9 +722,14 @@ async def reschedule_reservation(reservation_id: str, body: dict, request: Reque
     if not new_time or not new_worker_id:
         raise HTTPException(status_code=400, detail="new_time and new_worker_id required")
 
+    if not ObjectId.is_valid(reservation_id) or not ObjectId.is_valid(new_worker_id):
+        raise HTTPException(status_code=400, detail="Neispravan ID")
+
     res = await db.reservations.find_one({"_id": ObjectId(reservation_id), "tenant_id": tid})
     if not res:
         raise HTTPException(status_code=404, detail="Reservation not found")
+    if res.get("status") == "cancelled":
+        raise HTTPException(status_code=400, detail="Otkazana rezervacija se ne može premestiti.")
 
     new_worker = await db.workers.find_one({"_id": ObjectId(new_worker_id), "tenant_id": tid})
     if not new_worker:

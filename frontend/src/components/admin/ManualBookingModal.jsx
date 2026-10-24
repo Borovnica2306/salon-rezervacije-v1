@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { X, Plus, Edit2, AlertTriangle } from "lucide-react";
 import { format, addDays } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn as sr } from "date-fns/locale";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "../ui/dialog";

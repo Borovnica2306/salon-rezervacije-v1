@@ -44,3 +44,11 @@ sr (Srpski), en (English), id (Bahasa Indonesia), tl (Filipino/Tagalog), pt-BR (
 - Fix: admin <main> min-w-0 — services page no longer overflows horizontally on mobile when categories expanded
 - Admin Usluge: delete confirmation dialog (reuses DeleteWorkerDialog with itemLabel prop)
 - Pi SDK script tag in index.html; PiAuthContext: mock Pi user only on preview hosts (localhost/emergentagent.com); production requires Pi Browser (UA PiBrowser) else BookingPage shows PiBrowserRequired screen (7 langs). Pi.init sandbox:false (Testnet chosen via Dev Portal app registration). Backend is_sandbox mock payment path kept per user choice.
+
+## 2026-10-24 Merge of user GitHub edits
+- Merged user CalendarView (mini month calendar, drag to other date, time dropdown, past-blocking); restored diacritics + CSV BOM; srLatn locale everywhere
+- booking_routes reschedule: new_date support, salon-tz past check, admin-only, invalid id 400, cancelled rejected; kept Pi payments/client overlap/email (user version had deleted them)
+- server.py CORS from FRONTEND_URL (comma list, incl. Vercel https://salon-rezervacije-v1-5wyy.vercel.app); test_credentials only written if /app/memory exists
+- Fixed corrupted backend .env (FRONTEND_URL+PI_API_KEY on one line, duplicate key)
+- package.json: ajv, ajv-keywords, build with DISABLE_ESLINT_PLUGIN (for Vercel)
+- Known risk (user chose to keep): client-controlled is_sandbox payment path

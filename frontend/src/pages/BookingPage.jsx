@@ -11,7 +11,7 @@ import PiBrowserRequired from "../components/PiBrowserRequired";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { format, addDays, isSameDay } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn as sr } from "date-fns/locale";
 import { srLatn } from "date-fns/locale/sr-Latn";
 import { enUS } from "date-fns/locale/en-US";
 import { id as idLocale } from "date-fns/locale/id";

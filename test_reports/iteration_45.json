@@ -1,0 +1,48 @@
+{
+  "summary": "Iter45: Tested the merged CalendarView and the reschedule backend (new_date, past-date checks), Pi sandbox payments, CORS from FRONTEND_URL, worker read-only view and CSV export. Backend: 14/16 pytest pass. The 2 failures are a missing role check (a worker can reschedule through the API) and a 500 on an invalid ObjectId. Frontend: everything requested works. The admin calendar loads with 8 worker columns, the mini month calendar and the Mreža/Arhiva tabs. Dragging a block to a grid slot opens the reschedule modal with date and time dropdown; confirming persists the move (verified via API: 12:30, is_rescheduled=true). Dropping on a future mini-calendar day opens the modal with that date and moves the reservation (26.10 -> 28.10 14:00), and the view follows to the target day. Dropping on a past mini-calendar day shows the toast 'Nije moguće premestiti rezervaciju u prošlost.' and no modal opens. 'Nova Rezervacija' on a past day shows the toast 'Nije moguće kreirati rezervaciju u prošlosti.' and no modal opens. In the worker view (Marija) blocks have draggable=false, clicking opens no dialog, and there are no tabs or new-reservation button. CSV export downloads rezervacije_2026-10-28.csv, but only for super_admin; it has been super_admin-only in all git history.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/reservations/{id}/reschedule", "issue": "No role check. A worker token (worker@salon.com) can reschedule any reservation in the tenant (200 OK, including other workers' reservations). The UI hides drag for workers but the API does not enforce it. Add a check: role in (admin, super_admin) else 403, plus check_tenant_access.", "priority": "HIGH"},
+      {"endpoint": "POST /api/payments/complete", "issue": "Security: is_sandbox comes from the client and needs no auth. Anyone can POST {booking_id, paymentId, is_sandbox:true} with X-Tenant-ID and mark any reservation payment_status=confirmed. The sandbox branch should be gated by a server-side env flag (e.g. PI_SANDBOX=true), not by the request body.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "PUT /api/reservations/{id}/reschedule", "issue": "An invalid reservation_id or new_worker_id (not an ObjectId) returns 500 (bson InvalidId). It should return 400 or 404."},
+      {"endpoint": "PUT /api/reservations/{id}/reschedule", "issue": "Cancelled reservations can be rescheduled: the find_one does not filter on status. The move is also not validated against the worker's work hours or day off on the new_date."},
+      {"endpoint": "PUT /api/reservations/{id}/reschedule", "issue": "background_tasks defaults to None. It is injected by FastAPI so it works, but the default is misleading."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CalendarView grid cells", "issue": "onDragLeave on every cell calls handleDragEnd, which clears dragData and dropTarget as soon as the cursor leaves the first cell. Effects: the drop highlight and the 'Spustite rezervaciju na željeni datum' hint vanish mid-drag, and handleDragOver returns early (dragData null), so dropEffect is not set. Drop still works only thanks to the dataTransfer fallback. onDragLeave should only clear dropTarget.", "selector": "[data-testid=grid-body] cells", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin/Worker calendar", "issues": [
+        "The date header and mini-calendar month use the Cyrillic date-fns 'sr' locale ('петак, 23. октобар 2026', 'октобар 2026') while the rest of the UI is in Latin script. Use the srLatn locale.",
+        "Missing diacritics in toasts on CalendarView.jsx lines 278/284: 'Nije moguce' should be 'Nije moguće'.",
+        "The reschedule modal uses a native <select> for time instead of the shadcn Select. For a mini-calendar drop the worker cannot be changed, and 'STARO' shows selectedDate rather than res.date."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_reschedule_new_date_iter45.py", "/app/backend/tests/seed_ui_resched.py", "/app/test_reports/pytest/pytest_iter45.xml"],
+  "action_items": [
+    "Add a role check (admin/super_admin only) to PUT /api/reservations/{id}/reschedule",
+    "Gate the Pi sandbox payment path with a server env flag instead of client-provided is_sandbox",
+    "Wrap ObjectId() parsing in reschedule and return 400/404 instead of 500",
+    "Reject rescheduling of cancelled reservations",
+    "Fix onDragLeave in CalendarView grid cells so it does not clear dragData",
+    "Use the srLatn locale for date headers; fix 'moguce' -> 'moguće'"
+  ],
+  "critical_code_review_comments": [
+    "CalendarView.jsx is 836 lines (>700). Split out the reschedule modal, mini calendar and grid.",
+    "handleDrop and handleDateDrop duplicate the drag-data fallback and the past-date validation blocks. Extract them into a helper.",
+    "Frontend 'today' checks use browser local time while the backend uses the salon timezone (Europe/Belgrade). This can mismatch for users in other timezones; the backend is authoritative so it is safe, but the UX could be confusing."
+  ],
+  "updated_files": ["/app/frontend/src/components/admin/CalendarView.jsx (added data-testid mini-cal-day-YYYY-MM-DD to mini calendar day cells)", "/app/backend/tests/test_reschedule_new_date_iter45.py", "/app/backend/tests/seed_ui_resched.py"],
+  "success_rate": {"backend": "87.5% (14/16)", "frontend": "100% of requested flows"},
+  "test_credentials": "admin@salon.com/Admin123!, worker@salon.com/Worker123!, super admin bornaja23@gmail.com/Markonijus23! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created TEST_UIDrag and TEST_WorkerView reservations; both cancelled. Pytest TEST_Resched reservations are cancelled by the fixture teardown.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Container date is 2026-10-24. HTML5 drag in Playwright: drag_to does not trigger React DnD here. Dispatch DragEvent dragstart/dragover/drop with a shared DataTransfer via page.evaluate (works). Mini calendar days: data-testid mini-cal-day-YYYY-MM-DD. Reschedule modal: reschedule-modal, native select inside, reschedule-confirm-btn. CSV button appears only for super_admin visiting /beauty-studio-bor/admin. Marija worker id 6a5c81428b4853b77e9e79af has no services assigned. Suzana 69d4d6f82990ad8a6366bf7d, Milena 69d4d6f82990ad8a6366bf7e, Šišanje 69d3b77e0b47ad8f729e9ba2."
+}
